@@ -1,9 +1,10 @@
 <DOCTYPE HTML>
     <html>
     <head>
-	<title>JONESYS</title>
+	<title>TONY'S</title>
+	<link rel="stylesheet" type="text/css" href="styles/index.css" />
     </head>
     <body>
-	<h1>HELLO WORLD</h1>
+	<header>TONY'S</header>
     </body>
     </html>
