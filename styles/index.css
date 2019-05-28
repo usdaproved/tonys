@@ -1,7 +1,29 @@
 header {
-    padding: 60px;
+    padding: 30px;
     text-align: center;
-    background: #1abc9c;
-    color: white;
-    font-size: 30px;
+    background: #B69179;
+    color: #2B2B2B;
+    font-family: 'Libre Baskerville', serif;
+    font-size: 50px;
+
+    box-shadow: 0 5px 0px #306569;
 }
+
+.order_button {
+    position: absolute;
+
+    bottom: 100px;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 10px;
+
+    color: #2B2B2B;
+    font-family: 'Libre Baskerville', serif;
+    font-size: 40px;
+    text-align: center;
+
+    background: #B69179;
+    box-shadow: 0 5px 0px #306569;
+    border-radius: 5px;
+}
+
