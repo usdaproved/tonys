@@ -1,0 +1,5 @@
+let button = document.getElementsByClassName('order_button')[0];
+
+button = button.addEventListener ("click", function() {
+  alert("did something");
+});

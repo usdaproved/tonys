@@ -1,12 +1,7 @@
-<DOCTYPE HTML>
-    <html>
-    <head>
-	<title>TONY'S</title>
-	<link rel="stylesheet" type="text/css" href="styles/index.css" />
-	<link href="https://fonts.googleapis.com/css?family=Libre+Baskerville:700&display=swap" rel="stylesheet"> 
-    </head>
-    <body>
+<?php require 'includes/header.php' ?>
+	<link rel="stylesheet" type="text/css" href="css/index.css" />
+	<script async src="js/index.js"></script>
 	<header>Tony's Taco House</header>
-	    <div class="order_button">Begin Order</div>
-    </body>
-    </html>
+	<div class="order_button">Begin Order</div>
+	
+<?php require 'includes/footer.php' ?>

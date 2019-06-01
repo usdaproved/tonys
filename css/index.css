@@ -27,3 +27,11 @@ header {
     border-radius: 5px;
 }
 
+.order_button:hover {
+    cursor: pointer;
+
+    padding-top: 8px;
+    
+    background: #9C7C67;
+    box-shadow: 0 3px 0px #244C4F;
+}
