@@ -25,6 +25,10 @@ header {
     background: #B69179;
     box-shadow: 0 5px 0px #306569;
     border-radius: 5px;
+
+    user-select: none;
+    -moz-user-select: none;
+    -webkit-user-select: none;
 }
 
 .order_button:hover {
