@@ -39,7 +39,6 @@ function onInitialClick(i){
 	newSubmit.setAttribute('type', 'submit');
 	newSubmit.setAttribute('value', 'Order');
 	newSubmit.setAttribute('name', 'submit');
-	newSubmit.setAttribute('id', 'order_button');
 	document.getElementsByClassName('flex-container')[0].appendChild(newSubmit);
     }
 }
