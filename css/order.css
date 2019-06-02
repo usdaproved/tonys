@@ -1,0 +1,46 @@
+.grid-container{
+    display: grid;
+    grid-template-columns: 1fr 2fr 1fr;
+}
+
+.flex-container{
+    grid-column-start: 2;
+    grid-column-end: 3;
+    
+    display: flex;
+    flex-direction: column;
+}
+
+.flex-item, .hover-disabled{
+    padding: 30px;
+    margin: 5px;
+
+    background: #B69179;
+    box-shadow: 0 5px 0px #306569;
+    
+    color: #2B2B2B;
+    text-align: center;
+    font-family: 'Libre Baskerville', serif;
+    font-size: 40px;
+    
+
+    user-select: none;
+    -moz-user-select: none;
+    -webkit-user-select: none;
+}
+
+/* What the heck am I doing? */
+.flex-item:not(.hover-disabled):hover {
+    cursor: pointer;
+    
+    background: #9C7C67;
+    box-shadow: 0 3px 0px #244C4F;
+}
+
+.quantifier{
+    color: #306569;
+}
+
+.quantifier:hover{
+    color: #244C4F;
+}
