@@ -11,7 +11,7 @@
     flex-direction: column;
 }
 
-.flex-item, .hover-disabled, input[type=submit]{
+.flex-item, .hover-disabled, .order_button{
     padding: 30px;
     margin: 5px;
 
@@ -29,13 +29,13 @@
     -webkit-user-select: none;
 }
 
-input[type=submit]{
+.order_button{
     color: #E6E6E6;
 }
 
 /* What the heck am I doing? */
 .flex-item:not(.hover-disabled):hover,
-input[type=submit]:hover{
+.order_button:hover{
     cursor: pointer;
     
     background: #9C7C67;
