@@ -47,5 +47,20 @@
 }
 
 .quantifier:hover{
+    cursor: pointer;
+    
     color: #244C4F;
+}
+
+/* This is the number field in the order form. */
+.quantity{
+    border: none;
+    background: rgba(0, 0, 0, 0);
+    outline: none;
+    
+    font-size: 40px;
+    font-family: 'Libre Baskerville', serif;
+
+    -webkit-appearance: none;
+    -moz-appearance: textfield;
 }

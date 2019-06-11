@@ -1,5 +1,7 @@
 "use strict";
 
+// Initial event listener setups.
+
 // Get every menu item, add the '- 0 +', keep track of the values to be submitted.
 let menuItemsE = document.getElementsByClassName('flex-item');
 let menuItemsText = new Array(menuItemsE.length);
@@ -17,19 +19,24 @@ for (let i = 0; i < menuItemsE.length; i++){
     });
 }
 
+// Event functions.
 
 function onInitialClick(i){
     menuItemsQuantity[i] += 1;
     menuItemsE[i].innerHTML = menuItemsText[i] +
 	" <span class='quantifier'>-</span> " +
-	"<span class='quantity'>" + menuItemsQuantity[i] + "</span>" +
+	"<input type='number' class='quantity' value='" + menuItemsQuantity[i] + "'>" +
 	" <span class='quantifier'>+</span>";
+    // Add event listener to the number field.
+    menuItemsE[i].getElementsByClassName('quantity')[0].addEventListener('input', function handler(e){
+	onQuantityUpdate(e, i);
+    });
     // Remove the hover effect, add a new one to the quantifiers.
     menuItemsE[i].classList.add("hover-disabled");
     for (let x = 0; x < 2; x++){
 	menuItemsE[i].getElementsByClassName('quantifier')[x].addEventListener("click", function(e){
 	    e.stopPropagation();
-	    onClick(i, x);
+	    onQuantifierClick(i, x);
 	});
     }
 
@@ -44,9 +51,32 @@ function onInitialClick(i){
     }
 }
 
-function onClick(i, x){
+function onQuantifierClick(i, x){
     menuItemsQuantity[i] += x ? 1 : -1;
 
+    quantityCheckAndReset(i);
+
+    menuItemsE[i].getElementsByClassName('quantity')[0].value = menuItemsQuantity[i];
+    // Be sure to do server side check for negative values.
+    
+}
+
+// This is seperate from quantifier as you can directly modify the quantity field without touching the quantifiers.
+// This function handles those cases.
+function onQuantityUpdate(e, i){
+    // If the input is a number, do something with it. Otherwise return to previous state.
+    if(!isNaN(Number(e.target.value))){
+	let valueWidthElement = document.createElement('p');
+	valueWidthElement.innerHTML = e.target.value;
+	e.target.style.width = valueWidthElement.style.width;
+	menuItemsQuantity[i] = Number(e.target.value);
+	quantityCheckAndReset(i);
+    } else { e.target.value = menuItemsQuantity[i]; }
+}
+
+// Helper functions beyond this point.
+
+function quantityCheckAndReset(i){
     if (menuItemsQuantity[i] <= 0){
 	// return the state of the block back to before onInitialClick.
 	menuItemsQuantity[i] = 0;
@@ -62,16 +92,10 @@ function onClick(i, x){
 	// This only needs to be done if something hits zero,
 	// otherwise we know something has to have value.
 	if(!quantityCheck()) {
-	    document.getElementsByTagName('input')[0].remove();
+	    getSubmitButton().remove();
 	}
-	return;
     }
-
-    menuItemsE[i].getElementsByClassName('quantity')[0].innerHTML = menuItemsQuantity[i];
-    // Be sure to do server side check for negative values.
-    
 }
-
 // returns false if none found.
 function getSubmitButton(){
     let inputs = document.getElementsByTagName('input');
