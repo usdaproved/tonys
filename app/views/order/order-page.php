@@ -5,9 +5,9 @@
 
 <div class="grid-container">
     <form method="post" class="flex-container">
-	<div class="flex-item">Taco</div>
-	<div class="flex-item">Burrito</div>
-	<div class="flex-item">Nacho</div>
+	<?php foreach($this->menu as $menuItem): ?>
+	    <div class="flex-item"><?= $menuItem["name"]; ?></div>
+	<?php endforeach ?>
     </form>
 </div>
 
