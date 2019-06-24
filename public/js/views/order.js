@@ -2,6 +2,8 @@
 
 // Initial event listener setups.
 
+// TODO: Major overhaul of this script.
+
 // Get every menu item, add the '- 0 +', keep track of the values to be submitted.
 let menuItemsE = document.getElementsByClassName('flex-item');
 let menuItemsText = new Array(menuItemsE.length);
@@ -45,7 +47,7 @@ function onInitialClick(i){
 	let newSubmit = document.createElement('input');
 	newSubmit.setAttribute('type', 'submit');
 	newSubmit.setAttribute('value', 'Order');
-	newSubmit.setAttribute('name', 'submit');
+	newSubmit.setAttribute('name', 'next');
 	newSubmit.setAttribute('class', 'order_button');
 	document.getElementsByClassName('flex-container')[0].appendChild(newSubmit);
     }
