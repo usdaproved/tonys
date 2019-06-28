@@ -27,7 +27,7 @@ class Menu extends Model{
                 $itemPrice = $this->db->getResult();
                 $itemPrice = $itemPrice["price"];
 
-                if(!is_bool(itemPrice)) $totalPrice += $itemPrice * $value;
+                if(!is_bool($itemPrice)) $totalPrice += $itemPrice * $value;
                 
             }
         }

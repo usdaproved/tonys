@@ -50,10 +50,12 @@ class DatabaseAccess{
         }
     }
 
+    // Gets a single row.
     public function getResult(){
         return $this->statement->fetch();
     }
-    
+
+    // Gets all rows.
     public function getResultSet(){
         return $this->statement->fetchAll();
     }

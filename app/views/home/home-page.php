@@ -2,8 +2,8 @@
 	<link rel="stylesheet" type="text/css" href="css/views/home/home-register-page.css" />
 	<!--<script async src="js/views/home.js"></script>-->
 	<header>Tony's Taco House</header>
-	<h1>Welcome back <?= $this->userWholeName["name_first"]; ?></h1>
-	<p><a href="/Order">Order again</a></p>
+	<h1>Welcome back, <?= ucfirst($this->userWholeName["name_first"]); ?>.</h1>
+	<p><a href="/Order">Order</a></p>
 
 	<?php foreach($this->orders as $order): ?>
 	    <article>
@@ -12,7 +12,7 @@
 		<p><strong>Total</strong>: <?= "$" . $order['total_price']; ?></p>
 		<p><strong>Order Details</strong>:
 		    <ul>
-			<?php foreach($order['order_line_item'] as $lineItem): ?>
+			<?php foreach($order['order_line_items'] as $lineItem): ?>
 			    <li><?= $lineItem['quantity'] . ' ' . $lineItem['name']; ?></li>
 			<?php endforeach; ?>
 		    </ul>

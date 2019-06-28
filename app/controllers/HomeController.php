@@ -8,7 +8,7 @@ class HomeController{
     private $userManager;
     private $orderManager;
     private $menuManager;
-
+    
     public $userWholeName;
     public $orders;
     
@@ -21,6 +21,7 @@ class HomeController{
     public function get(){
         $userID = $this->userManager->getUserID();
 
+        // TODO: setup a redirect to a new /register page.
         if(!$userID && is_bool($userID)){
             require_once APP_ROOT . "/views/home/home-register-page.php";
 
@@ -29,21 +30,13 @@ class HomeController{
 
         $this->userWholeName = $this->userManager->getUserWholeName($userID);
 
-        // TODO: There's absolutely a better way of loading orders.
-        // Make an SQL statement that joins all these together.
-        // Something like $this->orderManager->getEntireOrderByID($orderID);
-        $this->orders = $this->orderManager->getAllOrdersByUserID($userID);
-        for($i = 0; $i < sizeof($this->orders); $i++){
-            $this->orders[$i]["order_line_item"] =
-                 $this->orderManager->getOrderLineItems(
-                     $this->orders[$i]["id"]
-            );
-            for($j = 0; $j < sizeof($this->orders[$i]["order_line_item"]); $j++){
-                $this->orders[$i]["order_line_item"][$j]["name"] =
-                     $this->menuManager->getItemNameByID(
-                         $this->orders[$i]["order_line_item"][$j]["menu_item_id"]
-                );
-            }
+        $orderIDs = $this->orderManager->getAllOrderIDsByUserID($userID);
+        
+        // No point in iterating through and creating an array of id's.
+        // That would mean we'd be iterating through this list twice.
+        
+        foreach($orderIDs as $orderID){
+            $this->orders[] = $this->orderManager->getEntireOrderByOrderID($orderID["id"]);
         }
 
         require_once APP_ROOT . "/views/home/home-page.php";

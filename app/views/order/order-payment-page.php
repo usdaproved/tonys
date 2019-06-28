@@ -6,7 +6,7 @@
     <p><strong>Total</strong>: <?= "$" . $this->order['total_price']; ?></p>
     <p><strong>Order Details</strong>:
 	<ul>
-	    <?php foreach($this->order['order_line_item'] as $lineItem): ?>
+	    <?php foreach($this->order['order_line_items'] as $lineItem): ?>
 	    <li><?= $lineItem['quantity'] . ' ' . $lineItem['name']; ?></li>
 	    <?php endforeach; ?>
 	</ul>

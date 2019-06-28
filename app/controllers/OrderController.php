@@ -59,17 +59,8 @@ class OrderController{
 
         $orderID = $this->orderManager->createOrder($userID, $totalPrice, $post);
 
-        $this->order = $this->orderManager->getOrderByOrderID($orderID);
-        
-        $this->order["order_line_item"] = $this->orderManager->getOrderLineItems($orderID);
-
-        for($i = 0; $i < sizeof($this->order["order_line_item"]); $i++){
-            $this->order["order_line_item"][$i]["name"] =
-                 $this->menuManager->getItemNameByID(
-                     $this->order["order_line_item"][$i]["menu_item_id"]
-                 );
-        } 
-        
+        $this->order = $this->orderManager->getEntireOrderByOrderID($orderID);
+                
         $this->userWholeName = $this->userManager->getUserWholeName($userID);        
 
         require_once APP_ROOT . "/views/order/order-payment-page.php";

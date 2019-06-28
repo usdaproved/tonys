@@ -51,6 +51,31 @@ VALUES (:order_id, :menu_item_id, :quantity);";
         return $orderID;
     }
 
+    public function getEntireOrderByOrderID($orderID){
+        $sql = "SELECT * FROM orders WHERE orders.id = :order_id;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":order_id", $orderID);
+        $this->db->executeStatement();
+
+        $order = $this->db->getResult();
+
+        $sqlLineItems = "SELECT
+	menu_items.name,
+	order_line_items.quantity
+FROM order_line_items
+LEFT JOIN menu_items ON menu_items.id = order_line_items.menu_item_id
+WHERE order_line_items.order_id = :order_id;";
+
+        $this->db->beginStatement($sqlLineItems);
+        $this->db->bindValueToStatement(":order_id", $orderID);
+        $this->db->executeStatement();
+
+        $order["order_line_items"] = $this->db->getResultSet();
+
+        return $order;
+    }
+
     public function getOrderByOrderID($orderID){
         $sql = "SELECT * FROM orders WHERE id = :id;";
 
@@ -58,11 +83,11 @@ VALUES (:order_id, :menu_item_id, :quantity);";
         $this->db->bindValueToStatement(":id", $orderID);
         $this->db->executeStatement();
 
-        return $this->db->getResultSet()[0];
+        return $this->db->getResult();
     }
 
-    public function getAllOrdersByUserID($userID){
-        $sql = "SELECT * FROM orders WHERE user_id = :user_id;";
+    public function getAllOrderIDsByUserID($userID){
+        $sql = "SELECT id FROM orders WHERE user_id = :user_id;";
 
         $this->db->beginStatement($sql);
         $this->db->bindValueToStatement(":user_id", $userID);
