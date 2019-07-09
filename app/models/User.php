@@ -70,13 +70,9 @@ VALUES (:user_id, :password);";
         $this->db->beginStatement($sql);
         $this->db->bindValueToStatement(":user_id", $userID);
         $this->db->executeStatement();
+    }
 
-        $sql = "DELETE FROM orders WHERE user_id = :user_id;";
-
-        $this->db->beginStatement($sql);
-        $this->db->bindValueToStatement(":user_id", $userID);
-        $this->db->executeStatement();
-
+    public function deleteUser($userID){
         $sql = "DELETE FROM users WHERE id = :id;";
 
         $this->db->beginStatement($sql);

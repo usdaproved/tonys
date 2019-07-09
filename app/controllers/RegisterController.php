@@ -64,7 +64,7 @@ class RegisterController extends Controller{
 
     // TODO: Return error messages instead of handling it inside here.
     private function validateForm($post){
-        if($this->validateEmail($post["email"])){
+        if(!$this->validateEmail($post["email"])){
             echo "<h1>Please enter valid email.</h1>";
             exit;
         }

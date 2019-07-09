@@ -49,6 +49,7 @@ class LoginController extends Controller{
             if(!is_null($unregisteredUserID) && $unregisteredUserID !== $userID){
                 $this->orderManager->updateOrdersFromUnregisteredToRegistered($unregisteredUserID, $userID);
                 $this->userManager->deleteUnregisteredCredentials($unregisteredUserID);
+                $this->userManager->deleteUser($unregisteredUserID);
             }
 
             header("Location: /");
