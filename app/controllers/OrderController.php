@@ -71,8 +71,8 @@ class OrderController extends Controller{
         }
 
         $this->cart = $this->orderManager->getEntireOrderByOrderID($cartID);
-        
-        var_dump($this->cart);
+
+        echo "Order has been added to cart.";
     }
 
     public function submit_post(){

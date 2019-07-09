@@ -46,7 +46,7 @@ class Controller{
     public function validateEmail($email){
         $email = filter_var($post["email"], FILTER_SANITIZE_EMAIL);
 
-        return !filter_var($email, FILTER_VALIDATE_EMAIL);
+        return filter_var($email, FILTER_VALIDATE_EMAIL);
     }
 }
 
