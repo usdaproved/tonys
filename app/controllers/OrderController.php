@@ -57,8 +57,7 @@ class OrderController extends Controller{
             $this->orderManager->updateCart($cartID, $totalPrice, $post);
         }
         // Take the user to the next page to fill out info.
-        header("Location: /Order/submit");
-        exit;
+        $this->redirect("Location: /Order/submit");
     }
 
     public function submit_get(){
@@ -66,8 +65,7 @@ class OrderController extends Controller{
         
         $cartID = $this->orderManager->getCartID($userID);
         if(is_null($cartID)){
-            header("Location: /Order");
-            exit;
+            $this->redirect("/Order");
         }
 
         $this->cart = $this->orderManager->getEntireOrderByOrderID($cartID);

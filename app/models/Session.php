@@ -42,6 +42,16 @@ class Session{
     public function getUserID(){
         return $_SESSION["user_id"];
     }
+
+    public function setOneTimeMessage($message){
+        $_SESSION["one_time_message"] = $message;
+    }
+
+    public function getOneTimeMessage(){
+        $message =  $_SESSION["one_time_message"];
+        unset($_SESSION["one_time_message"]);
+        return $message;
+    }
     
 
     /* This function may not be necessary.

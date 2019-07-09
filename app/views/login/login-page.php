@@ -3,6 +3,7 @@
 <header>Tony's Taco House</header>
 
 <form method="post">
+    <?php echo $this->printOneTimeMessage(); ?>
     <label for="email">Email</label>
     <input type="email" id="email" name="email">
     <label for="password">Password</label>

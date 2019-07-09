@@ -5,6 +5,7 @@
 
 <div class="form-container">
     <form id="form-order-selection" method="post">
+	<?php echo $this->printOneTimeMessage(); ?>
 	<?php foreach($this->menu as $menuItem): ?>
 	    <?php
 	    $value = NULL;

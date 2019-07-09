@@ -14,8 +14,7 @@ class RegisterController extends Controller{
 
     public function get(){
         if($this->sessionManager->isUserLoggedIn()){
-            header("Location: /");
-            exit;
+            $this->redirect("/");
         }
 
         $this->email = NULL;
@@ -29,8 +28,7 @@ class RegisterController extends Controller{
 
     public function post(){
         if($this->sessionManager->isUserLoggedIn()){
-            header("Location: /");
-            exit;
+            $this->redirect("/");
         }
         
         // At the end of registering a user, redirect to the "/" page.
@@ -40,11 +38,17 @@ class RegisterController extends Controller{
 
         // TODO: Decide how to handle a bad CSRFToken.
         if($this->sessionManager->validateCSRFToken($post["CSRFToken"])){
-            echo "Operation could not complete due to invalid session.";
-            exit;
+            $errorMessage = "Operation could not complete due to invalid session.";
+            $this->sessionManager->setOneTimeMessage($errorMessage);
+            $this->redirect("/Register");
         }
 
-        $this->validateForm($post);
+        $errorMessage = $this->validateForm($post);
+        if(!is_null($errorMessage)){
+            $this->sessionManager->setOneTimeMessage($errorMessage);
+            $this->redirect("/Register");
+        }
+
         
         // This would be getting the userID associated with an unregistered user.
         $userID = $this->getUserID();
@@ -58,23 +62,22 @@ class RegisterController extends Controller{
         $this->sessionManager->login($userID);
 
         
-        header("Location: /");
-        exit;
+        $this->redirect("/");
     }
 
     // TODO: Return error messages instead of handling it inside here.
     private function validateForm($post){
+        $message = NULL;
         if(!$this->validateEmail($post["email"])){
-            echo "<h1>Please enter valid email.</h1>";
-            exit;
+            $message = "Please enter valid email.";
         }
         if(!is_null($this->userManager->getRegisteredCredentialsByEmail($post["email"]))){
-            echo "<h1>email already in use. Have you forgotten your password?</h1>";
-            exit;
+            $message = "email already in use.";
         }
         if(empty($post["password"]) || strlen($post["password"]) < '8'){
-            echo "<h1>Password must be at least 8 characters.</h1>";
-            exit;
-        } 
+            $message = "Password must be at least 8 characters.";
+        }
+
+        return $message;
     }
 }

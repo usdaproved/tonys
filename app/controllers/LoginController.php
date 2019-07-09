@@ -17,8 +17,7 @@ class LoginController extends Controller{
 
     public function get(){
         if($this->sessionManager->isUserLoggedIn()){
-            header("Location: /");
-            exit;
+            $this->redirect("/");
         }
         
         require_once APP_ROOT . "/views/login/login-page.php";
@@ -26,8 +25,7 @@ class LoginController extends Controller{
 
     public function post(){
         if($this->sessionManager->isUserLoggedIn()){
-            header("Location: /");
-            exit;
+           $this->redirect("/");
         }
         
         // At the end of registering a user, redirect to the "/" page.
@@ -37,8 +35,9 @@ class LoginController extends Controller{
 
         // TODO: Decide how to handle a bad CSRFToken.
         if($this->sessionManager->validateCSRFToken($post["CSRFToken"])){
-            echo "Operation could not complete due to invalid session.";
-            exit;
+            $errorMessage = "Operation could not complete due to invalid session.";
+            $this->sessionManager->setOneTimeMessage($errorMessage);
+            $this->redirect("/Login");
         }
 
         $userID = $this->validateCredentials($post);
@@ -52,11 +51,12 @@ class LoginController extends Controller{
                 $this->userManager->deleteUser($unregisteredUserID);
             }
 
-            header("Location: /");
-            exit;
+            $this->redirect("/");
         }
         
-        echo "<h1>INVALID CREDENTIALS</h1>";
+        $message = "Invalid login credentials.";
+        $this->sessionManager->setOneTimeMessage($message);
+        $this->redirect("/Login");
     }
 }
 ?>

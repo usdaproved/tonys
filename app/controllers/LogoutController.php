@@ -8,8 +8,7 @@ class LogoutController extends Controller
     {
         $this->sessionManager->logout();
         
-        header("Location: /");
-        exit;
+        $this->redirect("/");
     }
 }
 

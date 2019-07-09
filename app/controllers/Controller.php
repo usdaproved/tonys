@@ -48,6 +48,18 @@ class Controller{
 
         return filter_var($email, FILTER_VALIDATE_EMAIL);
     }
+
+    public function printOneTimeMessage(){
+        $message = $this->sessionManager->getOneTimeMessage();
+        if(!empty($message)){
+            echo $message;
+        }
+    }
+
+    public function redirect($page){
+        header("Location: " . $page);
+        exit;
+    }
 }
 
 
