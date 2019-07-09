@@ -1,6 +1,6 @@
 <?php
 
-class DatabaseAccess{
+class Database{
 
     private $handler;
     private $statement;

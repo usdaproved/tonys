@@ -1,23 +1,15 @@
 <?php require APP_ROOT . "/views/includes/header.php" ?>
-	<link rel="stylesheet" type="text/css" href="css/views/home/home-register-page.css" />
-	<!--<script async src="js/views/home.js"></script>-->
-	<header>Tony's Taco House</header>
-	<h1>Welcome back, <?= ucfirst($this->userWholeName["name_first"]); ?>.</h1>
-	<p><a href="/Order">Order</a></p>
+<link href="<?= $this->getFile('css', __FILE__); ?>" rel="stylesheet">
+<header>Tony's Taco House</header>
+<?php if(!is_null($this->user)): ?>
+    <h3>Welcome, <?= $this->user['email']; ?>.</h3>
+<?php endif; ?>
+<?php if(is_null($this->user)):?>
+    <a href="/Register">Register</a>
+    <a href="/Login">Log in</a>
+<?php else: ?>
+    <a href="/Logout">Log out</a>
+<?php endif; ?>
+<a href="/Order">Order</a>
 
-	<?php foreach($this->orders as $order): ?>
-	    <article>
-		<h2><strong>Order ID</strong>: <?= $order['id'];?></h2>
-		<p><strong>Ordered on</strong>: <?= $order['date']; ?></p>
-		<p><strong>Total</strong>: <?= "$" . $order['total_price']; ?></p>
-		<p><strong>Order Details</strong>:
-		    <ul>
-			<?php foreach($order['order_line_items'] as $lineItem): ?>
-			    <li><?= $lineItem['quantity'] . ' ' . $lineItem['name']; ?></li>
-			<?php endforeach; ?>
-		    </ul>
-		</p>
-	</article>
-	<?php endforeach; ?>
-	
 <?php require APP_ROOT . "/views/includes/footer.php" ?>

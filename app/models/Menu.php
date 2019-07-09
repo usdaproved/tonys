@@ -13,6 +13,9 @@ class Menu extends Model{
         return $this->db->getResultSet();
     }
 
+    // TODO: Come back to this funciton.
+    // Should it even be in "Menu"?
+    // Is there a more efficient MySQL based way of doing this?
     public function calculateTotalPrice($post){
         $totalPrice = 0.00;
         

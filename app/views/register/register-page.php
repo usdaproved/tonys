@@ -1,0 +1,15 @@
+<?php require APP_ROOT . "/views/includes/header.php" ?>
+<link href="<?= $this->getFile("css", __FILE__); ?>" rel="stylesheet">
+<header>Tony's Taco House</header>
+
+<form method="post">
+    <label for="email">Email</label>
+    <input type="email" id="email" name="email" value="<?=$this->email;?>">
+    <label for="password">Password</label>
+    <input type="password" id="password" name="password">
+    <!-- Collect all necessary user info here. -->
+    <input type="hidden" name="CSRFToken" value="<?= $this->sessionManager->getCSRFToken(); ?>">
+    <input type="submit" value="Register">
+</form>
+
+<?php require APP_ROOT . "/views/includes/footer.php" ?>

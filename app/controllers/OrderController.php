@@ -1,69 +1,82 @@
 <?php
 
+require_once APP_ROOT . "/controllers/Controller.php";
 require_once APP_ROOT . "/models/Menu.php";
 require_once APP_ROOT . "/models/Order.php";
-require_once APP_ROOT . "/models/User.php";
 
-class OrderController{
+class OrderController extends Controller{
 
-    // TODO: see if this is the best naming scheme.
     private $menuManager;
     private $orderManager;
-    private $userManager;
-    
+        
     public $menu;
-    public $order;
-    public $userWholeName;
+    public $cart;
     
     public function __construct(){
+        parent::__construct();
+        
         $this->menuManager = new Menu();
         $this->orderManager = new Order();
-        $this->userManager = new User();
-
-        // TODO: Could create some $menuItemName => $price pair.
-        // Or $menuItemName => $menuItemID.
     }
 
     public function get(){
-        $userID = $this->userManager->getUserID();
-        if(!$userID && is_bool($userID)){
-            echo "<h1>Must be logged in to order. <a href='/'>Register now</a></h1>";
-            return;
-        }
         $this->menu = $this->menuManager->getWholeMenu();
 
-        require_once APP_ROOT . "/views/order/order-selection-page.php";
+        $userID = $this->getUserID();
+
+        $cartID = $this->orderManager->getCartID($userID);
+
+        if(!is_null($cartID)){
+            $this->cart = $this->orderManager->getEntireOrderByOrderID($cartID);
+        }
+        
+
+        require_once APP_ROOT . "/views/order/order-select-page.php";
     }
 
     public function post(){
-        // Construct order based on php session.
-        // TODO: Add actual support for logging in and tracking users.
-
-        // filter post and then send it off.
+        // TODO: Create a utility function for filtering post.
         $post = filter_input_array(INPUT_POST);
         $post = array_map('trim', $post);
         $post = array_map('htmlspecialchars', $post);
 
-        // TODO: we are already making N*2 sql requests getting id's and price's.
-        // We could at least divide that in half by getting them once here and passing along.
-        
-        $userID = $this->userManager->getUserID();
-        
-        if(!$userID && is_bool($userID)){
-            // if not logged in, show error.
-            echo "<h1> Must be logged in for this operation. </h1>";
-            return;
-        }
+        $userID = $this->getUserID();
 
+        if(is_null($userID)){
+            $userID = $this->userManager->createUnregisteredCredentials();
+        }
+        
+        // TODO: something needs to be done about this.
         $totalPrice = $this->menuManager->calculateTotalPrice($post);
 
-        $orderID = $this->orderManager->createOrder($userID, $totalPrice, $post);
+        $cartID = $this->orderManager->getCartID($userID);
+        
+        if(is_null($cartID)){
+            $this->orderManager->createCart($userID, $totalPrice, $post);
+        } else {
+            $this->orderManager->updateCart($cartID, $totalPrice, $post);
+        }
+        // Take the user to the next page to fill out info.
+        header("Location: /Order/submit");
+        exit;
+    }
 
-        $this->order = $this->orderManager->getEntireOrderByOrderID($orderID);
-                
-        $this->userWholeName = $this->userManager->getUserWholeName($userID);        
+    public function submit_get(){
+        $userID = $this->getUserID();
+        
+        $cartID = $this->orderManager->getCartID($userID);
+        if(is_null($cartID)){
+            header("Location: /Order");
+            exit;
+        }
 
-        require_once APP_ROOT . "/views/order/order-payment-page.php";
+        $this->cart = $this->orderManager->getEntireOrderByOrderID($cartID);
+        
+        var_dump($this->cart);
+    }
+
+    public function submit_post(){
+        echo "POSTED.";
     }
 
 }
