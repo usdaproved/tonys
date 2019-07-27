@@ -40,8 +40,8 @@ class DashboardController extends Controller{
         if(!$this->validateAuthority(EMPLOYEE, $userID)){
             $this->redirect("/");
         }
-        $test = $this->orderManager->getAllOrdersByStatus("submitted");
-        echo json_encode($test);
+        $orders = $this->orderManager->getAllOrdersByStatus("submitted");
+        echo json_encode($orders);
     }
 
     //public function updateOrderStatus_//post or get?
