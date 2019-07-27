@@ -18,7 +18,14 @@ class Session{
     }
 
     public function validateCSRFToken($token){
-        return !hash_equals($_SESSION["CSRFToken"], $token);
+        $valid = hash_equals($_SESSION["CSRFToken"], $token);
+        
+        if(!$valid){
+            $message = MESSAGE_INVALID_CSRF_TOKEN;
+            $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
+        }
+        
+        return $valid;
     }
 
     public function getCSRFToken(){
@@ -43,24 +50,16 @@ class Session{
         return $_SESSION["user_id"];
     }
 
-    public function setOneTimeMessage($message){
-        $_SESSION["one_time_message"] = $message;
+    public function pushOneTimeMessage($type, $message){
+        $_SESSION["one_time_messages"][$type][] = $message;
     }
 
-    public function getOneTimeMessage(){
-        $message =  $_SESSION["one_time_message"];
-        unset($_SESSION["one_time_message"]);
-        return $message;
+    public function getOneTimeMessages() : ?Array {
+        if(!isset($_SESSION["one_time_messages"])) return NULL;
+        $messages =  $_SESSION["one_time_messages"];
+        unset($_SESSION["one_time_messages"]);
+        return $messages;
     }
-    
-
-    /* This function may not be necessary.
-    public function getSessionValue($key)
-    {
-        return $_SESSION[$key]) ?? null;
-    }
-    */
-
 }
 
 ?>

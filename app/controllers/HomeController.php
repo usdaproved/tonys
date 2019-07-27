@@ -10,6 +10,7 @@ class HomeController extends Controller{
     
     public $user;
     public $orders;
+    public $isLoggedIn;
     
     public function __construct(){
         parent::__construct();
@@ -18,23 +19,11 @@ class HomeController extends Controller{
         $this->menuManager = new Menu();
     }
 
-    public function get(){
-        // Check if user is logged in. Then fallback with attempting to get
-        // credentials from unregistered_users.
-        if($this->sessionManager->isUserLoggedIn()){
-            $this->user = $this->userManager->getUserByID($this->sessionManager->getUserID());
-        }
-        
-        /* TODO: Move this to a "ViewOrders" type page.
-        $this->userWholeName = $this->userManager->getUserWholeName($userID);
+    public function get() : void {
+        $userID = $this->getUserID();
+        $this->user = $this->userManager->getUserInfoByID($userID);
 
-        $orderIDs = $this->orderManager->getAllOrderIDsByUserID($userID);
-        
-        foreach($orderIDs as $orderID){
-            $orderID = $orderID["id"];
-            $this->orders[] = $this->orderManager->getEntireOrderByOrderID($orderID);
-        }
-        */
+        $this->isLoggedIn = $this->sessionManager->isUserLoggedIn();
 
         require_once APP_ROOT . "/views/home/home-page.php";
     }

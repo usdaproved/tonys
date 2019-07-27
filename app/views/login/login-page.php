@@ -2,12 +2,13 @@
 <link href="<?= $this->getFile("css", __FILE__); ?>" rel="stylesheet">
 <header>Tony's Taco House</header>
 
+<?php $this->printOneTimeMessages(USER_ALERT); ?>
+
 <form method="post">
-    <?php echo $this->printOneTimeMessage(); ?>
     <label for="email">Email</label>
-    <input type="email" id="email" name="email">
+    <input type="email" id="email" name="email" autocomplete="email">
     <label for="password">Password</label>
-    <input type="password" id="password" name="password">
+    <input type="password" id="password" name="password" autocomplete="current-password">
     <input type="hidden" name="CSRFToken" value="<?= $this->sessionManager->getCSRFToken(); ?>">
     <input type="submit" value="Log in">
 </form>

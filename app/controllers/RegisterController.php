@@ -4,7 +4,7 @@ require_once APP_ROOT . "/controllers/Controller.php";
 
 class RegisterController extends Controller{
 
-    public $email;
+    public $user;
     
     public function __construct(){
         parent::__construct();
@@ -12,72 +12,59 @@ class RegisterController extends Controller{
         
     }
 
-    public function get(){
+    public function get() : void {
         if($this->sessionManager->isUserLoggedIn()){
             $this->redirect("/");
         }
 
-        $this->email = NULL;
-        $userID = $this->userManager->getUserIDByUnregisteredSessionID();
-        if(!is_null($userID)){
-            $this->email = $this->userManager->getUserByID($userID)["email"];
-        }
+        $userID = $this->getUserID();
+
+        $this->user = $this->userManager->getUserInfoByID($userID);
         
         require_once APP_ROOT . "/views/register/register-page.php";
     }
 
-    public function post(){
+    public function post() : void {
         if($this->sessionManager->isUserLoggedIn()){
             $this->redirect("/");
         }
         
-        // At the end of registering a user, redirect to the "/" page.
-        $post = filter_input_array(INPUT_POST);
-        $post = array_map('trim', $post);
-        $post = array_map('htmlspecialchars', $post);
-
         // TODO: Decide how to handle a bad CSRFToken.
-        if($this->sessionManager->validateCSRFToken($post["CSRFToken"])){
-            $errorMessage = "Operation could not complete due to invalid session.";
-            $this->sessionManager->setOneTimeMessage($errorMessage);
+        if(!$this->sessionManager->validateCSRFToken($_POST["CSRFToken"])){
             $this->redirect("/Register");
         }
+        
+        $validPassword = true;
+        if(empty($_POST["password"]) || strlen($_POST["password"]) < '8'){
+            $message = "Password must be at least 8 characters.";
+            $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
+            $validPassword = false;
+        }
 
-        $errorMessage = $this->validateForm($post);
-        if(!is_null($errorMessage)){
-            $this->sessionManager->setOneTimeMessage($errorMessage);
+        if(!$this->validateNewUserInformation() || !$validPassword){
             $this->redirect("/Register");
         }
 
         
-        // This would be getting the userID associated with an unregistered user.
         $userID = $this->getUserID();
         if(is_null($userID)){
-            $userID = $this->userManager->createRegisteredCredentials($post["email"], $post["password"]);
+            $userID = $this->userManager->createRegisteredCredentials($_POST["email"], $_POST["password"]);
         } else {
-            $this->userManager->createRegisteredCredentials($post["email"], $post["password"], $userID);
+            $this->userManager->createRegisteredCredentials($_POST["email"], $_POST["password"], $userID);
             $this->userManager->deleteUnregisteredCredentials($userID);
         }
-        
+
+        $this->userManager->setName($userID, $_POST["name_first"], $_POST["name_last"]);
+        $this->userManager->setPhoneNumber($userID, $_POST["phone"]);
+        $this->userManager->setAddress($userID,
+                                       $_POST["address_line"],
+                                       $_POST["city"],
+                                       $_POST["state"],
+                                       $_POST["zip_code"]
+        );
         $this->sessionManager->login($userID);
 
         
         $this->redirect("/");
-    }
-
-    // TODO: Return error messages instead of handling it inside here.
-    private function validateForm($post){
-        $message = NULL;
-        if(!$this->validateEmail($post["email"])){
-            $message = "Please enter valid email.";
-        }
-        if(!is_null($this->userManager->getRegisteredCredentialsByEmail($post["email"]))){
-            $message = "email already in use.";
-        }
-        if(empty($post["password"]) || strlen($post["password"]) < '8'){
-            $message = "Password must be at least 8 characters.";
-        }
-
-        return $message;
     }
 }

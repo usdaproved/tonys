@@ -7,15 +7,13 @@ class LoginController extends Controller{
 
     private $orderManager;
 
-    public $message;
-
     public function __construct(){
         parent::__construct();
 
         $this->orderManager = new Order();
     }
 
-    public function get(){
+    public function get() : void {
         if($this->sessionManager->isUserLoggedIn()){
             $this->redirect("/");
         }
@@ -23,24 +21,17 @@ class LoginController extends Controller{
         require_once APP_ROOT . "/views/login/login-page.php";
     }
 
-    public function post(){
+    public function post() : void {
         if($this->sessionManager->isUserLoggedIn()){
            $this->redirect("/");
         }
-        
-        // At the end of registering a user, redirect to the "/" page.
-        $post = filter_input_array(INPUT_POST);
-        $post = array_map('trim', $post);
-        $post = array_map('htmlspecialchars', $post);
 
         // TODO: Decide how to handle a bad CSRFToken.
-        if($this->sessionManager->validateCSRFToken($post["CSRFToken"])){
-            $errorMessage = "Operation could not complete due to invalid session.";
-            $this->sessionManager->setOneTimeMessage($errorMessage);
+        if(!$this->sessionManager->validateCSRFToken($_POST["CSRFToken"])){
             $this->redirect("/Login");
         }
 
-        $userID = $this->validateCredentials($post);
+        $userID = $this->validateCredentials($_POST["email"], $_POST["password"]);
         if(!is_null($userID)){
             $this->sessionManager->login($userID);
 
@@ -54,8 +45,7 @@ class LoginController extends Controller{
             $this->redirect("/");
         }
         
-        $message = "Invalid login credentials.";
-        $this->sessionManager->setOneTimeMessage($message);
+        $this->sessionManager->pushOneTimeMessage(USER_ALERT, MESSAGE_INVALID_LOGIN);
         $this->redirect("/Login");
     }
 }

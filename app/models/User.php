@@ -4,9 +4,11 @@ require_once APP_ROOT . "/models/Model.php";
 
 class User extends Model{
 
-    // At this point in the program we know absolutely nothing about the user.
-    // However, we'd like to be able to associate their session with any future actions.
-    public function createUnregisteredCredentials(){
+    /**
+     * At this point in the program we know absolutely nothing about the user.
+     * However, we'd like to be able to associate their session with any future actions.
+     */
+    public function createUnregisteredCredentials() : int {
         // Create an empty user to associate with this session.
         $sql = "INSERT INTO users () VALUES ();";
 
@@ -26,9 +28,11 @@ VALUES (:user_id, :session_id);";
         return $userID;
     }
 
-    // Accepts a null value and creates a user with the email,
-    // otherwise updates the current user.
-    public function createRegisteredCredentials($email, $password, $userID = NULL){
+    /**
+     * @userID defaults null value and creates a user with the email,
+     * otherwise if passed value updates the current user.
+     */
+    public function createRegisteredCredentials(string $email, string $password, int $userID = NULL) : int {
         if(is_null($userID)){
             $sql = "INSERT INTO users (email) VALUES (:email);";
 
@@ -63,8 +67,51 @@ VALUES (:user_id, :password);";
 
         return $userID;
     }
+    
+    public function setEmail(int $userID, string $email) : void {
+        $sql = "UPDATE users SET email = :email WHERE id = :id";
 
-    public function deleteUnregisteredCredentials($userID){
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":email", $email);
+        $this->db->bindValueToStatement(":id", $userID);
+        $this->db->executeStatement();
+    }
+    
+    public function setName(int $userID, string $nameFirst, string $nameLast) : void {
+        $sql = "UPDATE users SET 
+name_first = :name_first, name_last = :name_last
+ WHERE id = :id";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":name_first", $nameFirst);
+        $this->db->bindValueToStatement(":name_last", $nameLast);            
+        $this->db->bindValueToStatement(":id", $userID);
+        $this->db->executeStatement();
+    }
+
+    public function setPhoneNumber(int $userID, string $phoneNumber) : void {
+        $sql = "UPDATE users SET phone_number = :phone_number WHERE id = :id";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":phone_number", $phoneNumber);
+        $this->db->bindValueToStatement(":id", $userID);
+        $this->db->executeStatement();
+    }
+
+    public function setAddress(int $userID, string $line, string $city, string $state, string $zipCode) : void {
+        $sql = "INSERT INTO address (user_id, line, city, state, zip_code)
+ VALUES (:user_id, :line, :city, :state, :zip_code);";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":user_id", $userID);
+        $this->db->bindValueToStatement(":line", $line);
+        $this->db->bindValueToStatement(":city", $city);
+        $this->db->bindValueToStatement(":state", $state);
+        $this->db->bindValueToStatement(":zip_code", $zipCode);
+        $this->db->executeStatement();
+    }
+
+    public function deleteUnregisteredCredentials(int $userID) : void {
         $sql = "DELETE FROM unregistered_credentials WHERE user_id = :user_id;";
 
         $this->db->beginStatement($sql);
@@ -72,7 +119,7 @@ VALUES (:user_id, :password);";
         $this->db->executeStatement();
     }
 
-    public function deleteUser($userID){
+    public function deleteUser(int $userID) : void {
         $sql = "DELETE FROM users WHERE id = :id;";
 
         $this->db->beginStatement($sql);
@@ -81,7 +128,7 @@ VALUES (:user_id, :password);";
     }
 
     // returns null if no user_id associated with unreg session yet.
-    public function getUserIDByUnregisteredSessionID(){
+    public function getUserIDByUnregisteredSessionID() : ?int {
         $sql = "SELECT user_id FROM unregistered_credentials
 WHERE session_id = :session_id;";
 
@@ -95,17 +142,34 @@ WHERE session_id = :session_id;";
         return $result["user_id"];
     }
 
-    public function getUserByID($userID){
+    public function getUserInfoByID(int $userID = NULL) : ?Array {
         $sql = "SELECT * FROM users WHERE id = :id;";
 
         $this->db->beginStatement($sql);
         $this->db->bindValueToStatement(":id", $userID);
         $this->db->executeStatement();
 
-        return $this->db->getResult();
+        $userInfo = $this->db->getResult();
+        $userInfo["address"] = $this->getUserAddressByID($userID);
+
+        if(is_bool($userInfo)) return NULL;
+        return $userInfo;
     }
 
-    public function getRegisteredCredentialsByEmail($email){
+    public function getUserAddressByID(int $userID = NULL) : ?Array {
+        $sql = "SELECT line, city, state, zip_code FROM address WHERE user_id = :user_id;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":user_id", $userID);
+        $this->db->executeStatement();
+
+        $result = $this->db->getResult();
+
+        if(is_bool($result)) return NULL;
+        return $result;
+    }
+
+    public function getRegisteredCredentialsByEmail(string $email) : ?Array {
         $sql = "SELECT * FROM registered_credentials
 WHERE user_id = (SELECT id FROM users WHERE email = :email);";
 
@@ -117,6 +181,19 @@ WHERE user_id = (SELECT id FROM users WHERE email = :email);";
 
         if(is_bool($result)) return NULL;
         return $result;
+    }
+
+    public function getUserAuthorityLevelByID(int $userID) : ?int {
+        $sql = "SELECT user_type FROM users WHERE id = :id;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":id", $userID);
+        $this->db->executeStatement();
+
+        $result = $this->db->getResult();
+
+        if(is_bool($result)) return NULL;
+        return $result["user_type"];
     }
 
 }

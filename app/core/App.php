@@ -3,30 +3,29 @@
 class App {
 
     private $controller = "HomeController";
-    private $method = "get";
 
     public function __construct() {
         $url = $this->parseUrl();
-        $this->controllerHandler($url);
-        
+
+        $this->controller = $this->getController($url);
 
         call_user_func([$this->controller, $this->getMethod($url)]);
     }
 
-    public function parseUrl(){
-        if(!isset($_GET['url'])) {
+    private function parseUrl() : ?array {
+        if(!isset($_GET["url"])) {
             return NULL;
         }
 
-        $url = $_GET['url'];
-        $trimmedUrl = rtrim($url, '/');
+        $url = $_GET["url"];
+        $trimmedUrl = rtrim($url, "/");
         $sanitizedUrl = filter_var($trimmedUrl, FILTER_SANITIZE_URL);
-        $splitUrl = explode('/', $sanitizedUrl);
+        $splitUrl = explode("/", $sanitizedUrl);
 
         return $splitUrl;
     }
 
-    public function controllerHandler($url){
+    private function getController(array $url = NULL) : object {
         if(!is_null($url)){
             $newUrl = $url;
             $passedController = ucwords($url[0]);
@@ -39,10 +38,10 @@ class App {
         }
 
         require_once APP_ROOT . "/controllers/$this->controller.php";
-        $this->controller = new $this->controller();
+        return new $this->controller();
     }
 
-    public function getMethod($url){
+    private function getMethod(array $url = NULL) : string {
         $requestMethod = strtolower($_SERVER["REQUEST_METHOD"]);
         
         $passedMethod = $requestMethod;
@@ -52,7 +51,7 @@ class App {
         }
         
         if(!method_exists($this->controller, $passedMethod)){
-            return strtolower($_SERVER['REQUEST_METHOD']);
+            return strtolower($_SERVER["REQUEST_METHOD"]);
         }
 
         return $passedMethod;

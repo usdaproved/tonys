@@ -4,8 +4,10 @@ require_once APP_ROOT . "/models/Model.php";
 
 class Order extends Model{
 
+    // TODO: Get rid of all $_POST
+
     // A cart is just an order that hasn't been submitted yet.
-    public function createCart($userID, $totalPrice, $post){
+    public function createCart(int $userID, array $order, float $totalPrice) : void {
         // Create order, then add line items associated with order.
         $sqlOrder = "INSERT INTO orders (user_id, total_price, status)
 VALUES (:user_id, :total_price, :status);";
@@ -20,10 +22,10 @@ VALUES (:user_id, :total_price, :status);";
         
         $cartID = $this->db->lastInsertID();
         
-        $this->addLineItemsToOrder($cartID, $post);
+        $this->addLineItemsToOrder($cartID, $order);
     }
 
-    public function updateCart($cartID, $totalPrice, $post){
+    public function updateCart(int $cartID, array $order, float $totalPrice) : void {
         // Update totalPrice in order table
         $sql = "UPDATE orders SET total_price = :total_price WHERE id = :id;";
 
@@ -41,19 +43,27 @@ VALUES (:user_id, :total_price, :status);";
         $this->db->bindValueToStatement(":order_id", $cartID);
         $this->db->executeStatement();
 
-        $this->addLineItemsToOrder($cartID, $post);
+        $this->addLineItemsToOrder($cartID, $order);
     }
 
-    // Updates the cart into a submitted order.
-    public function submitOrder($cartID){
-        
+    /**
+     *Updates the cart into a submitted order.
+     */
+    public function submitOrder(int $cartID) : void {
+        $sql = "UPDATE orders SET status = 'submitted', date = NOW() WHERE id = :id;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":id", $cartID);
+        $this->db->executeStatement();
     }
 
-    // If an unregistered user already had orders tied to it, and logged into an account
-    // that has a different user associated with it. Then we should bring over all their data
-    // to the registered account. Also update the cart to what it was on the device they
-    // just logged into as that 'should' be the most recent one, logically. 
-    public function updateOrdersFromUnregisteredToRegistered($unregisteredUserID, $registeredUserID){
+    /** 
+     * If an unregistered user already had orders tied to it, and logged into an account
+     * that has a different user associated with it. Then we should bring over all their data
+     * to the registered account. Also update the cart to what it was on the device they
+     * just logged into as that 'should' be the most recent one, logically. 
+     */
+    public function updateOrdersFromUnregisteredToRegistered(int $unregisteredUserID, int $registeredUserID) : void {
         $previousCartID = $this->getCartID($registeredUserID);
         
         $sql = "UPDATE orders SET user_id = :registered_user_id
@@ -73,8 +83,10 @@ WHERE user_id = :unregistered_user_id;";
 
     // TODO: Perhaps we can just get all menu_items id's in one statement?
     // This would turn an N*2 request into an N+1.
-    public function addLineItemsToOrder($orderID, $post){
-        foreach($post as $key => $value){
+    // TODO: Strip all this logic out into the controller.
+    // This should only function as an SQL call.
+    public function addLineItemsToOrder(int $orderID, array $order) : void {
+        foreach($order as $key => $value){
             if($value && $value > 0){
                 $sql = "SELECT id FROM menu_items WHERE name = :name";
 
@@ -99,7 +111,7 @@ VALUES (:order_id, :menu_item_id, :quantity);";
         }
     }
 
-    public function getCartID($userID){
+    public function getCartID(int $userID = NULL) : ?int {
         $sql = "SELECT id FROM orders WHERE user_id = :user_id AND status = 'cart';";
 
         $this->db->beginStatement($sql);
@@ -112,18 +124,14 @@ VALUES (:order_id, :menu_item_id, :quantity);";
         return $orderID["id"];
     }
 
-    public function getOrderByOrderID($orderID){
+    public function getOrderByID(int $orderID) : ?array {
         $sql = "SELECT * FROM orders WHERE id = :id;";
 
         $this->db->beginStatement($sql);
         $this->db->bindValueToStatement(":id", $orderID);
         $this->db->executeStatement();
 
-        return $this->db->getResult();
-    }
-
-    public function getEntireOrderByOrderID($orderID){
-        $order = $this->getOrderByOrderID($orderID);
+        $order = $this->db->getResult();
 
         $sql = "SELECT
 	menu_items.name,
@@ -138,17 +146,46 @@ WHERE order_line_items.order_id = :order_id;";
 
         $order["order_line_items"] = $this->db->getResultSet();
 
+        if(is_bool($order)) return NULL;
         return $order;
     }
 
-    public function getAllOrderIDsByUserID($userID){
-        $sql = "SELECT id FROM orders WHERE user_id = :user_id;";
+    public function getAllOrdersByUserID(int $userID) : ?array {
+        $sql = "SELECT id FROM orders o WHERE user_id = :user_id ORDER BY o.date ASC;";
 
         $this->db->beginStatement($sql);
         $this->db->bindValueToStatement(":user_id", $userID);
         $this->db->executeStatement();
 
-        return $this->db->getResultSet();
+        $ids = $this->db->getResultSet();
+        if(is_bool($ids)) return NULL;
+        
+        $orders = [];
+
+        foreach($ids as $id){
+            $orders[] = $this->getOrderByID($id["id"]);
+        }
+
+        return $orders;
+    }
+
+    public function getAllOrdersByStatus(string $status) : ?array {
+        $sql = "SELECT id FROM orders o WHERE status = :status ORDER BY o.date ASC;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":status", $status);
+        $this->db->executeStatement();
+
+        $ids = $this->db->getResultSet();
+        if(is_bool($ids)) return NULL;
+        
+        $orders = [];
+
+        foreach($ids as $id){
+            $orders[] = $this->getOrderByID($id["id"]);
+        }
+
+        return $orders;
     }
 }
 
