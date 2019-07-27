@@ -36,6 +36,10 @@ class DashboardController extends Controller{
     }
 
     public function getOrders_get() : void {
+        $userID = $this->getUserID();
+        if(!$this->validateAuthority(EMPLOYEE, $userID)){
+            $this->redirect("/");
+        }
         $test = $this->orderManager->getAllOrdersByStatus("submitted");
         echo json_encode($test);
     }
