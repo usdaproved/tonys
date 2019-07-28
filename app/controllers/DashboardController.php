@@ -7,14 +7,16 @@ class DashboardController extends Controller{
 
     private $orderManager;
 
-    public $orders;
-    
     public function __construct(){
         parent::__construct();
 
         $this->orderManager = new Order();
     }
 
+    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    // TODO: Don't do anything without a CSRFToken
+    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    
     public function get() : void {
         $userID = $this->getUserID();
         if(!$this->validateAuthority(EMPLOYEE, $userID)){
@@ -30,8 +32,6 @@ class DashboardController extends Controller{
             $this->redirect("/");
         }
 
-        $this->orders = $this->orderManager->getAllOrdersByStatus("submitted");
-
         require_once APP_ROOT . "/views/dashboard/dashboard-orders-page.php";
     }
 
@@ -44,16 +44,12 @@ class DashboardController extends Controller{
         echo json_encode($orders);
     }
 
-    //public function updateOrderStatus_//post or get?
-
-    private function orderToJSON(array $order) : string {
-        $result;
-
-        return $result;
-    }
-
-    public function orders_post() : void {
+    public function updateOrderStatus_post() : void {
+        if(!$this->sessionManager->validateCSRFToken($_POST["CSRFToken"])){
+            echo "failure";
+        }
         
+        echo "success";
     }
 
     // TODO: Make a function that responds to an AJAX call,

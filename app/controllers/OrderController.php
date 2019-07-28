@@ -133,6 +133,7 @@ class OrderController extends Controller{
 
         // TODO: Setup an SMTP Server in order for email to go out.
         // TODO: Construct a better email, each line in an email cannot be more than 70 chars.
+        // Cox blocks communication over SMTP. Won't be able to test this for awhile.
         mail($this->user["email"], "Tony's Taco House Order", "Your order has been confirmed.");
 
         $this->redirect("/Order/confirmed?order=" . $cartID);

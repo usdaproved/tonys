@@ -30,6 +30,7 @@
 	<br>
 	<?= $this->formatAddressForHTML($this->user['address']); ?>
 	<form method="post">
+	    <input type="hidden" name="CSRFToken" value="<?= $this->sessionManager->getCSRFToken(); ?>">
 	    <input type="submit" value="Submit order">
 	</form>
     <?php else: ?>
