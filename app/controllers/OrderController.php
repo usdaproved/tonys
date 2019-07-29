@@ -129,7 +129,9 @@ class OrderController extends Controller{
 
         // TODO: validate payment.
 
-        $this->orderManager->submitOrder($cartID);
+        // TODO: Have the user set what type of order they want to place.
+        $orderType = DELIVERY;
+        $this->orderManager->submitOrder($cartID, $orderType);
 
         // TODO: Setup an SMTP Server in order for email to go out.
         // TODO: Construct a better email, each line in an email cannot be more than 70 chars.

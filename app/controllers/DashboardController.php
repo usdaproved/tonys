@@ -38,24 +38,42 @@ class DashboardController extends Controller{
     public function getOrders_get() : void {
         $userID = $this->getUserID();
         if(!$this->validateAuthority(EMPLOYEE, $userID)){
-            $this->redirect("/");
+            echo json_encode(NULL);
+            exit;
         }
-        $orders = $this->orderManager->getAllOrdersByStatus("submitted");
+
+        $orders = $this->orderManager->getAllActiveOrders();
+        
         echo json_encode($orders);
     }
 
     public function updateOrderStatus_post() : void {
         if(!$this->sessionManager->validateCSRFToken($_POST["CSRFToken"])){
-            echo "failure";
+            $this->redirect("/");
+        }
+
+        $orders = $_POST;
+        unset($orders["CSRFToken"]);
+
+        if(empty($orders)){
+            echo json_encode(NULL);
+            exit;
+        }
+
+        $updatedInfo = [];
+
+        foreach($orders["status"] as $orderID){
+            $order = $this->orderManager->getOrderByID($orderID);
+
+            $index = array_search((int)$order["status"], ORDER_STATUS_FLOW[$order["order_type"]]);
+            $updatedStatus = ORDER_STATUS_FLOW[$order["order_type"]][$index + 1];
+
+            $this->orderManager->updateOrderStatus($orderID, $updatedStatus);
+            $updatedInfo[$orderID] = $updatedStatus;
         }
         
-        echo "success";
+        echo json_encode($updatedInfo);
     }
-
-    // TODO: Make a function that responds to an AJAX call,
-    // grabs a new list of orders, perhaps using a $_GET ?filter=kitchen
-    // Also AJAX calls for updating the order, i.e. from submitted to preparing
-    // Submit CSRFToken with the POST call.
 
     private function validateAuthority(int $requiredAuthority, int $userID = NULL) : bool {
         if(!$this->sessionManager->isUserLoggedIn()){

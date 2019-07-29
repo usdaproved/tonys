@@ -9,76 +9,19 @@ class Order extends Model{
     // A cart is just an order that hasn't been submitted yet.
     public function createCart(int $userID, array $order, float $totalPrice) : void {
         // Create order, then add line items associated with order.
-        $sqlOrder = "INSERT INTO orders (user_id, total_price, status)
-VALUES (:user_id, :total_price, :status);";
+        $sqlOrder = "INSERT INTO orders (user_id, total_price)
+VALUES (:user_id, :total_price);";
 
         $this->db->beginStatement($sqlOrder);
 
         $this->db->bindValueToStatement(":user_id", $userID);
         $this->db->bindValueToStatement(":total_price", $totalPrice);
-        $this->db->bindValueToStatement(":status", "cart"); // Initial status
 
         $this->db->executeStatement();
         
         $cartID = $this->db->lastInsertID();
         
         $this->addLineItemsToOrder($cartID, $order);
-    }
-
-    public function updateCart(int $cartID, array $order, float $totalPrice) : void {
-        // Update totalPrice in order table
-        $sql = "UPDATE orders SET total_price = :total_price WHERE id = :id;";
-
-        $this->db->beginStatement($sql);
-        
-        $this->db->bindValueToStatement(":total_price", $totalPrice);
-        $this->db->bindValueToStatement(":id", $cartID);
-        
-        $this->db->executeStatement();
-        
-        // Delete all line items and create all new ones.
-        $sql = "DELETE FROM order_line_items WHERE order_id = :order_id;";
-
-        $this->db->beginStatement($sql);
-        $this->db->bindValueToStatement(":order_id", $cartID);
-        $this->db->executeStatement();
-
-        $this->addLineItemsToOrder($cartID, $order);
-    }
-
-    /**
-     *Updates the cart into a submitted order.
-     */
-    public function submitOrder(int $cartID) : void {
-        $sql = "UPDATE orders SET status = 'submitted', date = NOW() WHERE id = :id;";
-
-        $this->db->beginStatement($sql);
-        $this->db->bindValueToStatement(":id", $cartID);
-        $this->db->executeStatement();
-    }
-
-    /** 
-     * If an unregistered user already had orders tied to it, and logged into an account
-     * that has a different user associated with it. Then we should bring over all their data
-     * to the registered account. Also update the cart to what it was on the device they
-     * just logged into as that 'should' be the most recent one, logically. 
-     */
-    public function updateOrdersFromUnregisteredToRegistered(int $unregisteredUserID, int $registeredUserID) : void {
-        $previousCartID = $this->getCartID($registeredUserID);
-        
-        $sql = "UPDATE orders SET user_id = :registered_user_id
-WHERE user_id = :unregistered_user_id;";
-
-        $this->db->beginStatement($sql);
-        $this->db->bindValueToStatement(":registered_user_id", $registeredUserID);
-        $this->db->bindValueToStatement(":unregistered_user_id", $unregisteredUserID);
-        $this->db->executeStatement();
-        
-        $sql = "DELETE FROM orders WHERE id = :previous_cart_id;";
-
-        $this->db->beginStatement($sql);
-        $this->db->bindValueToStatement(":previous_cart_id", $previousCartID);
-        $this->db->executeStatement();
     }
 
     // TODO: Perhaps we can just get all menu_items id's in one statement?
@@ -111,8 +54,75 @@ VALUES (:order_id, :menu_item_id, :quantity);";
         }
     }
 
+    public function updateCart(int $cartID, array $order, float $totalPrice) : void {
+        // Update totalPrice in order table
+        $sql = "UPDATE orders SET total_price = :total_price WHERE id = :id;";
+
+        $this->db->beginStatement($sql);
+        
+        $this->db->bindValueToStatement(":total_price", $totalPrice);
+        $this->db->bindValueToStatement(":id", $cartID);
+        
+        $this->db->executeStatement();
+        
+        // Delete all line items and create all new ones.
+        $sql = "DELETE FROM order_line_items WHERE order_id = :order_id;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":order_id", $cartID);
+        $this->db->executeStatement();
+
+        $this->addLineItemsToOrder($cartID, $order);
+    }
+
+    /**
+     *Updates the cart into a submitted order.
+     */
+    public function submitOrder(int $cartID, int $orderType) : void {
+        $sql = "UPDATE orders SET 
+order_type = :order_type, status = " . SUBMITTED . ", date = NOW() WHERE id = :id;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":id", $cartID);
+        $this->db->bindValueToStatement(":order_type", $orderType);
+        $this->db->executeStatement();
+    }
+
+    /** 
+     * If an unregistered user already had orders tied to it, and logged into an account
+     * that has a different user associated with it. Then we should bring over all their data
+     * to the registered account. Also update the cart to what it was on the device they
+     * just logged into as that 'should' be the most recent one, logically. 
+     */
+    public function updateOrdersFromUnregisteredToRegistered(int $unregisteredUserID, int $registeredUserID) : void {
+        $previousCartID = $this->getCartID($registeredUserID);
+        
+        $sql = "UPDATE orders SET user_id = :registered_user_id
+WHERE user_id = :unregistered_user_id;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":registered_user_id", $registeredUserID);
+        $this->db->bindValueToStatement(":unregistered_user_id", $unregisteredUserID);
+        $this->db->executeStatement();
+        
+        $sql = "DELETE FROM orders WHERE id = :previous_cart_id;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":previous_cart_id", $previousCartID);
+        $this->db->executeStatement();
+    }
+
+    public function updateOrderStatus(int $orderID, int $status) : void {
+        $sql = "UPDATE orders SET status = :status WHERE id = :id";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":status", $status);
+        $this->db->bindValueToStatement(":id", $orderID);
+        $this->db->executeStatement();
+    }
+
     public function getCartID(int $userID = NULL) : ?int {
-        $sql = "SELECT id FROM orders WHERE user_id = :user_id AND status = 'cart';";
+        $sql = "SELECT id FROM orders WHERE user_id = :user_id AND status = " . CART . ";";
 
         $this->db->beginStatement($sql);
         $this->db->bindValueToStatement(":user_id", $userID);
@@ -169,11 +179,31 @@ WHERE order_line_items.order_id = :order_id;";
         return $orders;
     }
 
-    public function getAllOrdersByStatus(string $status) : ?array {
+    public function getAllOrdersByStatus(int $status) : ?array {
         $sql = "SELECT id FROM orders o WHERE status = :status ORDER BY o.date ASC;";
 
         $this->db->beginStatement($sql);
         $this->db->bindValueToStatement(":status", $status);
+        $this->db->executeStatement();
+
+        $ids = $this->db->getResultSet();
+        if(is_bool($ids)) return NULL;
+        
+        $orders = [];
+
+        foreach($ids as $id){
+            $orders[] = $this->getOrderByID($id["id"]);
+        }
+
+        return $orders;
+    }
+
+    public function getAllActiveOrders() : ?array {
+        $sql = "SELECT id FROM orders o 
+WHERE status NOT IN (" . CART . "," . DELIVERED . "," . COMPLETE . ") 
+ORDER BY o.date ASC;";
+
+        $this->db->beginStatement($sql);
         $this->db->executeStatement();
 
         $ids = $this->db->getResultSet();

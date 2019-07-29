@@ -1,4 +1,5 @@
 "use strict";
+const STATUS_ARRAY = ['cart','submitted','preparing','prepared','delivering','delivered','complete'];
 const getOrdersURL = window.location.origin + '/Dashboard/getOrders';
 const fetchInterval = 10000;
 const orderTable = document.querySelector('#order-table');
@@ -20,7 +21,8 @@ const createTableElement = (order) => {
     tableElement.appendChild(lineItemTD);
 
     let statusTextTD = document.createElement('td');
-    let statusText = document.createTextNode(`${order['status']}`);
+    statusTextTD.setAttribute('id', `order-status-${order['id']}`);
+    let statusText = document.createTextNode(`${STATUS_ARRAY[order['status']]}`);
     statusTextTD.appendChild(statusText);
     tableElement.appendChild(statusTextTD);
 
@@ -37,9 +39,9 @@ const createTableElement = (order) => {
 };
 
 const fillOrderTable = (ordersJSON) => {
-    ordersJSON.forEach(function(element) {
-        if(orderTable.querySelector(`#order-${element['id']}`) === null){
-            let tableAddition = createTableElement(element);
+    ordersJSON.forEach(order => {
+        if(orderTable.querySelector(`#order-${order['id']}`) === null){
+            let tableAddition = createTableElement(order);
             orderTable.appendChild(tableAddition);
         }
     });
@@ -53,15 +55,30 @@ fetchOrderList();
 
 setInterval(fetchOrderList, fetchInterval);
 
+const updateStatusText = (ordersJSON) => {
+    Object.keys(ordersJSON).forEach((orderID) => {
+        if(ordersJSON[orderID] === 5 || ordersJSON[orderID] === 6){
+            let orderElement = document.querySelector(`#order-${orderID}`);
+            orderElement.remove();
+            return;
+        }
+        let orderStatusText = document.querySelector(`#order-status-${orderID}`);
+        orderStatusText.innerHTML = `${STATUS_ARRAY[ordersJSON[orderID]]}`;
+    });
+};
+
 const formStatusUpdate = document.querySelector('#form-status-update');
 formStatusUpdate.addEventListener('submit', event => {
     event.preventDefault();
+    
 
     let formData = new FormData(formStatusUpdate);
     const url = window.location.origin + '/Dashboard/updateOrderStatus';
 
+    formStatusUpdate.reset();
+
     fetch(url, {
 	body: formData,
 	method: 'post'
-    }).then(response => response.text()).then(result => console.log(result));
+    }).then(response => response.json()).then(result => updateStatusText(result));
 });
