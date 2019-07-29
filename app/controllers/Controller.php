@@ -24,7 +24,10 @@ class Controller{
             $file = end($file);
             $file = explode(".", $file)[0];
         }
-        return "//" . $_SERVER["HTTP_HOST"] . "/" . $fileType . "/" . $file . "." . $fileType;
+	// TODO: This should be https only
+	$protocol = "https://";
+	if(empty($_SERVER["HTTPS"])) $protocol = "http://"; 
+        return $protocol . $_SERVER["HTTP_HOST"] . "/" . $fileType . "/" . $file . "." . $fileType;
     }
 
     /**
