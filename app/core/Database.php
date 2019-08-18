@@ -60,6 +60,10 @@ class Database{
         return $this->statement->fetchAll();
     }
 
+    public function rowCount() : int {
+        return $this->statement->rowCount();
+    }
+
     public function lastInsertID(){
         return $this->handler->lastInsertId();
     }

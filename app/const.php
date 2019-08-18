@@ -1,6 +1,7 @@
 <?php
 
 const USER_ALERT = "alert";
+const USER_SUCCESS = "success";
 
 const MAX_ORDER_QUANTITY = 30;
 const MAX_ORDER_PRICE = 100;
@@ -17,6 +18,8 @@ const CUSTOMER = 0;
 const EMPLOYEE = 1;
 const ADMIN = 2;
 
+const USER_TYPE_ARRAY = ['customer','employee','admin'];
+
 const DELIVERY = 0;
 const PICKUP = 1;
 const IN_RESTAURANT = 2;
@@ -28,11 +31,15 @@ const PREPARED = 3;
 const DELIVERING = 4;
 const DELIVERED = 5;
 const COMPLETE = 6;
+const PAY = 7;
+const PAID = 8;
+
+const STATUS_ARRAY = ['cart','submitted','preparing','prepared','delivering','delivered','complete','pay', 'paid'];
 
 const ORDER_STATUS_FLOW = array(
     DELIVERY => array(SUBMITTED, PREPARING, PREPARED, DELIVERING, DELIVERED),
     PICKUP => array(SUBMITTED, PREPARING, PREPARED, COMPLETE),
-    IN_RESTAURANT => array(SUBMITTED, PREPARING, COMPLETE)
+    IN_RESTAURANT => array(SUBMITTED, PREPARING, PAY, PAID)
 );
 
 const MAX_LENGTH_NAME_FIRST = 50;

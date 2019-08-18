@@ -111,6 +111,36 @@ name_first = :name_first, name_last = :name_last
         $this->db->executeStatement();
     }
 
+    public function addEmployeeByEmail(string $email) : bool {
+        $sql = "UPDATE users SET user_type = " . EMPLOYEE . " WHERE email = :email;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":email", $email);
+        $this->db->executeStatement();
+
+        return ((int)$this->db->rowCount() !== 0);
+    }
+
+    public function toggleEmployeeAdminStatus(int $userID) : void {
+        $sql = "UPDATE `users` SET `user_type` = CASE
+    WHEN user_type = " . EMPLOYEE . " THEN " . ADMIN . " 
+    WHEN user_type = " . ADMIN . " THEN " . EMPLOYEE . " 
+    END
+    WHERE id = :id;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":id", $userID);
+        $this->db->executeStatement();
+    }
+
+    public function removeEmployee(int $userID) : void {
+        $sql = "UPDATE users SET user_type = " . CUSTOMER . " WHERE id = :id;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":id", $userID);
+        $this->db->executeStatement();
+    }
+    
     public function deleteUnregisteredCredentials(int $userID) : void {
         $sql = "DELETE FROM unregistered_credentials WHERE user_id = :user_id;";
 
@@ -194,6 +224,18 @@ WHERE user_id = (SELECT id FROM users WHERE email = :email);";
 
         if(is_bool($result)) return NULL;
         return $result["user_type"];
+    }
+
+    public function getAllEmployees() : ?array {
+        $sql = "SELECT * FROM users WHERE user_type > 0;";
+
+        $this->db->beginStatement($sql);
+        $this->db->executeStatement();
+
+        $employees = $this->db->getResultSet();
+        
+        if(is_bool($employees)) return NULL;
+        return $employees;
     }
 
 }

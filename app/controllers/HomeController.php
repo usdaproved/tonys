@@ -6,17 +6,16 @@ require_once APP_ROOT . "/models/Menu.php";
 
 class HomeController extends Controller{
     private $orderManager;
-    private $menuManager;
     
     public $user;
-    public $orders;
     public $isLoggedIn;
+    // TODO: Update this with javascript.
+    public $activeOrderStatus;
     
     public function __construct(){
         parent::__construct();
         
         $this->orderManager = new Order();
-        $this->menuManager = new Menu();
     }
 
     public function get() : void {
@@ -24,6 +23,8 @@ class HomeController extends Controller{
         $this->user = $this->userManager->getUserInfoByID($userID);
 
         $this->isLoggedIn = $this->sessionManager->isUserLoggedIn();
+
+        $this->activeOrderStatus = $this->orderManager->getUserActiveOrderStatus($userID);
 
         require_once APP_ROOT . "/views/home/home-page.php";
     }

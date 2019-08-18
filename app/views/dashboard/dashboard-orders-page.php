@@ -2,6 +2,8 @@
 <link href="<?=$this->getFile('css', __FILE__);?>" rel="stylesheet">
 <header>Tony's Taco House</header>
 <a href="/Dashboard">Dashboard</a>
+<br>
+Show Addresses <input type="checkbox" id="address-view">
 <form method="post" id="form-status-update">
     <input type="submit" value="Update status">
     <table id="order-table">

@@ -9,6 +9,11 @@ header {
     box-shadow: 0 5px 0px #306569;
 }
 
+.order_alert {
+    background: #11B321;
+    color: #2B2B2B;
+}
+
 .order_button {
     position: absolute;
 

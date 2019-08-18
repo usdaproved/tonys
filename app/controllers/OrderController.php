@@ -22,7 +22,7 @@ class OrderController extends Controller{
     }
 
     public function get() : void {
-        $this->menu = $this->menuManager->getWholeMenu();
+        $this->menu = $this->menuManager->getEntireMenu();
 
         $userID = $this->getUserID();
 

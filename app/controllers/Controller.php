@@ -136,7 +136,8 @@ class Controller{
 
     public function escapeForHTML(string $string = NULL) : string {
         $result = "";
-        for($i = 0; $i < strlen($string); $i++){
+        $stringLength = strlen($string);
+        for($i = 0; $i < $stringLength; $i++){
             $char = $string[$i];
             if(array_key_exists($char, $this->htmlChars)){
                 $char = $this->htmlChars[$char];
@@ -150,7 +151,8 @@ class Controller{
 
     public function escapeForAttributes(string $string = NULL) : string {
         $result = "";
-        for($i = 0; $i < strlen($string); $i++){
+        $stringLength = strlen($string);
+        for($i = 0; $i < $stringLength; $i++){
             $char = $string[$i];
             if(!ctype_alnum($char)){
                 $char = "&#" . ord($char) . ";";
@@ -182,7 +184,7 @@ class Controller{
     }
 
     public function printOneTimeMessages(string $messageType) : void {
-        if(is_null($this->messages[$messageType])) return;
+        if(!isset($this->messages[$messageType])) return;
         foreach($this->messages[$messageType] as $message){
             echo $message;
         }

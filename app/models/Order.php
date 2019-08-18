@@ -217,6 +217,28 @@ ORDER BY o.date ASC;";
 
         return $orders;
     }
+
+    public function getUserActiveOrderStatus(int $userID = NULL) : ?int {
+        $sql = "SELECT x.status
+FROM orders x
+LEFT OUTER JOIN orders y
+ON x.user_id = y.user_id
+AND x.date < y.date
+AND y.status NOT IN (" . CART . "," . DELIVERED . "," . COMPLETE . ")
+WHERE x.user_id = :user_id
+AND y.user_id IS NULL
+AND x.status NOT IN (" . CART . "," . DELIVERED . "," . COMPLETE . ")
+ORDER BY x.date desc;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":user_id", $userID);
+        $this->db->executeStatement();
+
+        $status = $this->db->getResult();
+        
+        if(is_bool($status)) return NULL;
+        return $status["status"];
+    }
 }
 
 ?>

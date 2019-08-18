@@ -3,13 +3,43 @@ const STATUS_ARRAY = ['cart','submitted','preparing','prepared','delivering','de
 const getOrdersURL = window.location.origin + '/Dashboard/getOrders';
 const fetchInterval = 10000;
 const orderTable = document.querySelector('#order-table');
+const orderViewCheckbox = document.querySelector('#address-view');
+let showUserAddress = orderViewCheckbox.checked;
+
+const updateStatusText = (ordersJSON) => {
+    Object.keys(ordersJSON).forEach((orderID) => {
+        if(ordersJSON[orderID] === 5 || ordersJSON[orderID] === 6){
+            let orderElement = document.querySelector(`#order-${orderID}`);
+            orderElement.remove();
+            return;
+        }
+        let orderStatusText = document.querySelector(`#order-status-${orderID}`);
+        orderStatusText.innerHTML = `${STATUS_ARRAY[ordersJSON[orderID]]}`;
+    });
+};
 
 const createTableElement = (order) => {
     let tableElement = document.createElement('tr');
     tableElement.setAttribute('id', `order-${order['id']}`);
-    let lineItemTD = document.createElement('td');
-    let ul = document.createElement('ul');
 
+    let userInfo = order['user_info'];
+    let userAddress = order['user_info']['address'];
+    let userInfoTD = document.createElement('td');
+    userInfoTD.classList.add('user-info');
+    if(!showUserAddress) userInfoTD.classList.add('hidden');
+    let userNameText = document.createTextNode(`${userInfo['name_first']} ${userInfo['name_last']}`);
+    userInfoTD.appendChild(userNameText);
+    userInfoTD.appendChild(document.createElement('br'));
+    let userAddressLineText1 = document.createTextNode(`${userAddress['line']}`);
+    userInfoTD.appendChild(userAddressLineText1);
+    userInfoTD.appendChild(document.createElement('br'));
+    let userAddressLineText2 = document.createTextNode(`${userAddress['city']}, ${userAddress['state']} ${userAddress['zip_code']}`);
+    userInfoTD.appendChild(userAddressLineText2);
+
+    tableElement.appendChild(userInfoTD);
+
+    let lineItemTD = document.createElement('td');    
+    let ul = document.createElement('ul');
     order['order_line_items'].forEach((lineItem) => {
         let li = document.createElement('li');
         let liInnerText = document.createTextNode(`${lineItem['quantity']} ${lineItem['name']}`);
@@ -43,6 +73,11 @@ const fillOrderTable = (ordersJSON) => {
         if(orderTable.querySelector(`#order-${order['id']}`) === null){
             let tableAddition = createTableElement(order);
             orderTable.appendChild(tableAddition);
+        } else {
+            let currentStatus = document.querySelector(`#order-status-${order['id']}`);
+            if(order['status'] !== currentStatus.innerHTML){
+                updateStatusText({ [order['id']] : [order['status']] });
+            }
         }
     });
 };
@@ -55,17 +90,20 @@ fetchOrderList();
 
 setInterval(fetchOrderList, fetchInterval);
 
-const updateStatusText = (ordersJSON) => {
-    Object.keys(ordersJSON).forEach((orderID) => {
-        if(ordersJSON[orderID] === 5 || ordersJSON[orderID] === 6){
-            let orderElement = document.querySelector(`#order-${orderID}`);
-            orderElement.remove();
-            return;
+
+orderViewCheckbox.addEventListener('change', (event) => {
+    showUserAddress = orderViewCheckbox.checked;
+    let userInfoElements = document.getElementsByClassName('user-info');
+    let elementLength = userInfoElements.length;
+    for(let i = 0; i < elementLength; i++) {
+        if(showUserAddress){
+            userInfoElements[i].classList.remove('hidden');
+        } else {
+            userInfoElements[i].classList.add('hidden');
         }
-        let orderStatusText = document.querySelector(`#order-status-${orderID}`);
-        orderStatusText.innerHTML = `${STATUS_ARRAY[ordersJSON[orderID]]}`;
-    });
-};
+        
+    };
+});
 
 const formStatusUpdate = document.querySelector('#form-status-update');
 formStatusUpdate.addEventListener('submit', event => {
