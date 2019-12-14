@@ -11,11 +11,11 @@
 <br>
 <strong>Order</strong>:
 <ul>
-    <?php foreach($this->orderStorage['order_line_items'] as $lineItem): ?>
+    <?php foreach($this->orderStorage['line_items'] as $lineItem): ?>
 	<li><?= $lineItem['quantity'] . ' ' . $lineItem['name']; ?></li>
     <?php endforeach; ?>
 </ul>
-<p><strong>Total</strong>: <?= "$" . $this->orderStorage['total_price']; ?></p>
+<p><strong>Total</strong>: <?= "$" . $this->orderStorage['subtotal']; ?></p>
 
 
 <?php require APP_ROOT . "/views/includes/footer.php" ?>

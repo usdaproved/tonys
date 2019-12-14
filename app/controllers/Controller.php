@@ -27,7 +27,8 @@ class Controller{
 	// TODO: This should be https only
 	$protocol = "https://";
 	if(empty($_SERVER["HTTPS"])) $protocol = "http://"; 
-        return $protocol . $_SERVER["HTTP_HOST"] . "/" . $fileType . "/" . $file . "." . $fileType;
+
+    return $protocol . $_SERVER["HTTP_HOST"] . "/" . $fileType . "/" . $file . "." . $fileType;
     }
 
     /**

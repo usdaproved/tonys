@@ -23,7 +23,9 @@ class LoginController extends Controller{
 
     public function post() : void {
         if($this->sessionManager->isUserLoggedIn()){
-           $this->redirect("/");
+            echo "ALREADY LOGGED IN";
+            exit;
+            $this->redirect("/");
         }
 
         // TODO: Decide how to handle a bad CSRFToken.

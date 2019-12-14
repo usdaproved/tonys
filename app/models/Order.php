@@ -4,75 +4,91 @@ require_once APP_ROOT . "/models/Model.php";
 
 class Order extends Model{
 
-    // TODO: Get rid of all $_POST
-
-    // A cart is just an order that hasn't been submitted yet.
-    public function createCart(int $userID, array $order, float $totalPrice) : void {
+    /**
+     * A cart is just an order that hasn't been submitted yet.
+     */
+    public function createCart(int $userID) : int {
         // Create order, then add line items associated with order.
-        $sqlOrder = "INSERT INTO orders (user_id, total_price)
-VALUES (:user_id, :total_price);";
+        $sqlOrder = "INSERT INTO orders (user_id)
+VALUES (:user_id);";
 
         $this->db->beginStatement($sqlOrder);
-
         $this->db->bindValueToStatement(":user_id", $userID);
-        $this->db->bindValueToStatement(":total_price", $totalPrice);
-
         $this->db->executeStatement();
         
-        $cartID = $this->db->lastInsertID();
-        
-        $this->addLineItemsToOrder($cartID, $order);
+        return $this->db->lastInsertID();
     }
 
-    // TODO: Perhaps we can just get all menu_items id's in one statement?
-    // This would turn an N*2 request into an N+1.
-    // TODO: Strip all this logic out into the controller.
-    // This should only function as an SQL call.
-    public function addLineItemsToOrder(int $orderID, array $order) : void {
-        foreach($order as $key => $value){
-            if($value && $value > 0){
-                $sql = "SELECT id FROM menu_items WHERE name = :name";
-
-                $this->db->beginStatement($sql);
-                $this->db->bindValueToStatement(":name", $key);
-                $this->db->executeStatement();
-
-                $menuItemID = $this->db->getResult();
-                $menuItemID = $menuItemID["id"];
-                
-                $sql = "INSERT INTO order_line_items (order_id, menu_item_id, quantity) 
-VALUES (:order_id, :menu_item_id, :quantity);";
-
-                $this->db->beginStatement($sql);
-
-                $this->db->bindValueToStatement(":order_id", $orderID);
-                $this->db->bindValueToStatement(":menu_item_id", $menuItemID);
-                $this->db->bindValueToStatement(":quantity", $value);
-
-                $this->db->executeStatement();
-            }
-        }
-    }
-
-    public function updateCart(int $cartID, array $order, float $totalPrice) : void {
-        // Update totalPrice in order table
-        $sql = "UPDATE orders SET total_price = :total_price WHERE id = :id;";
+    public function addLineItemToCart(int $cartID, int $itemID,
+                                       int $quantity, float $price, string $comment) : int {
+        $sql = "INSERT INTO order_line_items (order_id, menu_item_id, quantity, price, comment) 
+VALUES (:order_id, :menu_item_id, :quantity, :price, :comment);";
 
         $this->db->beginStatement($sql);
         
-        $this->db->bindValueToStatement(":total_price", $totalPrice);
-        $this->db->bindValueToStatement(":id", $cartID);
-        
-        $this->db->executeStatement();
-        
-        // Delete all line items and create all new ones.
-        $sql = "DELETE FROM order_line_items WHERE order_id = :order_id;";
-
-        $this->db->beginStatement($sql);
         $this->db->bindValueToStatement(":order_id", $cartID);
+        $this->db->bindValueToStatement(":menu_item_id", $itemID);
+        $this->db->bindValueToStatement(":quantity", $quantity);
+        $this->db->bindValueToStatement(":price", $price);
+        $this->db->bindValueToStatement(":comment", $comment);
+        
         $this->db->executeStatement();
 
-        $this->addLineItemsToOrder($cartID, $order);
+        $lineItemID = $this->db->lastInsertID();
+
+        $this->updateCartSubtotal($cartID);
+
+        return $lineItemID;
+    }
+
+    public function addOptionToLineItem(int $lineItemID, int $choiceID, int $optionID) : void {
+        $sql = "INSERT INTO line_item_choices (line_item_id, choice_parent_id, choice_child_id)
+VALUES (:line_item_id, :choice_parent_id, :choice_child_id);";
+
+        $this->db->beginStatement($sql);
+
+        $this->db->bindValueToStatement(":line_item_id", $lineItemID);
+        $this->db->bindValueToStatement(":choice_parent_id", $choiceID);
+        $this->db->bindValueToStatement(":choice_child_id", $optionID);
+
+        $this->db->executeStatement();
+    }
+
+    public function addAdditionToLineItem(int $lineItemID, int $additionID) : void {
+        $sql = "INSERT INTO line_item_additions (line_item_id, addition_id)
+VALUES (:line_item_id, :addition_id);";
+
+        $this->db->beginStatement($sql);
+
+        $this->db->bindValueToStatement(":line_item_id", $lineItemID);
+        $this->db->bindValueToStatement(":addition_id", $additionID);
+
+        $this->db->executeStatement();
+    }
+
+    // TODO(trystan): function that need made
+    // update line item
+    // update option to line item. Which is probably best to just remove and add new.
+    // same goes for additions.
+    // remove line item.
+    // remove addition.
+    // we could just make all these update line item, where we remove
+    // the line item first, then we just add all new information.
+    // Where the new information would be submitted all together anyway.
+
+    /**
+     * Cart specified because there should be no reason why
+     * a completed order would have it's price updated after submission.
+     */
+    public function updateCartSubtotal(int $cartID) : void {
+        // TODO: Use sql functions to sum up the line items.
+        $sql = "UPDATE orders SET 
+subtotal = (SELECT SUM(price) FROM order_line_items WHERE order_id = :id)  
+WHERE id = :id;";
+        
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":id", $cartID);
+        $this->db->executeStatement();
     }
 
     /**
@@ -134,7 +150,7 @@ WHERE user_id = :unregistered_user_id;";
         return $orderID["id"];
     }
 
-    public function getOrderByID(int $orderID) : ?array {
+    public function getOrderByID(int $orderID = NULL) : ?array {
         $sql = "SELECT * FROM orders WHERE id = :id;";
 
         $this->db->beginStatement($sql);
@@ -143,20 +159,100 @@ WHERE user_id = :unregistered_user_id;";
 
         $order = $this->db->getResult();
 
-        $sql = "SELECT
-	menu_items.name,
-	order_line_items.quantity
-FROM order_line_items
-LEFT JOIN menu_items ON menu_items.id = order_line_items.menu_item_id
-WHERE order_line_items.order_id = :order_id;";
+        $sql = "SELECT 
+li.id,
+li.order_id,
+mi.name,
+li.price,
+li.quantity,
+li.comment
+FROM order_line_items AS li
+LEFT JOIN menu_items AS mi
+ON li.menu_item_id = mi.id
+WHERE li.order_id = :order_id;";
 
         $this->db->beginStatement($sql);
         $this->db->bindValueToStatement(":order_id", $orderID);
         $this->db->executeStatement();
 
-        $order["order_line_items"] = $this->db->getResultSet();
+        $lineItems = $this->db->getResultSet();
 
-        if(is_bool($order)) return NULL;
+        $order["line_items"] = [];
+        foreach($lineItems as $lineItem){
+            $id = $lineItem["id"];
+            $order["line_items"][$id] = $lineItem;
+
+            $sql = "SELECT
+DISTINCT cp.name,
+cp.id
+FROM choices_parents AS cp
+LEFT JOIN line_item_choices AS lic
+ON lic.choice_parent_id = cp.id
+WHERE lic.line_item_id = :line_item_id;";
+
+            $this->db->beginStatement($sql);
+            $this->db->bindValueToStatement(":line_item_id", $id);
+            $this->db->executeStatement();
+
+            $choices = $this->db->getResultSet();
+            
+            $order["line_items"][$id]["choices"] = [];
+            
+            foreach($choices as $choice){
+                $choiceID = $choice["id"];
+                $sql = "SELECT 
+lic.choice_child_id AS id,
+cc.name,
+cc.price_modifier AS price
+FROM line_item_choices AS lic
+LEFT JOIN choices_children AS cc
+ON lic.choice_child_id = cc.id
+WHERE lic.line_item_id = :line_item_id 
+AND lic.choice_parent_id = :choice_parent_id;";
+
+                $this->db->beginStatement($sql);
+                $this->db->bindValueToStatement(":line_item_id", $id);
+                $this->db->bindValueToStatement(":choice_parent_id", $choiceID);
+                $this->db->executeStatement();
+
+                $options = $this->db->getResultSet();
+                $order["line_items"][$id]["choices"][$choiceID] = [];
+                foreach($options as $option){
+                    $optionID = $option["id"];
+                    $order["line_items"][$id]["choices"][$choiceID]["options"][$optionID]["price"]
+                        = $option["price"];
+                    $order["line_items"][$id]["choices"][$choiceID]["options"][$optionID]["name"]
+                        = $option["name"];
+                }
+                $order["line_items"][$id]["choices"][$choiceID]["name"] = $choice["name"];
+            }
+
+            // These are guaranteed to be DISTINCT.
+            $sql = "SELECT 
+lia.addition_id AS id,
+a.name,
+a.price_modifier AS price
+FROM line_item_additions AS lia
+LEFT JOIN additions AS a
+ON lia.addition_id = a.id
+WHERE lia.line_item_id = :line_item_id;";
+
+            $this->db->beginStatement($sql);
+            $this->db->bindValueToStatement(":line_item_id", $id);
+            $this->db->executeStatement();
+
+            $additions = $this->db->getResultSet();
+
+            $order["line_items"][$id]["additions"] = [];
+            foreach($additions as $addition){
+                $additionID = $addition["id"];
+                $order["line_items"][$id]["additions"][$additionID]["price"]
+                    = $addition["price"];
+                $order["line_items"][$id]["additions"][$additionID]["name"]
+                    = $addition["name"];
+            }
+        }
+
         return $order;
     }
 
@@ -179,7 +275,7 @@ WHERE order_line_items.order_id = :order_id;";
         return $orders;
     }
 
-    public function getAllOrdersByStatus(int $status) : ?array {
+    public function getAllOrdersByStatus(int $status) : array {
         $sql = "SELECT id FROM orders o WHERE status = :status ORDER BY o.date ASC;";
 
         $this->db->beginStatement($sql);
@@ -187,7 +283,7 @@ WHERE order_line_items.order_id = :order_id;";
         $this->db->executeStatement();
 
         $ids = $this->db->getResultSet();
-        if(is_bool($ids)) return NULL;
+        if(is_bool($ids)) return array();
         
         $orders = [];
 
@@ -198,7 +294,7 @@ WHERE order_line_items.order_id = :order_id;";
         return $orders;
     }
 
-    public function getAllActiveOrders() : ?array {
+    public function getAllActiveOrders() : array {
         $sql = "SELECT id FROM orders o 
 WHERE status NOT IN (" . CART . "," . DELIVERED . "," . COMPLETE . ") 
 ORDER BY o.date ASC;";
@@ -207,7 +303,29 @@ ORDER BY o.date ASC;";
         $this->db->executeStatement();
 
         $ids = $this->db->getResultSet();
-        if(is_bool($ids)) return NULL;
+        if(is_bool($ids)) return array();
+        
+        $orders = [];
+
+        foreach($ids as $id){
+            $orders[] = $this->getOrderByID($id["id"]);
+        }
+
+        return $orders;
+    }
+
+    public function getActiveOrdersAfterDate(string $date) : array {
+        $sql = "SELECT id FROM orders o 
+WHERE status NOT IN (" . CART . "," . DELIVERED . "," . COMPLETE . ")
+AND date > :date 
+ORDER BY o.date ASC;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":date", $date);
+        $this->db->executeStatement();
+
+        $ids = $this->db->getResultSet();
+        if(is_bool($ids)) return array();
         
         $orders = [];
 

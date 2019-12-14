@@ -17,12 +17,14 @@ class Session{
         }
     }
 
+    // TODO: Perhaps we don't want to set the message here.
+    // Not every call wants to set a message, javascript calls.
     public function validateCSRFToken($token){
         $valid = hash_equals($_SESSION["CSRFToken"], $token);
         
         if(!$valid){
             $message = MESSAGE_INVALID_CSRF_TOKEN;
-            $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
+            $this->pushOneTimeMessage(USER_ALERT, $message);
         }
         
         return $valid;

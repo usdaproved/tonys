@@ -1,73 +1,67 @@
-.grid-container{
+.category-container{
     display: grid;
-    grid-template-columns: 1fr 2fr 1fr;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 40px 24px;
 }
 
-.flex-container{
-    grid-column-start: 2;
-    grid-column-end: 3;
-    
+.item-container{
+    display: flex;
+    border: 1px solid rgb(226, 226, 226);
+    cursor: pointer;
+    position: relative;
+}
+
+.item-link{
+    text-decoration: none;
+    color: inherit;
+}
+
+.item-info-container{
+    padding: 16px;
+}
+
+.item-name{
+    line-height: 24px;
+    align-items: center;
+}
+
+.item-description{
+    padding-top: 4px;
+    line-height: 20px;
+    word-break: break-word;
+}
+
+.item-price{
+    margin-top: auto;
+    padding-top: 8px;
+    line-height: 24px;
+}
+
+.dialog-container{
+    position: fixed;
+    background: rgba(31, 31, 31, 0.8) none repeat scroll 0% 0%;
+
+    overflow: auto;
+    z-index: 4;
+    left: 0px;
+    top: 0px;
+    right: 0px;
+    height: 100vh;
+
     display: flex;
     flex-direction: column;
+    align-items: center;
 }
 
-.flex-item, .hover-disabled, .order_button{
-    padding: 30px;
-    margin: 5px;
-
-    background: #B69179;
-    box-shadow: 0 5px 0px #306569;
+.dialog{
+    position: relative;
+    background: rgb(255, 255, 255) none repeat scroll 0% 0%;
     
-    color: #2B2B2B;
-    text-align: center;
-    font-family: 'Libre Baskerville', serif;
-    font-size: 40px;
-    
-
-    user-select: none;
-    -moz-user-select: none;
-    -webkit-user-select: none;
+    z-index: 1;
+    margin: 0px auto;
+    width: 676px;
 }
 
-.order_button{
-    color: #E6E6E6;
-}
-
-/* What the heck am I doing? */
-.flex-item:not(.hover-disabled):hover,
-.order_button:hover{
-    cursor: pointer;
-    
-    background: #9C7C67;
-    box-shadow: 0 3px 0px #244C4F;
-}
-
-.quantifier{
-    color: #306569;
-}
-
-.quantifier:hover{
-    cursor: pointer;
-    
-    color: #244C4F;
-}
-
-/* This is the number field in the order form. */
-.quantity{
-    border: none;
-    background: rgba(0, 0, 0, 0);
-    outline: none;
-
-    width: 60px;
-    
-    font-size: 40px;
-    font-family: 'Libre Baskerville', serif;
-
-    -webkit-appearance: none;
-    -moz-appearance: textfield;
-}
-
-label {
-  display: block;
-  margin: 5px 0;
+.dialog-info-container{
+    margin: 20px;
 }

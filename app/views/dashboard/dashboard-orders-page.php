@@ -3,14 +3,11 @@
 <header>Tony's Taco House</header>
 <a href="/Dashboard">Dashboard</a>
 <br>
-Show Addresses <input type="checkbox" id="address-view">
-<form method="post" id="form-status-update">
-    <input type="submit" value="Update status">
-    <table id="order-table">
+<input type="submit" id="status-update-button" value="Update status">
+<table id="order-table">
 
-    </table>
-    <input type="hidden" name="CSRFToken" value="<?= $this->sessionManager->getCSRFToken(); ?>">
-</form>
+</table>
+<input type="hidden" name="CSRFToken"  id="CSRFToken" value="<?= $this->sessionManager->getCSRFToken(); ?>">
 
-<script src="<?=$this->getFile('js', __FILE__);?>"></script>
+<script src="<?=$this->getFile('js', __FILE__);?>" type="module"></script>
 <?php require APP_ROOT . "/views/includes/footer.php" ?>

@@ -15,10 +15,11 @@ const MESSAGE_EMAIL_IN_USE = "Email already in use. <a href=\"/Login\">Log in?</
 
 
 const CUSTOMER = 0;
-const EMPLOYEE = 1;
-const ADMIN = 2;
+const PRINTER = 1;
+const EMPLOYEE = 2;
+const ADMIN = 3;
 
-const USER_TYPE_ARRAY = ['customer','employee','admin'];
+const USER_TYPE_ARRAY = ['customer','printer','employee','admin'];
 
 const DELIVERY = 0;
 const PICKUP = 1;
@@ -29,12 +30,12 @@ const SUBMITTED = 1;
 const PREPARING = 2;
 const PREPARED = 3;
 const DELIVERING = 4;
-const DELIVERED = 5;
-const COMPLETE = 6;
-const PAY = 7;
+const PAY = 5;
+const DELIVERED = 6;
+const COMPLETE = 7;
 const PAID = 8;
 
-const STATUS_ARRAY = ['cart','submitted','preparing','prepared','delivering','delivered','complete','pay', 'paid'];
+const STATUS_ARRAY = ['cart','submitted','preparing','prepared','delivering','pay','delivered','complete','paid'];
 
 const ORDER_STATUS_FLOW = array(
     DELIVERY => array(SUBMITTED, PREPARING, PREPARED, DELIVERING, DELIVERED),

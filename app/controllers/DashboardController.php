@@ -40,7 +40,7 @@ class DashboardController extends Controller{
     public function menu_get() : void {
         $userID = $this->getUserID();
         if(!$this->validateAuthority(ADMIN, $userID)){
-            $this->redirect("/Dasboard");
+            $this->redirect("/Dashboard");
         }
         
         $this->menuStorage = $this->menuManager->getEntireMenu();
@@ -51,7 +51,7 @@ class DashboardController extends Controller{
     public function menu_categories_get() : void {
         $userID = $this->getUserID();
         if(!$this->validateAuthority(ADMIN, $userID)){
-            $this->redirect("/Dasboard");
+            $this->redirect("/Dashboard");
         }
 
         $this->menuStorage = $this->menuManager->getCategories();
@@ -88,16 +88,52 @@ class DashboardController extends Controller{
         $this->redirect("/Dashboard/menu");
     }
 
+    public function menu_additions_get() : void {
+        $userID = $this->getUserID();
+        if(!$this->validateAuthority(ADMIN, $userID)){
+            $this->redirect("/Dashboard");
+        }
+
+        $this->menuStorage = $this->menuManager->getAllAdditions();
+
+        require_once APP_ROOT . "/views/dashboard/dashboard-menu-additions-edit-page.php";
+    }
+
+    public function menu_additions_post() : void {
+        $userID = $this->getUserID();
+        if(!$this->validateAuthority(ADMIN, $userID)){
+            $this->redirect("/Dashboard");
+        }
+        if(!$this->sessionManager->validateCSRFToken($_POST["CSRFToken"])){
+            $this->redirect("/");
+        }
+
+        $this->menuManager->createAddition($_POST["name"], $_POST["price"]);
+
+        // TODO(trystan): Probably should push a message here.
+        $this->redirect("/Dashboard/menu/additions");
+    }
+
     public function menu_item_get() : void {
         $userID = $this->getUserID();
         if(!$this->validateAuthority(ADMIN, $userID)){
-            $this->redirect("/Dasboard");
+            $this->redirect("/Dashboard");
         }
 
         if(isset($_GET["id"])){
-            $this->menuStorage = $this->menuManager->getMenuItemInfoByID($_GET["id"]);
+            $this->menuStorage = $this->menuManager->getItemInfo($_GET["id"]);
             $this->menuStorage["categories"] = $this->menuManager->getCategories();
-            
+            $this->menuStorage["all_additions"] = $this->menuManager->getAllAdditions();
+
+            // Cull out additions that are already associated with this item.
+            foreach((array)$this->menuStorage["additions"] as $addition){
+                $index = array_search($addition, $this->menuStorage["all_additions"]);
+
+                if($index !== false){
+                    unset($this->menuStorage["all_additions"][$index]);
+                }
+            }
+
             require_once APP_ROOT . "/views/dashboard/dashboard-menu-item-edit-page.php";
         } else {
             $this->redirect("/Dashboard/menu");
@@ -187,6 +223,7 @@ class DashboardController extends Controller{
 
     // JS CALLS
 
+    // Hope to be depricated soon.
     public function orders_getOrders_get() : void {
         // TODO: in a get request we could have the following things:
         // view - this would change either full view or just order view.
@@ -207,18 +244,103 @@ class DashboardController extends Controller{
         echo json_encode($orders);
     }
 
+    public function orders_printerStream_get(){
+        $userID = $this->getUserID();
+        if($this->userManager->getUserAuthorityLevelByID($userID) != PRINTER){
+            echo "User Access Denied" . PHP_EOL;
+            exit;
+        }
+
+        header("Content-Type: text/event-stream");
+
+        // The printer program sends "NULL" if no date file found.
+        $lastReceived = "NULL";
+        if(isset($_GET["lastReceived"])){
+            $lastReceived = $_GET["lastReceived"];
+        }
+
+        $orders = array();
+        if($lastReceived === "NULL"){
+            $orders = $this->orderManager->getAllActiveOrders();
+        } else {
+            $orders = $this->orderManager->getActiveOrdersAfterDate($lastReceived);
+        }
+
+        while (true) {
+            if(!empty($orders)){
+                $lastReceived = $orders[count($orders) - 1]["date"];
+            }
+            // TODO(trystan): Find out the max char length per line of the printer,
+            // ensure we don't go over that.
+            echo PRINTER_DELIMITER;
+            foreach($orders as $order){
+                // Maybe print some over arching order info.
+                echo "ORDER " . $order["id"] . PHP_EOL;
+                $customer = $this->userManager->getUserInfoByID($order["user_id"]);
+                // Note(Trystan): We may want to print the address on this receipt.
+                echo "NAME " . $customer["name_first"] . " " . $customer["name_last"] . PHP_EOL;
+            
+                foreach($order["line_items"] as $lineItem){
+                    echo $lineItem["name"] .  " - " . $lineItem["quantity"]  . PHP_EOL;
+                    foreach($lineItem["choices"] as $choice){
+                        echo " - " . $choice["name"] . PHP_EOL;
+                        foreach($choice["options"] as $option){
+                            echo "    - " . $option["name"] . PHP_EOL;
+                        }
+                    }
+                    if(!empty($lineItem["additions"])){
+                        echo " - Additions" . PHP_EOL;
+                    }
+                    foreach($lineItem["additions"] as $addition){
+                        echo "    - " . $addition["name"] . PHP_EOL;
+                    }
+                    if(!empty($lineItem["comment"])){
+                        echo "COMMENT: " . $lineItem["comment"] . PHP_EOL;
+                    }
+                    echo PHP_EOL;
+                }
+                // Give a little padding between orders.
+                echo PHP_EOL;
+            }
+            echo PRINTER_DELIMITER;
+            echo "TIMESTAMP " . $lastReceived . PHP_EOL;
+
+            if ( connection_aborted() ) break;
+            // flush the output buffer and send echoed messages to the browser
+            while (ob_get_level() > 0) {
+                ob_end_flush();
+            }
+            flush();
+            // TODO(trystan): Decide what sleep interval we want to set here.
+            sleep(5);
+
+            // TODO(Trystan): Two things happen here.
+            // if we keep these two lines in this order:
+            // We will double print orders on start up.
+            // However if we get the date before we get the orders,
+            // we will never get new orders because the date will always be after
+            // an order has been submitted.
+            // So we actually need "now" to be now - sleep interval.
+            $orders = $this->orderManager->getActiveOrdersAfterDate($lastReceived);
+        }
+    }
+
     public function orders_updateOrderStatus_post() : void {
         $userID = $this->getUserID();
         if(!$this->validateAuthority(EMPLOYEE, $userID)){
             echo json_encode(NULL);
             exit;
         }
-        if(!$this->sessionManager->validateCSRFToken($_POST["CSRFToken"])){
+        
+        $json = file_get_contents("php://input");
+        $postData = json_decode($json, true);
+        
+        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
             echo json_encode(NULL);
             exit;
         }
 
-        $orders = $_POST;
+        $orders = $postData;
         unset($orders["CSRFToken"]);
 
         if(empty($orders)){
@@ -275,6 +397,280 @@ class DashboardController extends Controller{
             $categoryPosition++;
         }
     }
+    
+    /**
+     * Updates the all the values and positions of the choice groups and options.
+     */
+    public function menu_item_updateChoices_post() : void {
+        $userID = $this->getUserID();
+        if(!$this->validateAuthority(ADMIN, $userID)){
+            echo "fail";
+            exit;
+        }
+
+        $json = file_get_contents("php://input");
+        $postData = json_decode($json, true);
+        
+        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
+            echo "fail";
+            exit;
+        }
+
+        $choiceGroups = $postData;
+        unset($choiceGroups["CSRFToken"]);
+
+        $groupPosition = 1;
+        foreach($choiceGroups as $groupID => $choiceGroup){
+            $groupID = explode("-", $groupID)[0];
+            $groupName = $choiceGroup["group-data"]["name"];
+            // TODO: Check that picks does not exceed number of choices.
+            $groupMinPicks = $choiceGroup["group-data"]["min-picks"];
+            // TODO: Check that max picks greater than min.
+            $groupMaxPicks = $choiceGroup["group-data"]["max-picks"];
+
+            $this->menuManager->updateChoiceGroup($groupID, $groupName,
+                                                  $groupMinPicks, $groupMaxPicks);
+            $this->menuManager->updateChoiceGroupPosition($groupID, $groupPosition);
+
+            unset($choiceGroup["group-data"]);
+            
+            $choicePosition = 1;
+            foreach($choiceGroup as $choiceID => $choice){
+                $choiceID = explode("-", $choiceID)[0];
+                $choiceName = $choice["name"];
+                $choicePrice = $choice["price"];
+
+                $this->menuManager->updateChoiceOption($choiceID, $choiceName, $choicePrice);
+                $this->menuManager->updateChoiceOptionPosition($choiceID, $choicePosition);
+                
+                $choicePosition++;
+            }
+            $groupPosition++;
+        }
+
+        echo "success";
+    }
+
+    public function menu_item_addChoiceGroup_post() : void {
+        $userID = $this->getUserID();
+        if(!$this->validateAuthority(ADMIN, $userID)){
+            echo "fail";
+            exit;
+        }
+
+        $json = file_get_contents("php://input");
+        $postData = json_decode($json, true);
+        
+        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
+            echo "fail";
+            exit;
+        }
+
+        $itemID = $postData["item-id"];
+
+        // Create a blank group. This will be filled during the update function.
+        $groupID = $this->menuManager->createChoiceGroup($itemID, "", 0, 0);
+        
+        echo $groupID;
+    }
+
+    public function menu_item_removeChoiceGroup_post() : void {
+        $userID = $this->getUserID();
+        if(!$this->validateAuthority(ADMIN, $userID)){
+            echo "fail";
+            exit;
+        }
+
+        $json = file_get_contents("php://input");
+        $postData = json_decode($json, true);
+        
+        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
+            echo "fail";
+            exit;
+        }
+
+        $groupID = $postData["group-id"];
+
+        $this->menuManager->removeChoiceGroup($groupID);
+        
+        echo "success";
+    }
+
+    public function menu_item_addChoiceOption_post() : void {
+        $userID = $this->getUserID();
+        if(!$this->validateAuthority(ADMIN, $userID)){
+            echo "fail";
+            exit;
+        }
+
+        $json = file_get_contents("php://input");
+        $postData = json_decode($json, true);
+        
+        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
+            echo "fail";
+            exit;
+        }
+
+        $groupID = $postData["group-id"];
+
+        $optionID = $this->menuManager->createChoiceOption($groupID, "", 0);
+        
+        echo $optionID;
+    }
+
+    public function menu_item_removeChoiceOption_post() : void {
+        $userID = $this->getUserID();
+        if(!$this->validateAuthority(ADMIN, $userID)){
+            echo "fail";
+            exit;
+        }
+
+        $json = file_get_contents("php://input");
+        $postData = json_decode($json, true);
+        
+        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
+            echo "fail";
+            exit;
+        }
+
+        $optionID = $postData["option-id"];
+
+        $this->menuManager->removeChoiceOption($optionID);
+        
+        echo "success";
+    }
+
+    public function menu_item_addAddition_post() : void {
+        $userID = $this->getUserID();
+        if(!$this->validateAuthority(ADMIN, $userID)){
+            echo "fail";
+            exit;
+        }
+
+        $json = file_get_contents("php://input");
+        $postData = json_decode($json, true);
+        
+        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
+            echo "fail";
+            exit;
+        }
+
+        $itemID = $postData["item-id"];
+        $additionID = $postData["addition-id"];
+
+        $this->menuManager->addAdditionToItem($itemID, $additionID);
+        
+        echo "success";
+    }
+    
+    public function menu_item_updateAdditionPositions_post() : void {
+        $userID = $this->getUserID();
+        if(!$this->validateAuthority(ADMIN, $userID)){
+            echo "fail";
+            exit;
+        }
+
+        $json = file_get_contents("php://input");
+        $postData = json_decode($json, true);
+        
+        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
+            echo "fail";
+            exit;
+        }
+
+        $ids = $postData["ids"];
+        $itemID = $postData["itemID"];
+
+        $position = 1;
+        foreach($ids as $id){
+            $id = explode("-", $id)[0];
+            $this->menuManager->updateItemAdditionPosition($itemID, $id, $position);
+            $position++;
+        }
+    }
+
+    public function menu_item_removeAddition_post() : void {
+        $userID = $this->getUserID();
+        if(!$this->validateAuthority(ADMIN, $userID)){
+            echo "fail";
+            exit;
+        }
+
+        $json = file_get_contents("php://input");
+        $postData = json_decode($json, true);
+        
+        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
+            echo "fail";
+            exit;
+        }
+
+        $itemID = $postData["item-id"];
+        $additionID = $postData["addition-id"];
+
+        $this->menuManager->removeAdditionFromItem($itemID, $additionID);
+
+        echo "success";
+    }
+
+    public function menu_additions_isLinkedToItem_get() : void {
+        $userID = $this->getUserID();
+        if(!$this->validateAuthority(ADMIN, $userID)){
+            echo "fail";
+            exit;
+        }
+
+        $isLinked = $this->menuManager->isAdditionLinkedToItem($_GET["id"]);
+
+        
+        
+        echo ($isLinked) ? "true" : "false";
+    }
+
+    public function menu_additions_updateAddition_post() : void {
+        $userID = $this->getUserID();
+        if(!$this->validateAuthority(ADMIN, $userID)){
+            echo "fail";
+            exit;
+        }
+
+        $json = file_get_contents("php://input");
+        $postData = json_decode($json, true);
+        
+        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
+            echo "fail";
+            exit;
+        }
+
+        $additionID = $postData["addition-id"];
+        $name = $postData["name"];
+        $price = $postData["price"];
+
+        $this->menuManager->updateAddition($additionID, $name, $price);
+
+        echo "success";
+    }
+
+    public function menu_additions_removeAddition_post() : void {
+        $userID = $this->getUserID();
+        if(!$this->validateAuthority(ADMIN, $userID)){
+            echo "fail";
+            exit;
+        }
+
+        $json = file_get_contents("php://input");
+        $postData = json_decode($json, true);
+        
+        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
+            echo "fail";
+            exit;
+        }
+
+        $additionID = $postData["addition-id"];
+
+        $this->menuManager->removeAdditionEntirely($additionID);
+
+        echo "success";
+    }
 
     private function validateAuthority(int $requiredAuthority, int $userID = NULL) : bool {
         if(!$this->sessionManager->isUserLoggedIn()){
@@ -285,6 +681,7 @@ class DashboardController extends Controller{
         
         return $userAuthority >= $requiredAuthority;
     }
+    
 }
 
 ?>

@@ -50,9 +50,8 @@ VALUES (:user_id, :session_id);";
             $this->db->executeStatement();
         }
 
-        // Password hasing occurs here to ensure no plaintext passwords are stored.
-        // TODO: Think about switching to Argon2id.
-        $passwordHash = password_hash($password, PASSWORD_BCRYPT, array('cost' => 12));
+        // Password hashing occurs here to ensure no plaintext passwords are stored.
+        $passwordHash = password_hash($password, PASSWORD_ARGON2ID);
 
 
         $sql = "INSERT INTO registered_credentials (user_id, password)

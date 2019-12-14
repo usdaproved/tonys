@@ -9,7 +9,7 @@ class OrderController extends Controller{
     private $menuManager;
     private $orderManager;
         
-    public $menu;
+    public $menuStorage;
     public $orderStorage;
     public $user;
     public $hasUserInfo;
@@ -22,62 +22,37 @@ class OrderController extends Controller{
     }
 
     public function get() : void {
-        $this->menu = $this->menuManager->getEntireMenu();
-
         $userID = $this->getUserID();
 
         $cartID = $this->orderManager->getCartID($userID);
 
-        if(!is_null($cartID)){
-            $this->orderStorage = $this->orderManager->getOrderByID($cartID);
-        }
-        
-        // TODO: Think about changing the name scheme to match the methods.
-        // i.e. order-submit-page, order-confirmed-page, order-page/order-index-page.
-        require_once APP_ROOT . "/views/order/order-select-page.php";
-    }
+        $this->orderStorage = $this->orderManager->getOrderByID($cartID);
 
-    public function post() : void {
-        if(!$this->sessionManager->validateCSRFToken($_POST["CSRFToken"])){
+        // If a cart is already set, and they didn't explicitly request to edit the cart
+        // then skip ahead to the submit page.
+        // From the submit page there will be a link to ?edit the cart.
+        // Debatable whether this is the desired effect. For now I prefer it.
+        if(!isset($_GET["edit"]) && !is_null($cartID)
+           && isset($this->orderStorage["line_items"])){
             $this->redirect("/Order/submit");
         }
         
-        $userID = $this->getUserID();
+        $this->menuStorage = $this->menuManager->getEntireMenu();
+        $day = date('l');
 
-        if(is_null($userID)){
-            $userID = $this->userManager->createUnregisteredCredentials();
-        }
+        $this->menuStorage["daily_special"] = $this->menuManager->getDailySpecial($day);
 
-        $order = $_POST;
-        unset($order["CSRFToken"]);
-        
-        // TODO: something needs to be done about this.
-        $totalPrice = $this->menuManager->calculateTotalPrice($order);
-
-        $cartID = $this->orderManager->getCartID($userID);
-
-        if(!$this->validateOrder($order, $totalPrice)){
-            $this->redirect("/Order");
-        }
-        
-        if(is_null($cartID)){
-            $this->orderManager->createCart($userID, $order, $totalPrice);
-        } else {
-            $this->orderManager->updateCart($cartID, $order, $totalPrice);
-        }
-        // Take the user to the next page to fill out info.
-        $this->redirect("/Order/submit");
+        require_once APP_ROOT . "/views/order/order-select-page.php";
     }
 
     public function submit_get() : void {
         $userID = $this->getUserID();
         
         $cartID = $this->orderManager->getCartID($userID);
-        if(is_null($cartID)){
+        $this->orderStorage = $this->orderManager->getOrderByID($cartID);
+        if(is_null($cartID) || !isset($this->orderStorage["line_items"])){
             $this->redirect("/Order");
         }
-
-        $this->orderStorage = $this->orderManager->getOrderByID($cartID);
 
         $this->user = $this->userManager->getUserInfoByID($userID);
 
@@ -92,6 +67,7 @@ class OrderController extends Controller{
     }
 
     public function submit_post() : void {
+        
         if(!$this->sessionManager->validateCSRFToken($_POST["CSRFToken"])){
             $this->redirect("/Order/submit");
         }
@@ -99,6 +75,8 @@ class OrderController extends Controller{
         $userID = $this->getUserID();
         
         $cartID = $this->orderManager->getCartID($userID);
+        // TODO(trystan): Verify that the cart is not empty when the order is submitted.
+        // no point in having an order with no line items.
         if(is_null($cartID)){
             $this->sessionManager->pushOneTimeMessage(USER_ALERT, "Empty cart.");
             $this->redirect("/Order");
@@ -175,17 +153,132 @@ class OrderController extends Controller{
         require_once APP_ROOT . "/views/order/order-view-page.php";
     }
 
-    private function validateOrder(array $order, float $totalPrice) : bool {
+    
+    // JS CALLS
+
+    
+    public function getItemDetails_post() : void {
+        //$userID = $this->getUserID();
+
+        $json = file_get_contents("php://input");
+        $postData = json_decode($json, true);
+        
+        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
+            echo "fail";
+            exit;
+        }
+
+        $itemID = $postData["itemID"];
+
+        $item = $this->menuManager->getItemInfo($itemID);
+
+        echo json_encode($item);
+    }
+
+    public function addItemToCart_post() : void {
+        $userID = $this->getUserID();
+
+        $json = file_get_contents("php://input");
+        $postData = json_decode($json, true);
+        
+        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
+            echo "fail";
+            exit;
+        }
+
+        if(is_null($userID)){
+            $userID = $this->userManager->createUnregisteredCredentials();
+        }
+        
+        $cartID = $this->orderManager->getCartID($userID);
+        
+        if(is_null($cartID)){
+            $cartID = $this->orderManager->createCart($userID);
+        }
+
+        $userItemData = $postData;
+        unset($userItemData["CSRFToken"]);
+
+        $itemID = $userItemData["itemID"];
+        $quantity = (int)$userItemData["quantity"];
+        $comment = $userItemData["comment"];
+
+        $item = $this->menuManager->getItemInfo($itemID);
+
+        $totalPrice = (float)$item["price"];
+
+        foreach($userItemData["choices"] as $choiceID => $optionIDs){
+            $choiceID = explode("-", $choiceID)[0];
+
+            foreach($optionIDs as $optionID){
+                if(array_key_exists($choiceID, $item["choices"])
+                   && array_key_exists($optionID, $item["choices"][$choiceID]["options"])){
+                    $totalPrice += $item["choices"][$choiceID]["options"][$optionID]["price_modifier"];
+                } else {
+                    echo "invalid";
+                    exit;
+                }
+            }
+        }
+
+        foreach($userItemData["additions"] as $additionID){
+            if(array_key_exists($additionID, $item["additions"])){
+                $totalPrice += $item["additions"][$additionID]["price_modifier"];
+            } else {
+                echo "invalid";
+                exit;
+            }
+        }
+
+        if($quantity > 0 && is_numeric($quantity)){
+            $totalPrice *= $quantity;
+        } else {
+            echo "invalid";
+            exit;
+        }
+
+        $lineItemID = $this->orderManager->addLineItemToCart($cartID, $itemID,
+                                                             $quantity, $totalPrice, $comment);
+        
+        foreach($userItemData["choices"] as $choiceID => $optionIDs){
+            $choiceID = explode("-", $choiceID)[0];
+            foreach($optionIDs as $optionID){
+                $this->orderManager->addOptionToLineItem($lineItemID, $choiceID, $optionID);
+            }
+        }
+
+        foreach($userItemData["additions"] as $additionID){
+            $this->orderManager->addAdditionToLineItem($lineItemID, $additionID);
+        }
+
+        echo $lineItemID;
+    }
+
+    // HELPER FUNCTIONS
+
+    // Depricated: orders no longer work this way.
+    // TODO: check for things like number of rows in order_line_items in the cart.
+    private function validateOrder(array $order) : bool {
         $valid = true;
 
         $totalQuantity = 0;
         $negativityFound = false;
+        $nonIntFound = false;
         foreach($order as $item => $quantity){
-            if($quantity && $quantity > 0){
+            if($quantity > 0){
                 $totalQuantity += $quantity;
-            } else if($quantity && $quantity < 0){
+            } else if($quantity < 0){
                 $negativityFound = true;
             }
+            else if(!is_numeric($quantity) && $quantity !== ""){
+                $nonIntFound = true;
+            }
+        }
+
+        if($nonIntFound){
+            $message = "Non-numerical input supplied.";
+            $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
+            $valid = false;
         }
 
         if($negativityFound){
@@ -196,12 +289,6 @@ class OrderController extends Controller{
 
         if($totalQuantity > MAX_ORDER_QUANTITY){
             $message = MESSAGE_INVALID_ORDER_QUANTITY;
-            $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
-            $valid = false;
-        }
-
-        if($totalPrice > MAX_ORDER_PRICE){
-            $message = MESSAGE_INVALID_ORDER_PRICE;
             $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
             $valid = false;
         }

@@ -1,122 +1,93 @@
+import { postJSON } from './utility.js';
+
 "use strict";
-const STATUS_ARRAY = ['cart','submitted','preparing','prepared','delivering','delivered','complete'];
-const getOrdersURL = window.location.origin + '/Dashboard/getOrders';
-const fetchInterval = 10000;
+
+const STATUS_ARRAY = ['cart','submitted','preparing','prepared',
+                      'delivering','pay','delivered','complete','paid'];
+const CSRFToken = document.querySelector('#CSRFToken').value;
 const orderTable = document.querySelector('#order-table');
-const orderViewCheckbox = document.querySelector('#address-view');
-let showUserAddress = orderViewCheckbox.checked;
 
-const updateStatusText = (ordersJSON) => {
-    Object.keys(ordersJSON).forEach((orderID) => {
-        if(ordersJSON[orderID] === 5 || ordersJSON[orderID] === 6){
-            let orderElement = document.querySelector(`#order-${orderID}`);
-            orderElement.remove();
-            return;
-        }
-        let orderStatusText = document.querySelector(`#order-status-${orderID}`);
-        orderStatusText.innerHTML = `${STATUS_ARRAY[ordersJSON[orderID]]}`;
-    });
-};
+const getOrderList = () => {
+    // TODO(trystan): Might want to create some utility function for regular GET requests.
+    const getOrdersURL = window.location.origin + '/Dashboard/orders/getOrders';
+    fetch(getOrdersURL).then(response => response.json()).then(orders => {
+        console.log(orders);
+        for(var order in orders){
+            if(orderTable.querySelector(`#order-${orders[order].id}`) === null){
+                // New order. Create new entry.
+                let orderContainer = document.createElement('div');
+                orderContainer.classList.add('order-container');
+                orderContainer.id = `order-${orders[order].id}`;
 
-const createTableElement = (order) => {
-    let tableElement = document.createElement('tr');
-    tableElement.setAttribute('id', `order-${order['id']}`);
+                const lineItems = orders[order].line_items;
+                for(var lineItem in lineItems){
+                    let lineItemContainer = document.createElement('div');
+                    lineItemContainer.classList.add('line-item-container');
 
-    let userInfo = order['user_info'];
-    let userAddress = order['user_info']['address'];
-    let userInfoTD = document.createElement('td');
-    userInfoTD.classList.add('user-info');
-    if(!showUserAddress) userInfoTD.classList.add('hidden');
-    let userNameText = document.createTextNode(`${userInfo['name_first']} ${userInfo['name_last']}`);
-    userInfoTD.appendChild(userNameText);
-    userInfoTD.appendChild(document.createElement('br'));
-    let userAddressLineText1 = document.createTextNode(`${userAddress['line']}`);
-    userInfoTD.appendChild(userAddressLineText1);
-    userInfoTD.appendChild(document.createElement('br'));
-    let userAddressLineText2 = document.createTextNode(`${userAddress['city']}, ${userAddress['state']} ${userAddress['zip_code']}`);
-    userInfoTD.appendChild(userAddressLineText2);
+                    let lineItemName = document.createElement('h3');
+                    lineItemName.innerText = lineItems[lineItem].name;
 
-    tableElement.appendChild(userInfoTD);
+                    lineItemContainer.appendChild(lineItemName);
 
-    let lineItemTD = document.createElement('td');    
-    let ul = document.createElement('ul');
-    order['order_line_items'].forEach((lineItem) => {
-        let li = document.createElement('li');
-        let liInnerText = document.createTextNode(`${lineItem['quantity']} ${lineItem['name']}`);
-        li.appendChild(liInnerText);
-        ul.appendChild(li);
-    });
+                    let choices = lineItems[lineItem].choices;
+                    for(var choice in choices){
+                        let choiceName = document.createElement('h5');
+                        choiceName.innerText = choices[choice].name;
 
-    lineItemTD.appendChild(ul);
-    tableElement.appendChild(lineItemTD);
+                        lineItemContainer.appendChild(choiceName);
 
-    let statusTextTD = document.createElement('td');
-    statusTextTD.setAttribute('id', `order-status-${order['id']}`);
-    let statusText = document.createTextNode(`${STATUS_ARRAY[order['status']]}`);
-    statusTextTD.appendChild(statusText);
-    tableElement.appendChild(statusTextTD);
+                        let options = choices[choice].options;
+                        for(var option in options){
+                            let optionName = document.createElement('p');
+                            optionName.innerText = options[option].name;
 
-    let statusCheckboxTD = document.createElement('td');
-    let statusCheckbox = document.createElement('input');
-    statusCheckbox.setAttribute('type', 'checkbox');
-    statusCheckbox.setAttribute('name', 'status[]');
-    statusCheckbox.setAttribute('value', `${order['id']}`);
-    statusCheckboxTD.appendChild(statusCheckbox);
+                            lineItemContainer.appendChild(optionName);
+                        }
+                    }
 
-    tableElement.appendChild(statusCheckboxTD);
+                    let additions = lineItems[lineItem].additions;
+                    if(Object.entries(additions).length){
+                        let additionHeader = document.createElement('h5');
+                        additionHeader.innerText = 'Additions';
 
-    return tableElement;
-};
+                        lineItemContainer.appendChild(additionHeader);
+                    }
+                    for(var addition in additions){
+                        let additionName = document.createElement('p');
+                        additionName.innerText = additions[addition].name;
 
-const fillOrderTable = (ordersJSON) => {
-    ordersJSON.forEach(order => {
-        if(orderTable.querySelector(`#order-${order['id']}`) === null){
-            let tableAddition = createTableElement(order);
-            orderTable.appendChild(tableAddition);
-        } else {
-            let currentStatus = document.querySelector(`#order-status-${order['id']}`);
-            if(order['status'] !== currentStatus.innerHTML){
-                updateStatusText({ [order['id']] : [order['status']] });
+                        lineItemContainer.appendChild(additionName);
+                    }
+
+                    orderContainer.appendChild(lineItemContainer);
+                }
+
+                orderTable.appendChild(orderContainer);
+            } else {
+                // remove if order status is a completed or picked up one.
+                if(parseInt(orders[order].status) > 5){
+                    let orderElement = document.querySelector(`#order-${orders[order].id}`);
+                    orderElement.remove();
+                    return;
+                }
             }
         }
     });
 };
+getOrderList();
 
-const fetchOrderList = () => {
-    fetch(getOrdersURL).then(response => response.json()).then(result => fillOrderTable(result));
+const fetchInterval = 10000;
+setInterval(getOrderList, fetchInterval);
+
+/*
+var evtSource = new EventSource('/Dashboard/orders/stream');
+evtSource.onopen = function() {
+  
 };
-
-fetchOrderList();
-
-setInterval(fetchOrderList, fetchInterval);
-
-
-orderViewCheckbox.addEventListener('change', (event) => {
-    showUserAddress = orderViewCheckbox.checked;
-    let userInfoElements = document.getElementsByClassName('user-info');
-    let elementLength = userInfoElements.length;
-    for(let i = 0; i < elementLength; i++) {
-        if(showUserAddress){
-            userInfoElements[i].classList.remove('hidden');
-        } else {
-            userInfoElements[i].classList.add('hidden');
-        }
-        
-    };
-});
-
-const formStatusUpdate = document.querySelector('#form-status-update');
-formStatusUpdate.addEventListener('submit', event => {
-    event.preventDefault();
-    
-
-    let formData = new FormData(formStatusUpdate);
-    const url = window.location.origin + '/Dashboard/updateOrderStatus';
-
-    formStatusUpdate.reset();
-
-    fetch(url, {
-	body: formData,
-	method: 'post'
-    }).then(response => response.json()).then(result => updateStatusText(result));
-});
+evtSource.onmessage = function(e) {
+  
+};
+evtSource.onerror = function() {
+  
+};
+*/
