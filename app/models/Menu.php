@@ -1,7 +1,5 @@
 <?php
 
-require_once APP_ROOT . "/models/Model.php";
-
 class Menu extends Model{
 
     public function createMenuItem(int $activeState, int $category,

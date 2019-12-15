@@ -1,8 +1,5 @@
 <?php
 
-require_once APP_ROOT . "/models/Session.php";
-require_once APP_ROOT . "/models/User.php";
-
 class Controller{
 
     // Every controller, no matter the page, will need to know

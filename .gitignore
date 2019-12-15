@@ -3,3 +3,6 @@
 config.php
 /.vscode/*
 /.VSCodeCounter/*
+/vendor/
+composer.phar
+composer.lock

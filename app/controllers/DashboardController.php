@@ -1,9 +1,5 @@
 <?php
 
-require_once APP_ROOT . "/controllers/Controller.php";
-require_once APP_ROOT . "/models/Order.php";
-require_once APP_ROOT . "/models/Menu.php";
-
 class DashboardController extends Controller{
 
     private $orderManager;

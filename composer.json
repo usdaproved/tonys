@@ -1,0 +1,25 @@
+{
+    "name": "usdaproved/tonys",
+    "description": "Restaurant merchant website. From scratch with the exception of payments.",
+    "type": "project",
+    "require": {
+        "stripe/stripe-php": "^7.14",
+        "paypal/paypal-checkout-sdk": "^1.0"
+    },
+    "autoload": {
+	"classmap": [
+	    "app/"
+	],
+	"files": [
+	    "app/config.php",
+	    "app/const.php"
+	]
+    },
+    "authors": [
+        {
+            "name": "Trystan Brock",
+            "email": "me@trystanbrock.dev"
+        }
+    ],
+    "minimum-stability": "stable"
+}

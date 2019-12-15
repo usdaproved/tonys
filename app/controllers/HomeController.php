@@ -1,8 +1,10 @@
 <?php
 
-require_once APP_ROOT . "/controllers/Controller.php";
-require_once APP_ROOT . "/models/Order.php";
-require_once APP_ROOT . "/models/Menu.php";
+// TODO(trystan): Something to think about.
+// Get rid of login and logout and register controllers.
+// Have them all reside within js calls with the home contoller.
+// Or just fall under the home contoller to begin with.
+// Or some over arching contoller that handles all things user auth and user view related.
 
 class HomeController extends Controller{
     private $orderManager;

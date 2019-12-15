@@ -1,7 +1,5 @@
 <?php
 
-require_once APP_ROOT . "/controllers/Controller.php";
-
 class RegisterController extends Controller{
 
     public $user;

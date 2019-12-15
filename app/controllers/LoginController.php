@@ -1,8 +1,5 @@
 <?php
 
-require_once APP_ROOT . "/controllers/Controller.php";
-require_once APP_ROOT . "/models/Order.php";
-
 class LoginController extends Controller{
 
     private $orderManager;
