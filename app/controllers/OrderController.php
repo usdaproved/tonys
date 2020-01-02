@@ -54,16 +54,24 @@ class OrderController extends Controller{
 
         $this->hasUserInfo = true;
         foreach($this->user as $credential){
+            // TODO(Trystan): Should this be empty() instead?
             if(is_null($credential)){
                 $this->hasUserInfo = false;
             }
         }
 
+        \Stripe\Stripe::setApiKey(STRIPE_PRIVATE_KEY);
+
+        $paymentTokens = $this->orderManager->getPaymentTokens($cartID);
+        
+        $stripeToken = $paymentTokens["stripe_token"];
+        $stripePaymentIntent = \Stripe\PaymentIntent::retrieve($stripeToken);
+        $this->user["stripe_client_secret"] = $stripePaymentIntent["client_secret"];
+
         require_once APP_ROOT . "/views/order/order-submit-page.php";
     }
 
     public function submit_post() : void {
-        
         if(!$this->sessionManager->validateCSRFToken($_POST["CSRFToken"])){
             $this->redirect("/Order/submit");
         }
@@ -171,6 +179,10 @@ class OrderController extends Controller{
         echo json_encode($item);
     }
 
+    
+    // TODO(Trystan): As soon as we create a user, when they add something to the cart
+    // we should also be creating a stripe PaymentIntents object.
+    // Do the same with any other payment API's that track the transaction before the checkout.
     public function addItemToCart_post() : void {
         $userID = $this->getUserID();
 
@@ -185,7 +197,7 @@ class OrderController extends Controller{
         if(is_null($userID)){
             $userID = $this->userManager->createUnregisteredCredentials();
         }
-        
+
         $cartID = $this->orderManager->getCartID($userID);
         
         if(is_null($cartID)){
@@ -247,6 +259,19 @@ class OrderController extends Controller{
             $this->orderManager->addAdditionToLineItem($lineItemID, $additionID);
         }
 
+        \Stripe\Stripe::setApiKey(STRIPE_PRIVATE_KEY);
+
+        // TODO(Trystan): We need to update the database to use pennies instead of decimals.
+        // This does make the most sense to do integer math as opposed to messing with floats.
+        $transactionTotal = $this->orderManager->getCartTotalPrice($cartID) * 100;
+
+        $paymentTokens = $this->orderManager->getPaymentTokens($cartID);
+        
+        $stripeToken = $paymentTokens["stripe_token"];
+        \Stripe\PaymentIntent::update($stripeToken, [
+            'amount' => $transactionTotal,
+        ]);
+        
         echo $lineItemID;
     }
 

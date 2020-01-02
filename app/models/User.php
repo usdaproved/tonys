@@ -169,7 +169,7 @@ WHERE session_id = :session_id;";
         return $result["user_id"];
     }
 
-    public function getUserInfoByID(int $userID = NULL) : ?Array {
+    public function getUserInfoByID(int $userID = NULL) : array {
         $sql = "SELECT * FROM users WHERE id = :id;";
 
         $this->db->beginStatement($sql);
@@ -179,11 +179,11 @@ WHERE session_id = :session_id;";
         $userInfo = $this->db->getResult();
         $userInfo["address"] = $this->getUserAddressByID($userID);
 
-        if(is_bool($userInfo)) return NULL;
+        if(is_bool($userInfo)) return array();
         return $userInfo;
     }
 
-    public function getUserAddressByID(int $userID = NULL) : ?Array {
+    public function getUserAddressByID(int $userID = NULL) : array {
         $sql = "SELECT line, city, state, zip_code FROM address WHERE user_id = :user_id;";
 
         $this->db->beginStatement($sql);
@@ -192,11 +192,11 @@ WHERE session_id = :session_id;";
 
         $result = $this->db->getResult();
 
-        if(is_bool($result)) return NULL;
+        if(is_bool($result)) return array();
         return $result;
     }
 
-    public function getRegisteredCredentialsByEmail(string $email) : ?Array {
+    public function getRegisteredCredentialsByEmail(string $email) : array {
         $sql = "SELECT * FROM registered_credentials
 WHERE user_id = (SELECT id FROM users WHERE email = :email);";
 
@@ -206,7 +206,7 @@ WHERE user_id = (SELECT id FROM users WHERE email = :email);";
 
         $result = $this->db->getResult();
 
-        if(is_bool($result)) return NULL;
+        if(is_bool($result)) return array();
         return $result;
     }
 
@@ -223,7 +223,7 @@ WHERE user_id = (SELECT id FROM users WHERE email = :email);";
         return $result["user_type"];
     }
 
-    public function getAllEmployees() : ?array {
+    public function getAllEmployees() : array {
         $sql = "SELECT * FROM users WHERE user_type > 0;";
 
         $this->db->beginStatement($sql);
@@ -231,7 +231,7 @@ WHERE user_id = (SELECT id FROM users WHERE email = :email);";
 
         $employees = $this->db->getResultSet();
         
-        if(is_bool($employees)) return NULL;
+        if(is_bool($employees)) return array();
         return $employees;
     }
 

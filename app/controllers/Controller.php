@@ -21,11 +21,12 @@ class Controller{
             $file = end($file);
             $file = explode(".", $file)[0];
         }
-	// TODO: This should be https only
-	$protocol = "https://";
-	if(empty($_SERVER["HTTPS"])) $protocol = "http://"; 
 
-    return $protocol . $_SERVER["HTTP_HOST"] . "/" . $fileType . "/" . $file . "." . $fileType;
+        // TODO: This should be https only
+        $protocol = "https://";
+        if(empty($_SERVER["HTTPS"])) $protocol = "http://"; 
+        
+        return $protocol . $_SERVER["HTTP_HOST"] . "/" . $fileType . "/" . $file . "." . $fileType;
     }
 
     /**
@@ -98,7 +99,7 @@ class Controller{
             $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
             $valid = false;
         }
-        if(!is_null($this->userManager->getRegisteredCredentialsByEmail($_POST["email"]))){
+        if(!empty($this->userManager->getRegisteredCredentialsByEmail($_POST["email"]))){
             $message = MESSAGE_EMAIL_IN_USE;
             $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
             $valid = false;

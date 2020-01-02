@@ -10,54 +10,56 @@ class App {
     // Which ends up getting parsed to DashboardController->menu_item_get()
     // Where DashboardController->menu_get() is also a valid function.
 
-    private $controller = "HomeController";
-
     public function __construct() {
         $url = $this->parseUrl();
 
-        $this->controller = $this->getController($url);
-        // Unsetting the controller allows us to iterate over the function segments
-        unset($url[0]);
+        $controller = $this->getController($url);
+        $method = $this->getMethod($controller, $url);
 
-        call_user_func([$this->controller, $this->getMethod($url)]);
+        // TODO(Trystan): If this function fails, like it will when you call a private function.
+        // Then have it pull up the 404 not found page.
+        call_user_func(array($controller, $method));
     }
 
-    private function parseUrl() : ?array {
+    private function parseUrl() : array {
         if(!isset($_GET["url"])) {
-            return NULL;
+            return array();
         }
 
         $url = $_GET["url"];
         $trimmedUrl = rtrim($url, "/");
+        // TODO(Trystan): ensure that this truly leaves no security vulnerabilities.
         $sanitizedUrl = filter_var($trimmedUrl, FILTER_SANITIZE_URL);
         $splitUrl = explode("/", $sanitizedUrl);
 
         return $splitUrl;
     }
 
-    private function getController(array $url = NULL) : object {
-        if(!is_null($url)){
+    private function getController(array &$url = NULL) : Controller {
+        if(!empty($url)){
             $newUrl = $url;
             $passedController = ucwords($url[0]);
             $passedController = $passedController . "Controller";
             $controllerUrl = APP_ROOT . "/controllers/$passedController.php";
 
             if(file_exists($controllerUrl)) {
-                $this->controller = $passedController;
+                $passedController;
+                unset($url[0]);
+
+                return new $passedController();
             }
         }
 
-        require_once APP_ROOT . "/controllers/$this->controller.php";
-        return new $this->controller();
+        return new HomeController(); // Default controller, the index page.
     }
 
-    private function getMethod(array $url = NULL) : string {
+    private function getMethod(Controller $controller, array &$url = NULL) : string {
         $requestMethod = strtolower($_SERVER["REQUEST_METHOD"]);
         
         $passedMethod = $requestMethod;
 
-        // The remaining url at this point refers to functions within the contoller.
-        if(isset($url)){
+        // The remaining url at this point refers to functions within some contoller.
+        if(!empty($url)){
             $controllerFunction = "";
             foreach($url as $functionSegment){
                 $controllerFunction = $controllerFunction . $functionSegment . "_";
@@ -65,7 +67,7 @@ class App {
             $passedMethod = strtolower($controllerFunction) . $requestMethod;
         }
         
-        if(!method_exists($this->controller, $passedMethod)){
+        if(!method_exists($controller, $passedMethod)){
             return strtolower($_SERVER["REQUEST_METHOD"]);
         }
 

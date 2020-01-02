@@ -7,14 +7,37 @@ class Order extends Model{
      */
     public function createCart(int $userID) : int {
         // Create order, then add line items associated with order.
-        $sqlOrder = "INSERT INTO orders (user_id)
+        $sql = "INSERT INTO orders (user_id)
 VALUES (:user_id);";
 
-        $this->db->beginStatement($sqlOrder);
+        $this->db->beginStatement($sql);
         $this->db->bindValueToStatement(":user_id", $userID);
         $this->db->executeStatement();
+
+        $cartID = $this->db->lastInsertID();
+
+        // Create payment tokens and anything explicitly tied to the cart.
+        \Stripe\Stripe::setApiKey(STRIPE_PRIVATE_KEY);
+        $paymentIntent = \Stripe\PaymentIntent::create([
+            // TODO(Trystan): Figure out what other options to set here.
+            'amount' => 50, // create a stub transaction of 50 cents, stripe min.
+            'currency' => 'usd',
+        ]);
         
-        return $this->db->lastInsertID();
+        $stripePaymentID = $paymentIntent["id"];
+
+        // We can then insert all necessary payment tokens into the same table.
+        $sql = "INSERT INTO order_payment_tokens (order_id, stripe_token)
+VALUES (:order_id, :stripe_token);";
+
+        $this->db->beginStatement($sql);
+
+        $this->db->bindValueToStatement(":order_id", $cartID);
+        $this->db->bindValueToStatement(":stripe_token", $stripePaymentID);
+
+        $this->db->executeStatement();
+
+        return $cartID;
     }
 
     public function addLineItemToCart(int $cartID, int $itemID,
@@ -37,6 +60,17 @@ VALUES (:order_id, :menu_item_id, :quantity, :price, :comment);";
         $this->updateCartSubtotal($cartID);
 
         return $lineItemID;
+    }
+
+    public function getCartTotalPrice(int $cartID) : float {
+        // TODO(Trystan): Update this to use the actual total post tax.
+        $sql = "SELECT subtotal FROM orders WHERE id = :id;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":id", $cartID);
+        $this->db->executeStatement();
+
+        return $this->db->getResult()["subtotal"];
     }
 
     public function addOptionToLineItem(int $lineItemID, int $choiceID, int $optionID) : void {
@@ -79,7 +113,6 @@ VALUES (:line_item_id, :addition_id);";
      * a completed order would have it's price updated after submission.
      */
     public function updateCartSubtotal(int $cartID) : void {
-        // TODO: Use sql functions to sum up the line items.
         $sql = "UPDATE orders SET 
 subtotal = (SELECT SUM(price) FROM order_line_items WHERE order_id = :id)  
 WHERE id = :id;";
@@ -354,6 +387,16 @@ ORDER BY x.date desc;";
         
         if(is_bool($status)) return NULL;
         return $status["status"];
+    }
+
+    public function getPaymentTokens(int $orderID) : array {
+        $sql = "SELECT * FROM order_payment_tokens WHERE order_id = :order_id;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":order_id", $orderID);
+        $this->db->executeStatement();
+
+        return $this->db->getResult();
     }
 }
 

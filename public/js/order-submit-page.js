@@ -1,0 +1,72 @@
+// This code must be structured in such a way
+// that one of multiple payment processors will be used
+// The customer will decide which one they want to use.
+// All payment solutions are routed through the same submit button.
+// Or perhaps we will have to wait and see how using paypal changes things.
+
+// TODO: This is the test key. Gotta be sure to update with the actual information.
+let STRIPE_PUBLIC_KEY = "pk_test_olXR5p3L8x6QCOlVwe4GthK6004qkU4Loa"; 
+
+let stripe = Stripe(STRIPE_PUBLIC_KEY);
+let stripeElements = stripe.elements();
+
+let stripeStyling = {
+  base: {
+      color: "#32325d",
+  }
+};
+
+let stripeCard = stripeElements.create("card", {style: stripeStyling});
+stripeCard.mount("#stripe-card-element");
+
+
+// Copy and pasted from the stripe website.
+// Obviously modification will have to be done in order
+// to allow for multiple processors and for our own info to go through as well.
+
+stripeCard.addEventListener('change', ({error}) => {
+  const displayError = document.getElementById('stripe-card-errors');
+  if (error) {
+    displayError.textContent = error.message;
+  } else {
+    displayError.textContent = '';
+  }
+});
+
+  
+
+let name_first = document.querySelector('#name_first').innerText;
+let name_last = document.querySelector('#name_last').innerText;
+  
+var submitButton = document.getElementById('stripe-submit-payment');
+
+submitButton.addEventListener('click', function(e) {
+  stripe.confirmCardPayment(clientSecret, {
+    payment_method: {
+      card: card,
+      billing_details: {
+        // TODO(Trystan): We should probably put all relevant customer info in here.
+        // That way we can collect all info from the webhook. I'm thinking that's how it works.
+        name: name_first + name_last // TODO(trystan): Check if these inputs need sanitized.
+      }
+    }
+  }).then(function(result) {
+    if (result.error) {
+      // Show error to your customer (e.g., insufficient funds)
+      console.log(result.error.message);
+    } else {
+      // The payment has been processed!
+      if (result.paymentIntent.status === 'succeeded') {
+        // Show a success message to your customer
+        // There's a risk of the customer closing the window before callback
+        // execution. Set up a webhook or plugin to listen for the
+        // payment_intent.succeeded event that handles any business critical
+        // post-payment actions.
+
+        
+      } else {
+        e.preventDefault();
+      }
+    }
+  });
+});

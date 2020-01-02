@@ -3,9 +3,14 @@
 class Session{
 
     public function __construct(){
-        if(!isset($_SESSION)){
-            session_start();
+        // TODO(Trystan): Look more into PHP Sessions.
+        // We at some point want to set up "keep me logged in" type tokens.
+        if (isset($_COOKIE['PHPSESSID'])){
+            session_id($_COOKIE['PHPSESSID']);
         }
+
+        session_start();
+
         if (empty($_SESSION["CSRFToken"])) {
             if (function_exists("random_bytes")) {
                 $_SESSION["CSRFToken"] = bin2hex(random_bytes(32));
@@ -30,25 +35,25 @@ class Session{
         return $valid;
     }
 
-    public function getCSRFToken(){
+    public function getCSRFToken() : string {
         return $_SESSION["CSRFToken"];
     }
 
-    public function login($userID){
+    public function login($userID) : void {
         $_SESSION["user_id"] = $userID;
     }
 
-    public function logout(){
+    public function logout() : void {
         unset($_SESSION["user_id"]);
 
         session_destroy();
     }
 
-    public function isUserLoggedIn(){
+    public function isUserLoggedIn() : bool {
         return isset($_SESSION["user_id"]);
     }
 
-    public function getUserID(){
+    public function getUserID() : int {
         return $_SESSION["user_id"];
     }
 
