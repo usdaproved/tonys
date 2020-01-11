@@ -41,6 +41,11 @@ class OrderController extends Controller{
         require_once APP_ROOT . "/views/order/order-select-page.php";
     }
 
+
+    // TODO(trystan): Break up the part where we get customer information
+    // and submission of payment.
+    
+
     public function submit_get() : void {
         $userID = $this->getUserID();
         
@@ -71,6 +76,8 @@ class OrderController extends Controller{
         require_once APP_ROOT . "/views/order/order-submit-page.php";
     }
 
+    // TODO(trystan): We won't need to validate user information here,
+    // because we should already have it.
     public function submit_post() : void {
         if(!$this->sessionManager->validateCSRFToken($_POST["CSRFToken"])){
             $this->redirect("/Order/submit");
@@ -273,6 +280,35 @@ class OrderController extends Controller{
         ]);
         
         echo $lineItemID;
+    }
+
+    public function stripeWebhook() : void {
+        $payload = file_get_contents("php://input");
+        $event = NULL;
+
+        try {
+            $event = \Stripe\Event::constructFrom(
+                json_decode($payload, true)
+            );
+        } catch(\UnexpectedValueException $e) {
+            // Invalid payload
+            http_response_code(400);
+            exit();
+        }
+
+        // Handle the event
+        switch ($event->type) {
+        case "payment_intent.succeeded":
+            $paymentIntent = $event->data->object; // contains a \Stripe\PaymentIntent
+            //handlePaymentIntentSucceeded($paymentIntent);
+            break;
+        default:
+            // Unexpected event type
+            http_response_code(400);
+            exit();
+        }
+
+        http_response_code(200);
     }
 
     // HELPER FUNCTIONS

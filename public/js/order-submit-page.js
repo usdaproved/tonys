@@ -38,12 +38,14 @@ stripeCard.addEventListener('change', ({error}) => {
 let name_first = document.querySelector('#name_first').innerText;
 let name_last = document.querySelector('#name_last').innerText;
   
-var submitButton = document.getElementById('stripe-submit-payment');
+//var submitButton = document.getElementById('stripe-payment-submit');
 
 submitButton.addEventListener('click', function(e) {
+  e.preventDefault();
+  let clientSecret = submitButton.dataset.secret;
   stripe.confirmCardPayment(clientSecret, {
     payment_method: {
-      card: card,
+      card: stripeCard,
       billing_details: {
         // TODO(Trystan): We should probably put all relevant customer info in here.
         // That way we can collect all info from the webhook. I'm thinking that's how it works.
@@ -64,8 +66,6 @@ submitButton.addEventListener('click', function(e) {
         // post-payment actions.
 
         
-      } else {
-        e.preventDefault();
       }
     }
   });

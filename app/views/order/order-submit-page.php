@@ -43,7 +43,7 @@
     <div id="stripe-card-errors" role="alert"></div>
 
     <input type="hidden" id="CSRFToken" name="CSRFToken" value="<?= $this->sessionManager->getCSRFToken(); ?>">
-    <button id="submit">Pay</button>
+    <button id="stripe-payment-submit" data-secret="<?=$this->user['stripe_client_secret']?>">Pay</button>
 
 </article>
 
