@@ -8,10 +8,10 @@
     <h3>Welcome, <?= $this->escapeForHTML($this->user['name_first']); ?>.</h3>
 <?php endif; ?>
 <?php if($this->isLoggedIn):?>
-    <a href="/Logout">Log out</a>
+    <a href="/logout">Log out</a>
 <?php else: ?>
-    <a href="/Register">Register</a>
-    <a href="/Login">Log in</a>
+    <a href="/register">Register</a>
+    <a href="/login">Log in</a>
 <?php endif; ?>
 <a href="/Order">Order</a>
 

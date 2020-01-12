@@ -5,7 +5,7 @@
 // Or perhaps we will have to wait and see how using paypal changes things.
 
 // TODO: This is the test key. Gotta be sure to update with the actual information.
-let STRIPE_PUBLIC_KEY = "pk_test_olXR5p3L8x6QCOlVwe4GthK6004qkU4Loa"; 
+const STRIPE_PUBLIC_KEY = "pk_test_olXR5p3L8x6QCOlVwe4GthK6004qkU4Loa"; 
 
 let stripe = Stripe(STRIPE_PUBLIC_KEY);
 let stripeElements = stripe.elements();
@@ -38,11 +38,14 @@ stripeCard.addEventListener('change', ({error}) => {
 let name_first = document.querySelector('#name_first').innerText;
 let name_last = document.querySelector('#name_last').innerText;
   
-//var submitButton = document.getElementById('stripe-payment-submit');
+const submitButton = document.querySelector('#stripe-payment-submit');
 
 submitButton.addEventListener('click', function(e) {
   e.preventDefault();
+
   let clientSecret = submitButton.dataset.secret;
+  let orderID = submitButton.dataset.orderid;
+
   stripe.confirmCardPayment(clientSecret, {
     payment_method: {
       card: stripeCard,
@@ -65,7 +68,7 @@ submitButton.addEventListener('click', function(e) {
         // payment_intent.succeeded event that handles any business critical
         // post-payment actions.
 
-        
+        window.location.replace(`/Order/confirmed?order=${orderID}`);
       }
     }
   });

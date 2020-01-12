@@ -1,5 +1,5 @@
 <?php require APP_ROOT . "/views/includes/header.php" ?>
-<script src="https://js.stripe.com/v3/"></script>
+
 <link href="<?= $this->getFile("css", __FILE__); ?>" rel="stylesheet">
 
 <?php $this->printOneTimeMessages(USER_ALERT); ?>
@@ -43,10 +43,10 @@
     <div id="stripe-card-errors" role="alert"></div>
 
     <input type="hidden" id="CSRFToken" name="CSRFToken" value="<?= $this->sessionManager->getCSRFToken(); ?>">
-    <button id="stripe-payment-submit" data-secret="<?=$this->user['stripe_client_secret']?>">Pay</button>
+    <button id="stripe-payment-submit" data-secret="<?=$this->user['stripe_client_secret']?>" data-orderid="<?=$this->orderStorage['id']?>">Pay</button>
 
 </article>
 
-
-<script src="<?=$this->getFile('js', __FILE__);?>" type="module"></script>
+<script src="https://js.stripe.com/v3/"></script>
+<script src="<?=$this->getFile('js', __FILE__);?>"></script>
 <?php require APP_ROOT . "/views/includes/footer.php" ?>

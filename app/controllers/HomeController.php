@@ -35,7 +35,9 @@ class HomeController extends Controller{
     // That would also make a good place to view user info such as address and past orders.
     // Or maybe only those things belong there and logging in and out doesn't.
     // Can't decide.
-    
+
+    // TODO(Trystan): Set up a redirect path back to the submit page
+    // if a redirect is set from the User/new page. ?redirect=submit
     public function register_get() : void {
         if($this->sessionManager->isUserLoggedIn()){
             $this->redirect("/");
@@ -130,8 +132,6 @@ class HomeController extends Controller{
         $this->redirect("/Login");
     }
 
-    // TODO(Trystan): Should this be a POST instead?
-    // They say stateful changes should all be POST's.
     public function logout_get() : void 
     {
         $this->sessionManager->logout();

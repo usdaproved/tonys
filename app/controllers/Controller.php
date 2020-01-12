@@ -25,6 +25,14 @@ class Controller{
         // TODO: This should be https only
         $protocol = "https://";
         if(empty($_SERVER["HTTPS"])) $protocol = "http://"; 
+
+        // TODO(Trystan): When this is live, only accept the official doamin.
+        $acceptableHosts = array("tonys.db", "localhost", "tonys.trystanbrock.dev");
+        
+        if(!isset($_SERVER['HTTP_HOST']) || !in_array($_SERVER['HTTP_HOST'], $acceptableHosts)) {
+            http_response_code(404);
+            exit;
+        }
         
         return $protocol . $_SERVER["HTTP_HOST"] . "/" . $fileType . "/" . $file . "." . $fileType;
     }
@@ -53,6 +61,7 @@ class Controller{
         return NULL;
     }
 
+    // TODO(Trystan): Add a bool as argument to see if we want to check address or not.
     public function validateNewUserInformation() : bool {
         $valid = true;
         

@@ -20,8 +20,11 @@ VALUES (:user_id);";
         \Stripe\Stripe::setApiKey(STRIPE_PRIVATE_KEY);
         $paymentIntent = \Stripe\PaymentIntent::create([
             // TODO(Trystan): Figure out what other options to set here.
-            'amount' => 50, // create a stub transaction of 50 cents, stripe min.
-            'currency' => 'usd',
+            "amount" => 50, // create a stub transaction of 50 cents, stripe min.
+            "currency" => "usd",
+            "metadata" => [
+                "order_id" => $cartID,
+            ],
         ]);
         
         $stripePaymentID = $paymentIntent["id"];

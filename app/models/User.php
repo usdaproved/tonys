@@ -154,7 +154,9 @@ name_first = :name_first, name_last = :name_last
         $this->db->executeStatement();
     }
 
-    // returns null if no user_id associated with unreg session yet.
+    /**
+     * return null if no user_id associated with unreg session yet.
+     */
     public function getUserIDByUnregisteredSessionID() : ?int {
         $sql = "SELECT user_id FROM unregistered_credentials
 WHERE session_id = :session_id;";

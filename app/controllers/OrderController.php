@@ -2,13 +2,13 @@
 
 class OrderController extends Controller{
 
-    private $menuManager;
-    private $orderManager;
+    private Menu $menuManager;
+    private Order $orderManager;
         
-    public $menuStorage;
-    public $orderStorage;
-    public $user;
-    public $hasUserInfo;
+    public array $menuStorage;
+    public array $orderStorage;
+    public array $user;
+    public bool $hasUserInfo;
     
     public function __construct(){
         parent::__construct();
@@ -57,11 +57,12 @@ class OrderController extends Controller{
 
         $this->user = $this->userManager->getUserInfoByID($userID);
 
-        $this->hasUserInfo = true;
+        // TODO(Trystan): Check the type of order, we don't need to collect address info
+        // if it's just a pickup.
         foreach($this->user as $credential){
-            // TODO(Trystan): Should this be empty() instead?
             if(is_null($credential)){
-                $this->hasUserInfo = false;
+                // TODO(Trystan): Send the actual type of order, pickup or delivery
+                $this->redirect("/User/new?orderType=delivery");
             }
         }
 
@@ -76,62 +77,8 @@ class OrderController extends Controller{
         require_once APP_ROOT . "/views/order/order-submit-page.php";
     }
 
-    // TODO(trystan): We won't need to validate user information here,
-    // because we should already have it.
-    public function submit_post() : void {
-        if(!$this->sessionManager->validateCSRFToken($_POST["CSRFToken"])){
-            $this->redirect("/Order/submit");
-        }
-                
-        $userID = $this->getUserID();
-        
-        $cartID = $this->orderManager->getCartID($userID);
-        // TODO(trystan): Verify that the cart is not empty when the order is submitted.
-        // no point in having an order with no line items.
-        if(is_null($cartID)){
-            $this->sessionManager->pushOneTimeMessage(USER_ALERT, "Empty cart.");
-            $this->redirect("/Order");
-        }
-
-        $this->user = $this->userManager->getUserInfoByID($userID);
-        
-        $this->hasUserInformation = true;
-        foreach($this->user as $credential){
-            if(is_null($credential)){
-                $this->hasUserInformation = false;
-            }
-        }
-        
-        if(!$this->hasUserInformation && !$this->validateNewUserInformation()){
-            $this->redirect("/Order/submit");
-        }
-
-        if(!$this->hasUserInformation){
-            $this->userManager->setEmail($userID, $_POST["email"]);
-            $this->userManager->setName($userID, $_POST["name_first"], $_POST["name_last"]);
-            $this->userManager->setPhoneNumber($userID, $_POST["phone"]);
-            $this->userManager->setAddress($userID, $_POST["address_line"], $_POST["city"], $_POST["state"], $_POST["zip_code"]);
-
-            // Need to get the filled out information since it wasn't present the first time.
-            $this->user = $this->userManager->getUserInfoByID($userID);
-        }
-
-        // TODO: validate payment.
-
-        // TODO: Have the user set what type of order they want to place.
-        $orderType = DELIVERY;
-        $this->orderManager->submitOrder($cartID, $orderType);
-
-        // TODO: Setup an SMTP Server in order for email to go out.
-        // TODO: Construct a better email, each line in an email cannot be more than 70 chars.
-        // Cox blocks communication over SMTP. Won't be able to test this for awhile.
-        mail($this->user["email"], "Tony's Taco House Order", "Your order has been confirmed.");
-
-        $this->redirect("/Order/confirmed?order=" . $cartID);
-    }
-
     /**
-     *gets passed the orderID of the confirmed order.
+     * Gets passed the orderID of the confirmed order.
      */
     public function confirmed_get() : void {
         if(!isset($_GET["order"])){
@@ -143,7 +90,7 @@ class OrderController extends Controller{
 
         $userID = $this->getUserID();
 
-        if($this->orderStorage["user_id"] != $userID){
+        if($this->orderStorage["user_id"] != $userID || $this->orderStorage["status"] == CART){
             $this->redirect("/Order");
         }
 
@@ -152,25 +99,11 @@ class OrderController extends Controller{
         require_once APP_ROOT . "/views/order/order-confirmed-page.php";
     }
 
-    public function view_get() : void {
-        $userID = $this->getUserID();
-        if(is_null($userID)){
-            // TODO: Perhaps handle this differently, just show some message saying
-            // something about this is where your orders will show up when you make one.
-            $this->redirect("/");
-        }
-        $this->orderStorage = $this->orderManager->getAllOrdersByUserID($userID);
-
-        require_once APP_ROOT . "/views/order/order-view-page.php";
-    }
-
     
     // JS CALLS
 
     
     public function getItemDetails_post() : void {
-        //$userID = $this->getUserID();
-
         $json = file_get_contents("php://input");
         $postData = json_decode($json, true);
         
@@ -276,22 +209,27 @@ class OrderController extends Controller{
         
         $stripeToken = $paymentTokens["stripe_token"];
         \Stripe\PaymentIntent::update($stripeToken, [
-            'amount' => $transactionTotal,
+            "amount" => $transactionTotal,
         ]);
         
         echo $lineItemID;
     }
 
-    public function stripeWebhook() : void {
+    public function stripeWebhook_post() : void {
         $payload = file_get_contents("php://input");
+        $sig_header = $_SERVER['HTTP_STRIPE_SIGNATURE'];
         $event = NULL;
 
         try {
-            $event = \Stripe\Event::constructFrom(
-                json_decode($payload, true)
+            $event = \Stripe\Webhook::constructEvent(
+                $payload, $sig_header, STRIPE_ENDPOINT_KEY
             );
         } catch(\UnexpectedValueException $e) {
             // Invalid payload
+            http_response_code(400);
+            exit();
+        } catch(\Stripe\Exception\SignatureVerificationException $e) {
+            // Invalid signature
             http_response_code(400);
             exit();
         }
@@ -300,7 +238,15 @@ class OrderController extends Controller{
         switch ($event->type) {
         case "payment_intent.succeeded":
             $paymentIntent = $event->data->object; // contains a \Stripe\PaymentIntent
-            //handlePaymentIntentSucceeded($paymentIntent);
+            $orderID = $paymentIntent["metadata"]["order_id"];
+            $orderType = DELIVERY; // TODO(Trystan): Actually implement selection of DELIVERY or PICKUP or IN_RESTAURANT
+            $this->orderManager->submitOrder($orderID, $orderType);
+            // TODO(Trystan): Get the user and send them an email here.
+            // TODO: Setup an SMTP Server in order for email to go out.
+            // TODO: Construct a better email, each line in an email cannot be more than 70 chars.
+            // Cox blocks communication over SMTP. Won't be able to test this for awhile.
+            //mail($this->user["email"], "Tony's Taco House Order", "Your order has been confirmed.");
+            
             break;
         default:
             // Unexpected event type
