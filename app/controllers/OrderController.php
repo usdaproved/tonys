@@ -41,11 +41,6 @@ class OrderController extends Controller{
         require_once APP_ROOT . "/views/order/order-select-page.php";
     }
 
-
-    // TODO(trystan): Break up the part where we get customer information
-    // and submission of payment.
-    
-
     public function submit_get() : void {
         $userID = $this->getUserID();
         
@@ -119,10 +114,6 @@ class OrderController extends Controller{
         echo json_encode($item);
     }
 
-    
-    // TODO(Trystan): As soon as we create a user, when they add something to the cart
-    // we should also be creating a stripe PaymentIntents object.
-    // Do the same with any other payment API's that track the transaction before the checkout.
     public function addItemToCart_post() : void {
         $userID = $this->getUserID();
 
@@ -255,6 +246,74 @@ class OrderController extends Controller{
         }
 
         http_response_code(200);
+    }
+
+    public function paypalCreateOrder_post() : void {
+        // In order to fill out the information in the body,
+        // we must get the info from the order.
+        $userID = $this->getUserID();
+
+        $cartID = $this->orderManager->getCartID($userID);
+        if(is_null($cartID)){
+            http_response_code(400);
+        }
+        $order = $this->orderManager->getOrderByID($cartID);
+        
+        $request = new \PayPalCheckoutSdk\Orders\OrdersCreateRequest();
+        $request->prefer('return=representation');
+        $request->body = array(
+            'intent' => 'CAPTURE',
+            'purchase_units' =>
+                array(
+                    0 =>
+                        array(
+                            'amount' =>
+                                array(
+                                    'currency_code' => 'USD',
+                                    'value' => $order["subtotal"] // Paypal expects 0.00 format
+                                )
+                        )
+                )
+        );
+
+        $environment = new \PayPalCheckoutSdk\Core\SandboxEnvironment(PAYPAL_PUBLIC_KEY, PAYPAL_PRIVATE_KEY);
+        $client = new \PayPalCheckoutSdk\Core\PayPalHttpClient($environment);
+        
+        $response = $client->execute($request);
+
+        $data = ["paypalID" => $response->result->id];
+
+        echo json_encode($data);
+    }
+
+    public function paypalCaptureOrder_post() : void {
+        $userID = $this->getUserID();
+
+        $json = file_get_contents("php://input");
+        $postData = json_decode($json, true);
+
+        $cartID = $this->orderManager->getCartID($userID);
+        if(is_null($cartID)){
+            http_response_code(400);
+        }
+        
+        $paypalID = $postData["paypalID"];
+        $request = new \PayPalCheckoutSdk\Orders\OrdersCaptureRequest($paypalID);
+
+        $environment = new \PayPalCheckoutSdk\Core\SandboxEnvironment(PAYPAL_PUBLIC_KEY, PAYPAL_PRIVATE_KEY);
+        $client = new \PayPalCheckoutSdk\Core\PayPalHttpClient($environment);
+
+        // NOTE(Trystan): This response is where we would gather information about the customer.
+        // such as name and address. Instead of asking the customer for info twice, we could gather once here,
+        // but only if they're using paypal of course.
+        // Using Stripe we would still have to collect address info manually.
+        $response = $client->execute($request);
+        // 4. Save the capture ID to your database. Implement logic to save capture to your database for future reference.
+        // TODO(Trystan): In the database, in the orders table. Add two columns, payment method, and payment token.
+        $orderType = DELIVERY; // TODO(Trystan): Actually implement selection of DELIVERY or PICKUP or IN_RESTAURANT
+        $this->orderManager->submitOrder($cartID, $orderType);
+        
+        echo json_encode($response);
     }
 
     // HELPER FUNCTIONS

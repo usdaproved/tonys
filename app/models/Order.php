@@ -144,8 +144,10 @@ order_type = :order_type, status = " . SUBMITTED . ", date = NOW() WHERE id = :i
      * to the registered account. Also update the cart to what it was on the device they
      * just logged into as that 'should' be the most recent one, logically. 
      */
+    // TODO(Trystan): Carts don't look like they used to. Now there's all kinds of line items and additions,
+    // deleting a cart ain't this easy anymore. When we get to deleting cart items, we will re-implement this.
     public function updateOrdersFromUnregisteredToRegistered(int $unregisteredUserID, int $registeredUserID) : void {
-        $previousCartID = $this->getCartID($registeredUserID);
+        //$previousCartID = $this->getCartID($registeredUserID);
         
         $sql = "UPDATE orders SET user_id = :registered_user_id
 WHERE user_id = :unregistered_user_id;";
@@ -154,12 +156,14 @@ WHERE user_id = :unregistered_user_id;";
         $this->db->bindValueToStatement(":registered_user_id", $registeredUserID);
         $this->db->bindValueToStatement(":unregistered_user_id", $unregisteredUserID);
         $this->db->executeStatement();
-        
+
+        /*
         $sql = "DELETE FROM orders WHERE id = :previous_cart_id;";
 
         $this->db->beginStatement($sql);
         $this->db->bindValueToStatement(":previous_cart_id", $previousCartID);
         $this->db->executeStatement();
+        */
     }
 
     public function updateOrderStatus(int $orderID, int $status) : void {
@@ -184,6 +188,7 @@ WHERE user_id = :unregistered_user_id;";
         return $orderID["id"];
     }
 
+    // TODO(Trystan): It's not even possible to get a NULL return here.
     public function getOrderByID(int $orderID = NULL) : ?array {
         $sql = "SELECT * FROM orders WHERE id = :id;";
 
@@ -192,6 +197,8 @@ WHERE user_id = :unregistered_user_id;";
         $this->db->executeStatement();
 
         $order = $this->db->getResult();
+
+        
 
         $sql = "SELECT 
 li.id,

@@ -44,9 +44,11 @@
 
     <input type="hidden" id="CSRFToken" name="CSRFToken" value="<?= $this->sessionManager->getCSRFToken(); ?>">
     <button id="stripe-payment-submit" data-secret="<?=$this->user['stripe_client_secret']?>" data-orderid="<?=$this->orderStorage['id']?>">Pay</button>
+    
+    <div id="paypal-button-container"></div>
 
 </article>
-
+<script src="https://www.paypal.com/sdk/js?client-id=<?=PAYPAL_PUBLIC_KEY?>&disable-funding=credit,card"></script>
 <script src="https://js.stripe.com/v3/"></script>
 <script src="<?=$this->getFile('js', __FILE__);?>"></script>
 <?php require APP_ROOT . "/views/includes/footer.php" ?>

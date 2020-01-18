@@ -1,6 +1,8 @@
 <?php require APP_ROOT . "/views/includes/header.php" ?>
 <link rel="stylesheet" type="text/css" href="<?= $this->getFile("css", __FILE__); ?>">
 <header>Tony's Taco House</header>
+<!-- I'd like to have this button pop up after something has been added to the cart. -->
+<a href="/Order/submit">Submit Order</a>
 
 <?php $this->printOneTimeMessages(USER_ALERT); ?>
 

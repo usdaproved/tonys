@@ -3,6 +3,9 @@
 const USER_ALERT = "alert";
 const USER_SUCCESS = "success";
 
+const INTERNAL_REDIRECT = "redirect";
+const REDIRECT_ADDRESSES = ["/Order/submit"];
+
 const MAX_ORDER_QUANTITY = 30;
 const MAX_ORDER_PRICE   = 100;
 

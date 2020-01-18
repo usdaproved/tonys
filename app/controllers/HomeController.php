@@ -31,13 +31,6 @@ class HomeController extends Controller{
         require_once APP_ROOT . "/views/home/home-page.php";
     }
 
-    // TODO(Trystan): Consider throwing these functions in a UserController.
-    // That would also make a good place to view user info such as address and past orders.
-    // Or maybe only those things belong there and logging in and out doesn't.
-    // Can't decide.
-
-    // TODO(Trystan): Set up a redirect path back to the submit page
-    // if a redirect is set from the User/new page. ?redirect=submit
     public function register_get() : void {
         if($this->sessionManager->isUserLoggedIn()){
             $this->redirect("/");
@@ -46,6 +39,8 @@ class HomeController extends Controller{
         $userID = $this->getUserID();
 
         $this->user = $this->userManager->getUserInfoByID($userID);
+
+        $this->sessionManager->setRedirect();
         
         require_once APP_ROOT . "/views/register/register-page.php";
     }
@@ -54,10 +49,14 @@ class HomeController extends Controller{
         if($this->sessionManager->isUserLoggedIn()){
             $this->redirect("/");
         }
-        
+
         // TODO: Decide how to handle a bad CSRFToken.
         if(!$this->sessionManager->validateCSRFToken($_POST["CSRFToken"])){
-            $this->redirect("/Register");
+            $redirect = $this->sessionManager->getRedirect();
+            if(!is_null($redirect)){
+                $this->redirect("/register?redirect=" . $redirect);
+            }
+            $this->redirect("/register");
         }
         
         $validPassword = true;
@@ -67,8 +66,12 @@ class HomeController extends Controller{
             $validPassword = false;
         }
 
-        if(!$this->validateNewUserInformation() || !$validPassword){
-            $this->redirect("/Register");
+        if(!$this->validateNewUserInformation() || !$this->validateAddress() || !$validPassword){
+            $redirect = $this->sessionManager->getRedirect();
+            if(!is_null($redirect)){
+                $this->redirect("/register?redirect=" . $redirect);
+            }
+            $this->redirect("/register");
         }
 
         
@@ -82,54 +85,58 @@ class HomeController extends Controller{
 
         $this->userManager->setName($userID, $_POST["name_first"], $_POST["name_last"]);
         $this->userManager->setPhoneNumber($userID, $_POST["phone"]);
-        $this->userManager->setAddress($userID,
-                                       $_POST["address_line"],
-                                       $_POST["city"],
-                                       $_POST["state"],
-                                       $_POST["zip_code"]
-        );
+        $this->userManager->setAddress($userID, $_POST["address_line"], $_POST["city"], $_POST["state"], $_POST["zip_code"]);
+        
         $this->sessionManager->login($userID);
 
         
-        $this->redirect("/");
+        $this->redirect($this->sessionManager->getRedirect() ?? "/");
     }
 
     public function login_get() : void {
         if($this->sessionManager->isUserLoggedIn()){
             $this->redirect("/");
         }
+
+        $this->sessionManager->setRedirect();
         
         require_once APP_ROOT . "/views/login/login-page.php";
     }
 
     public function login_post() : void {
         if($this->sessionManager->isUserLoggedIn()){
-            echo "ALREADY LOGGED IN";
-            exit;
             $this->redirect("/");
         }
 
-        // TODO: Decide how to handle a bad CSRFToken.
         if(!$this->sessionManager->validateCSRFToken($_POST["CSRFToken"])){
-            $this->redirect("/Login");
+            $redirect = $this->sessionManager->getRedirect();
+            if(!is_null($redirect)){
+                $this->redirect("/login?redirect=" . $redirect);
+            }
+            $this->redirect("/login");
         }
 
         $userID = $this->validateCredentials($_POST["email"], $_POST["password"]);
-        if(!is_null($userID)){
-            $this->sessionManager->login($userID);
-
-            $unregisteredUserID = $this->userManager->getUserIDByUnregisteredSessionID();
-            if(!is_null($unregisteredUserID) && $unregisteredUserID !== $userID){
-                $this->orderManager->updateOrdersFromUnregisteredToRegistered($unregisteredUserID, $userID);
-                $this->userManager->deleteUnregisteredCredentials($unregisteredUserID);
-                $this->userManager->deleteUser($unregisteredUserID);
-            }
-
-            $this->redirect("/");
-        }
         
-        $this->sessionManager->pushOneTimeMessage(USER_ALERT, MESSAGE_INVALID_LOGIN);
-        $this->redirect("/Login");
+        if(is_null($userID)){
+            $this->sessionManager->pushOneTimeMessage(USER_ALERT, MESSAGE_INVALID_LOGIN);
+            $redirect = $this->sessionManager->getRedirect();
+            if(!is_null($redirect)){
+                $this->redirect("/login?redirect=" . $redirect);
+            }
+            $this->redirect("/login");
+        }
+
+        $this->sessionManager->login($userID);
+
+        $unregisteredUserID = $this->userManager->getUserIDByUnregisteredSessionID();
+        if(!is_null($unregisteredUserID) && $unregisteredUserID !== $userID){
+            $this->orderManager->updateOrdersFromUnregisteredToRegistered($unregisteredUserID, $userID);
+            $this->userManager->deleteUnregisteredCredentials($unregisteredUserID);
+            $this->userManager->deleteUser($unregisteredUserID);
+        }
+
+        $this->redirect($this->sessionManager->getRedirect() ?? "/");
     }
 
     public function logout_get() : void 

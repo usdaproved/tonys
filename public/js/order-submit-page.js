@@ -35,16 +35,18 @@ stripeCard.addEventListener('change', ({error}) => {
 
   
 
-let name_first = document.querySelector('#name_first').innerText;
-let name_last = document.querySelector('#name_last').innerText;
+const name_first = document.querySelector('#name_first').innerText;
+const name_last = document.querySelector('#name_last').innerText;
   
 const submitButton = document.querySelector('#stripe-payment-submit');
+const clientSecret = submitButton.dataset.secret;
+const orderID = submitButton.dataset.orderid;
+
 
 submitButton.addEventListener('click', function(e) {
   e.preventDefault();
 
-  let clientSecret = submitButton.dataset.secret;
-  let orderID = submitButton.dataset.orderid;
+  
 
   stripe.confirmCardPayment(clientSecret, {
     payment_method: {
@@ -73,3 +75,34 @@ submitButton.addEventListener('click', function(e) {
     }
   });
 });
+
+// PAYPAL
+paypal.Buttons({
+  createOrder: function() {
+    return fetch('/Order/paypalCreateOrder', {
+      method: 'post',
+      headers: {
+        'content-type': 'application/json'
+      }
+    }).then(function(res) {
+      return res.json();
+    }).then(function(myServerResponse) {
+      return myServerResponse.paypalID;
+    });
+  },
+  onApprove: function(paypalData) {
+    return fetch('/Order/paypalCaptureOrder', {
+      method: 'post',
+      headers: {
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        paypalID: paypalData.orderID
+      })
+    }).then(function(res) {
+      return res.json();
+    }).then(function(details) {
+      window.location.replace(`/Order/confirmed?order=${orderID}`);
+    })
+  }
+}).render('#paypal-button-container');

@@ -41,7 +41,7 @@ class UserController extends Controller{
             $this->redirect("/Order/submit");
         }
 
-        if(!$this->validateNewUserInformation()){
+        if(!$this->validateNewUserInformation() || !$this->validateAddress()){
             // TODO(Trystan): Keep this information alive from the first time.
             $this->redirect("/User/new?orderType=delivery");
         }

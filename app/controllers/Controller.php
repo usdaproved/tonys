@@ -61,18 +61,17 @@ class Controller{
         return NULL;
     }
 
-    // TODO(Trystan): Add a bool as argument to see if we want to check address or not.
     public function validateNewUserInformation() : bool {
         $valid = true;
         
-        if(!isset($_POST["email"], $_POST["name_first"], $_POST["name_last"], $_POST["phone"],
-                  $_POST["address_line"], $_POST["city"], $_POST["state"], $_POST["zip_code"])){
+        if(!isset($_POST["email"], $_POST["name_first"], $_POST["name_last"], $_POST["phone"])){
             // We exit the function so that empty values aren't checked.
             $message = "Missing information.";
             $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
             $valid = false;
             return $valid;
         }
+        
         if(!$this->validateEmail($_POST["email"])){
             $message = "Please enter a valid email.";
             $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
@@ -88,6 +87,27 @@ class Controller{
             $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
             $valid = false;
         }
+        
+        if(!empty($this->userManager->getRegisteredCredentialsByEmail($_POST["email"]))){
+            $message = MESSAGE_EMAIL_IN_USE;
+            $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
+            $valid = false;
+        }
+        
+        return $valid;
+    }
+
+    public function validateAddress() : bool {
+        $valid = true;
+        
+        if(!isset($_POST["address_line"], $_POST["city"], $_POST["state"], $_POST["zip_code"])){
+            // We exit the function so that empty values aren't checked.
+            $message = "Missing information.";
+            $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
+            $valid = false;
+            return $valid;
+        }
+        
         if(strlen($_POST["address_line"]) > MAX_LENGTH_ADDRESS_LINE){
             $message = "Street address must be fewer than " . MAX_LENGTH_ADDRESS_LINE . " characters.";
             $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
@@ -108,12 +128,7 @@ class Controller{
             $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
             $valid = false;
         }
-        if(!empty($this->userManager->getRegisteredCredentialsByEmail($_POST["email"]))){
-            $message = MESSAGE_EMAIL_IN_USE;
-            $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
-            $valid = false;
-        }
-        
+
         return $valid;
     }
 

@@ -4,10 +4,10 @@
 
 <?php $this->printOneTimeMessages(USER_ALERT); ?>
 <div>
-    Already a user? <a href="/login?redirect=submit">Log in</a>
+    Already a user? <a href="/login?redirect=/Order/submit">Log in</a>
 </div>
 <div>
-    Create an account? <a href="/register?redirect=submit">Register</a>
+    Create an account? <a href="/register?redirect=/Order/submit">Register</a>
 </div>
 <div>
     Checkout as guest

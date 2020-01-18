@@ -24,7 +24,7 @@ class Session{
 
     // TODO: Perhaps we don't want to set the message here.
     // Not every call wants to set a message, javascript calls.
-    public function validateCSRFToken($token){
+    public function validateCSRFToken(string $token) : bool {
         $valid = hash_equals($_SESSION["CSRFToken"], $token);
         
         if(!$valid){
@@ -57,15 +57,31 @@ class Session{
         return $_SESSION["user_id"];
     }
 
-    public function pushOneTimeMessage($type, $message){
+    public function pushOneTimeMessage(string $type, string $message) : void {
         $_SESSION["one_time_messages"][$type][] = $message;
     }
 
-    public function getOneTimeMessages() : ?Array {
-        if(!isset($_SESSION["one_time_messages"])) return NULL;
+    public function getOneTimeMessages() : array {
+        if(!isset($_SESSION["one_time_messages"])) return array();
         $messages =  $_SESSION["one_time_messages"];
         unset($_SESSION["one_time_messages"]);
         return $messages;
+    }
+
+    public function setRedirect() : void {
+        if(isset($_GET[INTERNAL_REDIRECT]) && in_array($_GET[INTERNAL_REDIRECT], REDIRECT_ADDRESSES)){
+            $_SESSION[INTERNAL_REDIRECT] = $_GET[INTERNAL_REDIRECT];
+        }
+    }
+
+    public function getRedirect() : ?string {
+        if(!isset($_SESSION[INTERNAL_REDIRECT])){
+            return NULL;
+        }
+        
+        $redirect = $_SESSION[INTERNAL_REDIRECT];
+        unset($_SESSION[INTERNAL_REDIRECT]);
+        return $redirect;
     }
 }
 
