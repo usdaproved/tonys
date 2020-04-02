@@ -185,6 +185,55 @@ WHERE session_id = :session_id;";
         return $userInfo;
     }
 
+    public function getUsersMatchingFilters(string $firstName = NULL, string $lastName = NULL,
+                                            string $email = NULL, string $phoneNumber = NULL) : ?array {
+        $sql = "SELECT * FROM users WHERE 
+(name_first   LIKE CONCAT('%', :name_first, '%')   OR :name_first   IS NULL) AND
+(name_last    LIKE CONCAT('%', :name_last, '%')    OR :name_last    IS NULL) AND
+(email        LIKE CONCAT('%', :email, '%')        OR :email        IS NULL) AND
+(phone_number LIKE CONCAT('%', :phone_number, '%') OR :phone_number IS NULL);";
+
+        $this->db->beginStatement($sql);
+        
+        $this->db->bindValueToStatement(":name_first", $firstName);
+        $this->db->bindValueToStatement(":name_last", $lastName);
+        $this->db->bindValueToStatement(":email", $email);
+        $this->db->bindValueToStatement(":phone_number", $phoneNumber);
+        
+        $this->db->executeStatement();
+
+        $users = $this->db->getResultSet();
+
+        if(is_bool($users)) return array();
+        return $users;
+    }
+
+    public function getUsersWithLastName(string $lastName) : ?array {
+        $sql = "SELECT * FROM users WHERE name_last = :name_last;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":name_last", $lastName);
+        $this->db->executeStatement();
+
+        $users = $this->db->getResultSet();
+
+        if(is_bool($users)) return array();
+        return $users;
+    }
+
+    public function getUsersWithFullName(string $firstName, string $lastName) : ?array {
+        $sql = "SELECT * FROM users WHERE name_last = :name_last;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":name_last", $lastName);
+        $this->db->executeStatement();
+
+        $users = $this->db->getResultSet();
+
+        if(is_bool($users)) return array();
+        return $users;
+    }
+
     public function getUserAddressByID(int $userID = NULL) : array {
         $sql = "SELECT line, city, state, zip_code FROM address WHERE user_id = :user_id;";
 
@@ -196,6 +245,16 @@ WHERE session_id = :session_id;";
 
         if(is_bool($result)) return array();
         return $result;
+    }
+    
+    public function getAddressID(int $userID) : int {
+        $sql = "SELECT id FROM address WHERE user_id = :user_id;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":user_id", $userID);
+        $this->db->executeStatement();
+
+        return $this->db->getResult()["id"];
     }
 
     public function getRegisteredCredentialsByEmail(string $email) : array {
@@ -212,7 +271,44 @@ WHERE user_id = (SELECT id FROM users WHERE email = :email);";
         return $result;
     }
 
-    public function getUserAuthorityLevelByID(int $userID) : ?int {
+    public function getUserIDByEmail(string $email = NULL) : ?int {
+        $sql = "SELECT id FROM users WHERE email = :email;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":email", $email);
+        $this->db->executeStatement();
+
+        $result = $this->db->getResult();
+
+        if(is_bool($result)) return NULL;
+        return $result["id"];
+    }
+
+    public function getUnregisteredInfoLevel(int $userID) : int {
+        $sql = "SELECT info_level FROM unregistered_credentials
+WHERE user_id = :user_id;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":user_id", $userID);
+        $this->db->executeStatement();
+
+        $result = $this->db->getResult();
+        return (int)$result["info_level"];
+    }
+
+    public function setUnregisteredInfoLevel(int $userID, int $infoLevel) : void {
+        $sql = "UPDATE unregistered_credentials
+SET info_level = :info_level WHERE user_id = :user_id;";
+
+        $this->db->beginStatement($sql);
+        
+        $this->db->bindValueToStatement(":user_id", $userID);
+        $this->db->bindValueToStatement(":info_level", $infoLevel);
+
+        $this->db->executeStatement();
+    }
+
+    public function getUserAuthorityLevelByID(int $userID = NULL) : int {
         $sql = "SELECT user_type FROM users WHERE id = :id;";
 
         $this->db->beginStatement($sql);
@@ -221,7 +317,8 @@ WHERE user_id = (SELECT id FROM users WHERE email = :email);";
 
         $result = $this->db->getResult();
 
-        if(is_bool($result)) return NULL;
+        // If no user is found, they have the lowest level auth.
+        if(is_bool($result)) return CUSTOMER;
         return $result["user_type"];
     }
 

@@ -24,26 +24,36 @@ const ADMIN    = 3;
 
 const USER_TYPE_ARRAY = ['customer','printer','employee','admin'];
 
+// An unregistered user can have varying levels of info about them.
+const INFO_NONE    = 0;
+const INFO_PARTIAL = 1; // No address.
+const INFO_FULL    = 2;
+
 const DELIVERY      = 0;
 const PICKUP        = 1;
 const IN_RESTAURANT = 2;
+
+const ORDER_TYPE_ARRAY = ['delivery', 'pickup', 'in restaurant'];
 
 const CART       = 0;
 const SUBMITTED  = 1;
 const PREPARING  = 2;
 const PREPARED   = 3;
 const DELIVERING = 4;
-const PAY        = 5;
-const DELIVERED  = 6;
-const COMPLETE   = 7;
-const PAID       = 8;
+// NOTE(Trystan): The order is 'complete' when the order has ended. Delivered, picked up, paid.
+const COMPLETE   = 5;
 
-const STATUS_ARRAY = ['cart','submitted','preparing','prepared','delivering','pay','delivered','complete','paid'];
+const STATUS_ARRAY = ['cart','submitted','preparing','prepared','delivering','complete'];
 
+// TODO(Trystan): We may be able to get rid of this whole flow.
+// Take a peek at the javascript which handles order flow without this structure.
 const ORDER_STATUS_FLOW = array(
-    DELIVERY => array(SUBMITTED, PREPARING, PREPARED, DELIVERING, DELIVERED),
+    DELIVERY => array(SUBMITTED, PREPARING, PREPARED, DELIVERING, COMPLETE),
     PICKUP => array(SUBMITTED, PREPARING, PREPARED, COMPLETE),
-    IN_RESTAURANT => array(SUBMITTED, PREPARING, PAY, PAID)
+    // TODO(Trystan): These two are redundant.
+    // Previously there was a difference in semantics, but I feel this better represents more simply what
+    // is happening. 
+    IN_RESTAURANT => array(SUBMITTED, PREPARING, PREPARED, COMPLETE) 
 );
 
 const PAYMENT_CASH   = 0;

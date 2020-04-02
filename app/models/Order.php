@@ -23,6 +23,7 @@ VALUES (:user_id);";
             "amount" => 50, // create a stub transaction of 50 cents, stripe min.
             "currency" => "usd",
             "metadata" => [
+                "user_id" => $userID,
                 "order_id" => $cartID,
             ],
         ]);
@@ -30,7 +31,7 @@ VALUES (:user_id);";
         $stripePaymentID = $paymentIntent["id"];
 
         // We can then insert all necessary payment tokens into the same table.
-        $sql = "INSERT INTO order_payment_tokens (order_id, stripe_token)
+        $sql = "INSERT INTO stripe_tokens (order_id, stripe_token)
 VALUES (:order_id, :stripe_token);";
 
         $this->db->beginStatement($sql);
@@ -40,11 +41,17 @@ VALUES (:order_id, :stripe_token);";
 
         $this->db->executeStatement();
 
+        $sql = "INSERT INTO order_cost (order_id) VALUES (:order_id);";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":order_id", $cartID);
+        $this->db->executeStatement();
+
         return $cartID;
     }
 
     public function addLineItemToCart(int $cartID, int $itemID,
-                                       int $quantity, float $price, string $comment) : int {
+                                       int $quantity, int $price, string $comment) : int {
         $sql = "INSERT INTO order_line_items (order_id, menu_item_id, quantity, price, comment) 
 VALUES (:order_id, :menu_item_id, :quantity, :price, :comment);";
 
@@ -60,20 +67,9 @@ VALUES (:order_id, :menu_item_id, :quantity, :price, :comment);";
 
         $lineItemID = $this->db->lastInsertID();
 
-        $this->updateCartSubtotal($cartID);
+        $this->updateCost($cartID);
 
         return $lineItemID;
-    }
-
-    public function getCartTotalPrice(int $cartID) : float {
-        // TODO(Trystan): Update this to use the actual total post tax.
-        $sql = "SELECT subtotal FROM orders WHERE id = :id;";
-
-        $this->db->beginStatement($sql);
-        $this->db->bindValueToStatement(":id", $cartID);
-        $this->db->executeStatement();
-
-        return $this->db->getResult()["subtotal"];
     }
 
     public function addOptionToLineItem(int $lineItemID, int $choiceID, int $optionID) : void {
@@ -101,41 +97,136 @@ VALUES (:line_item_id, :addition_id);";
         $this->db->executeStatement();
     }
 
-    // TODO(trystan): function that need made
-    // update line item
-    // update option to line item. Which is probably best to just remove and add new.
-    // same goes for additions.
-    // remove line item.
-    // remove addition.
-    // we could just make all these update line item, where we remove
-    // the line item first, then we just add all new information.
-    // Where the new information would be submitted all together anyway.
+    public function deleteLineItem(int $cartID, int $lineItemID) : void {
+        $sql = "DELETE FROM line_item_choices WHERE line_item_id = :line_item_id;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":line_item_id", $lineItemID);
+        $this->db->executeStatement();
+
+        $sql = "DELETE FROM line_item_additions WHERE line_item_id = :line_item_id;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":line_item_id", $lineItemID);
+        $this->db->executeStatement();
+
+        $sql = "DELETE FROM order_line_items WHERE id = :id;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":id", $lineItemID);
+        $this->db->executeStatement();
+
+        // At the end make sure we update the new cost
+        $this->updateCost($cartID);
+    }
+
+    public function setOrderType(int $cartID, int $orderType) : void {
+        $sql = "UPDATE orders SET order_type = :order_type WHERE id = :id;";
+
+        $this->db->beginStatement($sql);
+
+        $this->db->bindValueToStatement(":id", $cartID);
+        $this->db->bindValueToStatement(":order_type", $orderType);        
+        
+        $this->db->executeStatement();
+    }
+
+    public function getOrderType(int $orderID) : int {
+        $sql = "SELECT order_type FROM orders WHERE id = :id";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":id", $orderID);
+        $this->db->executeStatement();
+
+        return $this->db->getResult()["order_type"];
+    }
+
+    public function updateFee(int $cartID, int $amount) : void {
+        $sql = "UPDATE order_cost SET fee = :fee WHERE order_id = :order_id;";
+
+        $this->db->beginStatement($sql);
+        
+        $this->db->bindValueToStatement(":order_id", $cartID);
+        $this->db->bindValueToStatement(":fee", $amount);
+
+        $this->db->executeStatement();
+    }
 
     /**
-     * Cart specified because there should be no reason why
-     * a completed order would have it's price updated after submission.
+     * Only to be used by employees to associate a customer with IN_RESTAURANT orders.
+     * Also to not fill up the employees order history with other customer orders.
      */
-    public function updateCartSubtotal(int $cartID) : void {
-        $sql = "UPDATE orders SET 
-subtotal = (SELECT SUM(price) FROM order_line_items WHERE order_id = :id)  
-WHERE id = :id;";
-        
+    public function assignUserToOrder(int $orderID, $userID = NULL) : void {
+        $sql = "UPDATE orders SET user_id = :user_id WHERE id = :id;";
+
         $this->db->beginStatement($sql);
-        $this->db->bindValueToStatement(":id", $cartID);
+        
+        $this->db->bindValueToStatement(":id", $orderID);
+        $this->db->bindValueToStatement(":user_id", $userID);
+        
         $this->db->executeStatement();
     }
 
     /**
      *Updates the cart into a submitted order.
      */
-    public function submitOrder(int $cartID, int $orderType) : void {
+    public function submitOrder(int $cartID) : void {
         $sql = "UPDATE orders SET 
-order_type = :order_type, status = " . SUBMITTED . ", date = NOW() WHERE id = :id;";
+status = " . SUBMITTED . ", date = NOW() WHERE id = :id;";
 
         $this->db->beginStatement($sql);
         $this->db->bindValueToStatement(":id", $cartID);
-        $this->db->bindValueToStatement(":order_type", $orderType);
         $this->db->executeStatement();
+    }
+
+    public function setDeliveryAddressID(int $orderID, int $addressID) : void {
+        $sql = "INSERT INTO delivery_address 
+(order_id, address_id) VALUES (:order_id, :address_id);";
+
+        $this->db->beginStatement($sql);
+
+        $this->db->bindValueToStatement(":order_id", $orderID);
+        $this->db->bindValueToStatement(":address_id", $addressID);
+        
+        $this->db->executeStatement();
+    }
+
+    public function getDeliveryAddress(int $orderID) : array {
+        $sql = "SELECT * FROM address 
+WHERE id = (SELECT address_id FROM delivery_address WHERE order_id = :order_id);";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":order_id", $orderID);
+        $this->db->executeStatement();
+
+        return $this->db->getResult();
+    }
+
+    public function submitPayment(int $cartID, int $amount, int $method) : void {
+        $sql = "INSERT INTO order_payments (order_id, amount, method) VALUES (:order_id, :amount, :method);";
+        
+        $this->db->beginStatement($sql);
+        
+        $this->db->bindValueToStatement(":order_id", $cartID);
+        $this->db->bindValueToStatement(":amount", $amount);
+        $this->db->bindValueToStatement(":method", $method);
+
+        $this->db->executeStatement();
+    }
+
+    public function isPaid(int $orderID) : bool {
+        $sql = "SELECT 
+CASE WHEN (SUM(op.amount) = (oc.subtotal + oc.tax + oc.fee)) THEN 1 ELSE 0 END AS is_paid 
+FROM order_payments op 
+LEFT JOIN order_cost oc
+ON oc.order_id = op.order_id 
+WHERE op.order_id = :order_id;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":order_id", $orderID);
+        $this->db->executeStatement();
+
+        return (bool)$this->db->getResult()["is_paid"];
     }
 
     /** 
@@ -186,6 +277,19 @@ WHERE user_id = :unregistered_user_id;";
 
         if(is_bool($orderID)) return NULL;
         return $orderID["id"];
+    }
+
+    /***
+     * Returns top level order info, no line items etc.
+     */
+    public function getBasicOrderInfo(int $orderID) : array {
+        $sql = "SELECT * FROM orders WHERE id = :id;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":id", $orderID);
+        $this->db->executeStatement();
+
+        return $this->db->getResult();
     }
 
     // TODO(Trystan): It's not even possible to get a NULL return here.
@@ -337,7 +441,7 @@ WHERE lia.line_item_id = :line_item_id;";
 
     public function getAllActiveOrders() : array {
         $sql = "SELECT id FROM orders o 
-WHERE status NOT IN (" . CART . "," . DELIVERED . "," . COMPLETE . ") 
+WHERE status NOT IN (" . CART . "," . COMPLETE . ") 
 ORDER BY o.date ASC;";
 
         $this->db->beginStatement($sql);
@@ -357,7 +461,7 @@ ORDER BY o.date ASC;";
 
     public function getActiveOrdersAfterDate(string $date) : array {
         $sql = "SELECT id FROM orders o 
-WHERE status NOT IN (" . CART . "," . DELIVERED . "," . COMPLETE . ")
+WHERE status NOT IN (" . CART . ","  . COMPLETE . ")
 AND date > :date 
 ORDER BY o.date ASC;";
 
@@ -377,16 +481,30 @@ ORDER BY o.date ASC;";
         return $orders;
     }
 
+    public function getActiveOrderStatus() : array {
+        $sql = "SELECT id, status FROM orders o 
+WHERE status NOT IN (" . CART . ","  . COMPLETE . ")
+ORDER BY o.date ASC;";
+
+        $this->db->beginStatement($sql);
+        $this->db->executeStatement();
+
+        $result = $this->db->getResultSet();
+        if(is_bool($result)) return array();
+
+        return $result;
+    }
+
     public function getUserActiveOrderStatus(int $userID = NULL) : ?int {
         $sql = "SELECT x.status
 FROM orders x
 LEFT OUTER JOIN orders y
 ON x.user_id = y.user_id
 AND x.date < y.date
-AND y.status NOT IN (" . CART . "," . DELIVERED . "," . COMPLETE . ")
+AND y.status NOT IN (" . CART . "," . COMPLETE . ")
 WHERE x.user_id = :user_id
 AND y.user_id IS NULL
-AND x.status NOT IN (" . CART . "," . DELIVERED . "," . COMPLETE . ")
+AND x.status NOT IN (" . CART . "," . COMPLETE . ")
 ORDER BY x.date desc;";
 
         $this->db->beginStatement($sql);
@@ -399,14 +517,91 @@ ORDER BY x.date desc;";
         return $status["status"];
     }
 
-    public function getPaymentTokens(int $orderID) : array {
-        $sql = "SELECT * FROM order_payment_tokens WHERE order_id = :order_id;";
+    /***
+     * For verification that user owns the line item they are requesting to delete.
+     */
+    public function isLineItemInOrder(int $orderID, int $lineItem) : bool {
+        $sql = "SELECT 
+IF(oli.order_id = :order_id,TRUE,FALSE) AS is_line_item_in_order 
+FROM order_line_items oli 
+WHERE oli.id = :id;";
+
+        $this->db->beginStatement($sql);
+        
+        $this->db->bindValueToStatement(":order_id", $orderID);
+        $this->db->bindValueToStatement(":id", $lineItem);
+
+        $this->db->executeStatement();
+
+        $result = $this->db->getResult();
+        return (bool)$result["is_line_item_in_order"];
+    }
+
+    public function getCost(int $orderID) : array {
+        $sql = "SELECT * FROM order_cost WHERE order_id = :order_id;";
 
         $this->db->beginStatement($sql);
         $this->db->bindValueToStatement(":order_id", $orderID);
         $this->db->executeStatement();
 
         return $this->db->getResult();
+    }
+
+    public function getPayments(int $orderID) : array {
+        $sql = "SELECT amount, method FROM order_payments WHERE order_id = :order_id;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":order_id", $orderID);
+        $this->db->executeStatement();
+
+        $result = $this->db->getResultSet();
+        if(is_bool($result)) return array();
+        return $this->db->getResultSet();
+    }
+
+    public function setPaypalToken(int $orderID, string $token) : void {
+        $sql = "INSERT INTO paypal_tokens (order_id, paypal_token) VALUES (:order_id, :paypal_token);";
+
+        $this->db->beginStatement($sql);
+
+        $this->db->bindValueToStatement(":order_id", $orderID);
+        $this->db->bindValueToStatement(":paypal_token", $token);
+
+        $this->db->executeStatement();
+    }
+
+    public function getPaypalToken(int $orderID) : string {
+        $sql = "SELECT * FROM paypal_tokens WHERE order_id = :order_id;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":order_id", $orderID);
+        $this->db->executeStatement();
+
+        return $this->db->getResult()["paypal_token"];
+    }
+
+    public function getStripeToken(int $orderID) : string {
+        $sql = "SELECT * FROM stripe_tokens WHERE order_id = :order_id;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":order_id", $orderID);
+        $this->db->executeStatement();
+
+        return $this->db->getResult()["stripe_token"];
+    }
+
+    /**
+     * Updates the subtotal and the tax.
+     */
+    private function updateCost(int $cartID) : void {
+        $sql = "UPDATE order_cost o SET 
+o.subtotal = (SELECT SUM(price) FROM order_line_items WHERE order_id = :id),
+o.tax = ROUND(o.subtotal * 0.07)
+WHERE order_id = :id;"; // NOTE(Trystan): 0.07 is IOWA tax rate.
+        
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":id", $cartID);
+        $this->db->executeStatement();
     }
 }
 

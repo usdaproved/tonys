@@ -35,5 +35,4 @@
     </form>
 </div>
 
-<script src="<?=$this->getFile('js', __FILE__);?>"></script>
 <?php require APP_ROOT . "/views/includes/footer.php" ?>

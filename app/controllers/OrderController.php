@@ -19,23 +19,14 @@ class OrderController extends Controller{
 
     public function get() : void {
         $userID = $this->getUserID();
+        $this->user = ["user_type" => $this->userManager->getUserAuthorityLevelByID($userID)];
 
         $cartID = $this->orderManager->getCartID($userID);
 
         $this->orderStorage = $this->orderManager->getOrderByID($cartID);
-
-        // If a cart is already set, and they didn't explicitly request to edit the cart
-        // then skip ahead to the submit page.
-        // From the submit page there will be a link to ?edit the cart.
-        // Debatable whether this is the desired effect. For now I prefer it.
-        if(!isset($_GET["edit"]) && !is_null($cartID)
-           && isset($this->orderStorage["line_items"])){
-            $this->redirect("/Order/submit");
-        }
-        
         $this->menuStorage = $this->menuManager->getEntireMenu();
-        $day = date('l');
 
+        $day = date('l');
         $this->menuStorage["daily_special"] = $this->menuManager->getDailySpecial($day);
 
         require_once APP_ROOT . "/views/order/order-select-page.php";
@@ -46,28 +37,33 @@ class OrderController extends Controller{
         
         $cartID = $this->orderManager->getCartID($userID);
         $this->orderStorage = $this->orderManager->getOrderByID($cartID);
-        if(is_null($cartID) || !isset($this->orderStorage["line_items"])){
+        if(is_null($cartID) || empty($this->orderStorage["line_items"]) || is_null($this->orderStorage["order_type"])){
             $this->redirect("/Order");
         }
 
         $this->user = $this->userManager->getUserInfoByID($userID);
 
-        // TODO(Trystan): Check the type of order, we don't need to collect address info
-        // if it's just a pickup.
-        foreach($this->user as $credential){
-            if(is_null($credential)){
-                // TODO(Trystan): Send the actual type of order, pickup or delivery
-                $this->redirect("/User/new?orderType=delivery");
+        // Check if we need to collect more info about the customer.
+        if(!$this->sessionManager->isUserLoggedIn()){
+            $infoLevel = $this->userManager->getUnregisteredInfoLevel($userID);
+            if($infoLevel == INFO_NONE || ($infoLevel == INFO_PARTIAL && $this->orderStorage["order_type"] == DELIVERY)){
+                $this->redirect("/User/new");
             }
         }
 
-        \Stripe\Stripe::setApiKey(STRIPE_PRIVATE_KEY);
+        // At this point in our flow, we have all necessary info to complete the transaction.
 
-        $paymentTokens = $this->orderManager->getPaymentTokens($cartID);
-        
-        $stripeToken = $paymentTokens["stripe_token"];
+        // TODO(Trystan): This might be the most logical place to update the price
+        // for either delivery or pickup. If we wanted to modify the delivery price
+        // based on some type of distance filter, this would be the best place to do it.
+        \Stripe\Stripe::setApiKey(STRIPE_PRIVATE_KEY);
+        $stripeToken = $this->orderManager->getStripeToken($cartID);
         $stripePaymentIntent = \Stripe\PaymentIntent::retrieve($stripeToken);
         $this->user["stripe_client_secret"] = $stripePaymentIntent["client_secret"];
+
+        $cost = $this->orderManager->getCost($cartID);
+        $cost["total"] = $cost["subtotal"] + $cost["tax"] + $cost["fee"];
+        $this->orderStorage["cost"] = $cost;
 
         require_once APP_ROOT . "/views/order/order-submit-page.php";
     }
@@ -75,6 +71,8 @@ class OrderController extends Controller{
     /**
      * Gets passed the orderID of the confirmed order.
      */
+    // TODO(Trystan): The submit page is getting bounced back as the stripe webhook isn't called
+    // until after the redirect happens. We need to think of a solution.
     public function confirmed_get() : void {
         if(!isset($_GET["order"])){
             $this->redirect("/Order");
@@ -86,10 +84,14 @@ class OrderController extends Controller{
         $userID = $this->getUserID();
 
         if($this->orderStorage["user_id"] != $userID || $this->orderStorage["status"] == CART){
-            $this->redirect("/Order");
+            $this->redirect("/Order/submit");
         }
 
         $this->user = $this->userManager->getUserInfoByID($userID);
+
+        $cost = $this->orderManager->getCost($orderID);
+        $cost["total"] = $cost["subtotal"] + $cost["tax"] + $cost["fee"];
+        $this->orderStorage["cost"] = $cost;
         
         require_once APP_ROOT . "/views/order/order-confirmed-page.php";
     }
@@ -97,7 +99,64 @@ class OrderController extends Controller{
     
     // JS CALLS
 
-    
+    // TODO(Trystan): We now have two entry points into creating an order.
+    // We should absolutely only have one. How best to go about doing that, not sure.
+    // Perhaps we disable adding things to the cart until an order type is selected.
+
+
+    // Another more sensible solution would be to just create a user when they first open the order page.
+    // This also makes sense regarding tracking funneling customers into a purchase.
+    public function setOrderType_post() : void {
+        $userID = $this->getUserID();
+
+        $json = file_get_contents("php://input");
+        $postData = json_decode($json, true);
+        
+        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
+            echo "fail";
+            exit;
+        }
+
+        if(is_null($userID)){
+            $userID = $this->userManager->createUnregisteredCredentials();
+        }
+
+        $cartID = $this->orderManager->getCartID($userID);
+        
+        if(is_null($cartID)){
+            $cartID = $this->orderManager->createCart($userID);
+        }
+
+        $orderType = (int)$postData["order_type"];
+
+        switch ($orderType) {
+        case DELIVERY:
+            $this->orderManager->setOrderType($cartID, DELIVERY);
+            $this->orderManager->updateFee($cartID, 500);
+            $this->updateStripeOrderCost($cartID);
+            break;
+        case PICKUP:
+            $this->orderManager->setOrderType($cartID, PICKUP);
+            $this->orderManager->updateFee($cartID, 0);
+            $this->updateStripeOrderCost($cartID);
+            break;
+        case IN_RESTAURANT:
+            $authorityLevel = $this->userManager->getUserAuthorityLevelByID($userID);
+            if($authorityLevel < EMPLOYEE){
+                echo "fail";
+                exit;
+            }
+            $this->orderManager->setOrderType($cartID, IN_RESTAURANT);
+            $this->orderManager->updateFee($cartID, 0);
+            $this->updateStripeOrderCost($cartID);
+            break;
+        default:
+            echo "fail";
+            exit;
+        }
+        
+    }
+
     public function getItemDetails_post() : void {
         $json = file_get_contents("php://input");
         $postData = json_decode($json, true);
@@ -121,7 +180,7 @@ class OrderController extends Controller{
         $postData = json_decode($json, true);
         
         if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
-            echo "fail";
+            echo json_encode(NULL);
             exit;
         }
 
@@ -154,7 +213,7 @@ class OrderController extends Controller{
                    && array_key_exists($optionID, $item["choices"][$choiceID]["options"])){
                     $totalPrice += $item["choices"][$choiceID]["options"][$optionID]["price_modifier"];
                 } else {
-                    echo "invalid";
+                    echo json_encode(NULL);
                     exit;
                 }
             }
@@ -164,7 +223,7 @@ class OrderController extends Controller{
             if(array_key_exists($additionID, $item["additions"])){
                 $totalPrice += $item["additions"][$additionID]["price_modifier"];
             } else {
-                echo "invalid";
+                echo json_encode(NULL);
                 exit;
             }
         }
@@ -172,7 +231,7 @@ class OrderController extends Controller{
         if($quantity > 0 && is_numeric($quantity)){
             $totalPrice *= $quantity;
         } else {
-            echo "invalid";
+            echo json_encode(NULL);
             exit;
         }
 
@@ -190,21 +249,69 @@ class OrderController extends Controller{
             $this->orderManager->addAdditionToLineItem($lineItemID, $additionID);
         }
 
-        \Stripe\Stripe::setApiKey(STRIPE_PRIVATE_KEY);
+        $this->updateStripeOrderCost($cartID);
 
-        // TODO(Trystan): We need to update the database to use pennies instead of decimals.
-        // This does make the most sense to do integer math as opposed to messing with floats.
-        $transactionTotal = $this->orderManager->getCartTotalPrice($cartID) * 100;
-
-        $paymentTokens = $this->orderManager->getPaymentTokens($cartID);
-        
-        $stripeToken = $paymentTokens["stripe_token"];
-        \Stripe\PaymentIntent::update($stripeToken, [
-            "amount" => $transactionTotal,
-        ]);
-        
-        echo $lineItemID;
+        $order = $this->orderManager->getOrderByID($cartID);
+        $lineItem = $order["line_items"][$lineItemID];
+        echo json_encode($lineItem);
     }
+
+    public function removeItemFromCart_post() : void {
+        $userID = $this->getUserID();
+
+        $json = file_get_contents("php://input");
+        $postData = json_decode($json, true);
+        
+        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
+            echo "fail";
+            exit;
+        }
+
+        $cartID = $this->orderManager->getCartID($userID);
+        $lineItem = $postData["line_item_id"];
+        if(!$this->orderManager->isLineItemInOrder($cartID, $lineItem)){
+            echo "fail";
+            exit;
+        }
+
+        $this->orderManager->deleteLineItem($cartID, $lineItem);
+    }
+
+    // This function exists because the redirect from submit to confirmed
+    // would finish before the stripe webhook completed.
+    public function checkOrderConfirmation_post() : void {
+        // We want to wait a little bit to give time for the webhook to process.
+        // TODO(Trystan): localhost testing shows this occurs within 2 seconds.
+        // Real numbers may need tweaked when we go live.
+        // The longer a client takes to load this request, the more likely it is to succeed the first time.
+        sleep(2);
+        
+        $userID = $this->getUserID();
+
+        $json = file_get_contents("php://input");
+        $postData = json_decode($json, true);
+        
+        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
+            echo "fail";
+            exit;
+        }
+
+        $orderID = $postData["order_id"];
+        $orderInfo = $this->orderManager->getBasicOrderInfo($orderID);
+
+        if($userID != $orderInfo["user_id"]){
+            echo "fail";
+            exit;
+        }
+
+        if($orderInfo["status"] > 0){
+            echo "confirmed";
+        } else {
+            echo "unconfirmed";
+        }
+    }
+
+    // WEBHOOKS
 
     public function stripeWebhook_post() : void {
         $payload = file_get_contents("php://input");
@@ -230,8 +337,10 @@ class OrderController extends Controller{
         case "payment_intent.succeeded":
             $paymentIntent = $event->data->object; // contains a \Stripe\PaymentIntent
             $orderID = $paymentIntent["metadata"]["order_id"];
-            $orderType = DELIVERY; // TODO(Trystan): Actually implement selection of DELIVERY or PICKUP or IN_RESTAURANT
-            $this->orderManager->submitOrder($orderID, $orderType);
+            $userID = $paymentIntent["metadata"]["user_id"];
+
+            $this->submitOrder($userID, $orderID, $paymentIntent->amount, PAYMENT_STRIPE);
+
             // TODO(Trystan): Get the user and send them an email here.
             // TODO: Setup an SMTP Server in order for email to go out.
             // TODO: Construct a better email, each line in an email cannot be more than 70 chars.
@@ -257,7 +366,10 @@ class OrderController extends Controller{
         if(is_null($cartID)){
             http_response_code(400);
         }
-        $order = $this->orderManager->getOrderByID($cartID);
+        $cost = $this->orderManager->getCost($cartID);
+
+        $paymentTotal = $cost["subtotal"] + $cost["tax"] + $cost["fee"];
+        $paymentTotal = $paymentTotal * 0.01; // NOTE(Trystan): Paypal expects 0.00 format
         
         $request = new \PayPalCheckoutSdk\Orders\OrdersCreateRequest();
         $request->prefer('return=representation');
@@ -270,7 +382,7 @@ class OrderController extends Controller{
                             'amount' =>
                                 array(
                                     'currency_code' => 'USD',
-                                    'value' => $order["subtotal"] // Paypal expects 0.00 format
+                                    'value' => $paymentTotal
                                 )
                         )
                 )
@@ -296,7 +408,7 @@ class OrderController extends Controller{
         if(is_null($cartID)){
             http_response_code(400);
         }
-        
+
         $paypalID = $postData["paypalID"];
         $request = new \PayPalCheckoutSdk\Orders\OrdersCaptureRequest($paypalID);
 
@@ -307,16 +419,55 @@ class OrderController extends Controller{
         // such as name and address. Instead of asking the customer for info twice, we could gather once here,
         // but only if they're using paypal of course.
         // Using Stripe we would still have to collect address info manually.
+        // response->result->purchase_units[0]->shipping->address
         $response = $client->execute($request);
-        // 4. Save the capture ID to your database. Implement logic to save capture to your database for future reference.
-        // TODO(Trystan): In the database, in the orders table. Add two columns, payment method, and payment token.
-        $orderType = DELIVERY; // TODO(Trystan): Actually implement selection of DELIVERY or PICKUP or IN_RESTAURANT
-        $this->orderManager->submitOrder($cartID, $orderType);
+
+        $paypalToken = $response->result->id;
+        $paymentTotal = 0;
+        // Please just look at paypal compared to stripe. Use Stripe exclusively if you can, I beg you.
+        // I would imagine there would only ever be one purchase_unit/capture for every transaction,
+        // but if PayPal allows you to split your own transaction, then this would be necessary.
+        foreach($response->result->purchase_units as $purchaseUnit){
+            foreach($purchaseUnit->payments->captures as $capture){
+                $paymentTotal += ((float)$capture->amount->value * 100);
+            }
+        }
+
+        $this->orderManager->setPaypalToken($cartID, $paypalToken);
+        $this->submitOrder($userID, $cartID, $paymentTotal, PAYMENT_PAYPAL);
         
         echo json_encode($response);
     }
 
     // HELPER FUNCTIONS
+
+    private function updateStripeOrderCost(int $cartID) : void {
+        \Stripe\Stripe::setApiKey(STRIPE_PRIVATE_KEY);
+
+        $cost = $this->orderManager->getCost($cartID);
+        $paymentTotal = $cost["subtotal"] + $cost["fee"] + $cost["tax"];
+
+        $stripeToken = $this->orderManager->getStripeToken($cartID);
+        
+        \Stripe\PaymentIntent::update($stripeToken, [
+            // Stripe will throw an exception if given a value less than 50 cents
+            "amount" => max($paymentTotal, 50), 
+        ]);
+    }
+
+    private function submitOrder($userID, $orderID, $amount, $paymentMethod) : void {
+        $this->orderManager->submitPayment($orderID, $amount, $paymentMethod);
+        $this->orderManager->submitOrder($orderID);
+
+        $orderType = $this->orderManager->getOrderType($orderID);
+        if($orderType === DELIVERY){
+            // TODO(Trystan): This may become a little more complex when
+            // a user has more than one address tied to their account.
+            // We may want to submit some address ID info with the order when the user selects it.
+            $addressID = $this->userManager->getAddressID($userID);
+            $this->orderManager->setDeliveryAddressID($orderID, $addressID);
+        }
+    }
 
     // Depricated: orders no longer work this way.
     // TODO: check for things like number of rows in order_line_items in the cart.

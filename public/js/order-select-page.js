@@ -1,11 +1,73 @@
-import { postJSON } from './utility.js';
+import { postJSON, createLineItemElement, intToCurrency } from './utility.js';
 
 "use strict";
 
 let itemElements = document.querySelectorAll('.item-container');
 let CSRFToken = document.querySelector('#CSRFToken').value;
+let cartContainer = document.querySelector('#cart-container');
+let cartButtonElement = document.querySelector('#cart-button');
+let cartItemCountElement = document.querySelector('#cart-item-count');
 
-let itemData;
+// If the selection is hidden on page load, then there is no selection.
+let isOrderTypeSelected = !document.querySelector('#order-type-selection').hidden;
+
+// Given a number, modify the count by that number. -1 remove 1 or 3 add 3.
+const updateCartItemCount = (modifier) => {
+    let currentCount = parseInt(cartItemCountElement.innerText);
+    cartItemCountElement.innerText = currentCount + modifier;
+};
+
+const addRemoveToLineItem = (item) => {
+    let removeButton = document.createElement('button');
+    removeButton.classList.add('remove-line-item');
+    removeButton.innerText = 'Remove';
+    item.prepend(removeButton);
+}
+
+const initializeCart = () => {
+    let lineItems = cartContainer.querySelectorAll('.line-item');
+    lineItems.forEach(item => {
+        addRemoveToLineItem(item);
+    });
+};
+
+initializeCart();
+
+const removeLineItemButtons = document.querySelectorAll('.remove-line-item');
+
+removeLineItemButtons.forEach(button => {
+    button.addEventListener('click', e => {
+        let lineItem = e.target.closest('.line-item');
+        let lineItemID = lineItem.id.split('-')[0];
+        let quantity = parseInt(lineItem.querySelector('.line-item-quantity').innerText);
+
+        let data = {"line_item_id": lineItemID}
+        let url = '/Order/removeItemFromCart';
+        postJSON(url, data, CSRFToken).then(response => response.text()).then(result => {
+            updateCartItemCount(-quantity);
+            lineItem.remove();
+            if(parseInt(cartItemCountElement.innerText) === 0){
+                cartButtonElement.setAttribute('hidden', 'true');
+            }
+        });
+    });
+});
+
+cartButtonElement.addEventListener('click', (e) => {
+    if(cartContainer.hidden){
+        cartContainer.removeAttribute('hidden');
+    } else {
+        cartContainer.setAttribute('hidden', 'true');
+    }
+});
+
+const checkSubmitLink = () => {
+    if(isOrderTypeSelected && (parseInt(cartItemCountElement.innerText) > 0)){
+        document.querySelector('#submit-container').removeAttribute('hidden');
+    }
+};
+
+let itemDataStorage;
 
 const getChoicePickDescription = (minPicks, maxPicks) => {
     let pluralizedMinOption = (minPicks > 1) ? 'options' : 'option';
@@ -27,7 +89,7 @@ const getChoicePickDescription = (minPicks, maxPicks) => {
 };
 
 const onCheckboxChange = (e) => {
-    let maxPicks = itemData.choices[e.target.name].max_picks;
+    let maxPicks = itemDataStorage.choices[e.target.name].max_picks;
     let checkboxes = document.querySelectorAll(`input.choice-option-input[name='${e.target.name}']`);
     let checkedBoxCount = 0;
     checkboxes.forEach(checkbox => {
@@ -94,7 +156,7 @@ const newDialog = (itemData) => {
             optionInputLabel.setAttribute('for', optionInput.id);
             optionInputLabel.innerText = options[option].name;
             if(parseFloat(options[option].price_modifier) !== 0){
-                optionInputLabel.innerText += ` (+ $${options[option].price_modifier})`;
+                optionInputLabel.innerText += ` (+ $${intToCurrency(options[option].price_modifier)})`;
             }
 
             dialogInfoContainer.appendChild(optionInputLabel);
@@ -122,7 +184,7 @@ const newDialog = (itemData) => {
             additionInputLabel.setAttribute('for', additionInput.id);
             additionInputLabel.innerText = additions[addition].name;
             if(parseFloat(additions[addition].price_modifier) !== 0){
-                additionInputLabel.innerText += ` (+ $${additions[addition].price_modifier})`;
+                additionInputLabel.innerText += ` (+ $${intToCurrency(additions[addition].price_modifier)})`;
             }
 
             dialogInfoContainer.appendChild(additionInputLabel);
@@ -174,7 +236,7 @@ const newDialog = (itemData) => {
 };
 
 const beginDialogMode = () => {
-    let dialog = newDialog(itemData);
+    let dialog = newDialog(itemDataStorage);
     document.body.appendChild(dialog);
 
     document.body.style.overflow = 'hidden';
@@ -203,7 +265,7 @@ const submitDialogHandler = (e) => {
     let additionInputs = dialog.querySelectorAll('.addition-input');
 
     let userItemData = {};
-    userItemData.itemID = itemData.id;
+    userItemData.itemID = itemDataStorage.id;
     userItemData.quantity = dialog.querySelector('#quantity-input').value;
     userItemData.comment = dialog.querySelector('#comment-input').value;
     userItemData.choices = {};
@@ -229,8 +291,8 @@ const submitDialogHandler = (e) => {
     for(var choice in userItemData.choices){
         let choiceID = choice.split('-')[0];
         let numberSelected = userItemData.choices[choice].length;
-        if(numberSelected < itemData.choices[choiceID].min_picks
-          || numberSelected > itemData.choices[choiceID].max_picks){
+        if(numberSelected < itemDataStorage.choices[choiceID].min_picks
+          || numberSelected > itemDataStorage.choices[choiceID].max_picks){
             validated = false;
         }
     }
@@ -241,8 +303,16 @@ const submitDialogHandler = (e) => {
     }
 
     let url = '/Order/addItemToCart';
-    postJSON(url, userItemData, CSRFToken).then(response => response.text()).then(result => {
-        console.log(result);
+    postJSON(url, userItemData, CSRFToken).then(response => response.json()).then(lineItem => {
+        console.log(lineItem);
+        let element = createLineItemElement(lineItem);
+        addRemoveToLineItem(element);
+        cartContainer.querySelector('.line-items-container').appendChild(element);
+        updateCartItemCount(parseInt(userItemData.quantity));
+        if(parseInt(cartItemCountElement.innerText) > 0) {
+            cartButtonElement.removeAttribute('hidden');
+        }
+        checkSubmitLink();
     });
 
     endDialogMode();
@@ -261,10 +331,80 @@ itemElements.forEach(element => {
         let data = {"itemID" : itemID};
         let url = '/Order/getItemDetails';
         
-        postJSON(url, data, CSRFToken).then(response => response.json()).then(data => {
-            itemData = data;
+        postJSON(url, data, CSRFToken).then(response => response.json()).then(result => {
+            itemDataStorage = result;
 
             beginDialogMode();
         });
     });
 });
+
+
+const orderTypeButtonContainer = document.querySelector('#order-type-buttons');
+const orderTypeSelectionContainer = document.querySelector('#order-type-selection');
+const orderTypeChangeButton = orderTypeSelectionContainer.querySelector('#order-type-change-button');
+const orderTypeText = orderTypeSelectionContainer.querySelector('#order-type-text');
+
+const orderTypeSelected = (displayText) => {
+    orderTypeButtonContainer.setAttribute("hidden", true);
+    orderTypeSelectionContainer.removeAttribute('hidden');
+
+    orderTypeText.innerText = displayText;
+    
+    isOrderTypeSelected = true;
+    checkSubmitLink();
+};
+
+const orderTypeChange = () => {
+    orderTypeButtonContainer.removeAttribute('hidden');
+    orderTypeSelectionContainer.setAttribute('hidden', true);
+};
+
+orderTypeChangeButton.addEventListener('click', (e) => {
+    orderTypeChange();
+});
+
+const deliveryButton = orderTypeButtonContainer.querySelector('#order-type-delivery-button');
+const pickupButton = orderTypeButtonContainer.querySelector('#order-type-pickup-button');
+const restaurantButton = orderTypeButtonContainer.querySelector('#order-type-restaurant-button');
+const submitLink = document.querySelector('#order-submit-link');
+
+const orderTypeUpdateURL = "/Order/setOrderType";
+
+deliveryButton.addEventListener('click', (e) => {
+    e.preventDefault();
+
+    let data = {"order_type" : 0};
+
+    postJSON(orderTypeUpdateURL, data, CSRFToken);
+    submitLink.href = "/Order/submit";
+    orderTypeSelected("Delivery");
+});
+
+pickupButton.addEventListener('click', (e) => {
+    e.preventDefault();
+
+    let data = {"order_type" : 1};
+
+    postJSON(orderTypeUpdateURL, data, CSRFToken);
+    submitLink.href = "/Order/submit";
+    orderTypeSelected("Pickup");
+});
+
+if(restaurantButton){
+    restaurantButton.addEventListener('click', (e) => {
+        e.preventDefault();
+
+        let data = {"order_type" : 2};
+
+        postJSON(orderTypeUpdateURL, data, CSRFToken);
+        submitLink.href = "/Dashboard/orders/submit";
+        orderTypeSelected("Restaurant");
+    });
+
+    // If not set, automatically set the order type to restaurant.
+    // The worker can manually update it if they are actually ordering for themselves.
+    if(!orderTypeButtonContainer.hidden){
+        restaurantButton.click();
+    }
+}

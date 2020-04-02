@@ -197,13 +197,55 @@ class Controller{
     public function formatAddressForHTML(array $addressArray = NULL) : string {
         $string = $this->escapeForHTML($addressArray["line"]);
         // TODO: think about how to handle this two seperate line thing.
-        $string = $string . "<br>";
-        $string = $string . $this->escapeForHTML($addressArray["city"]);
-        $string = $string . ", ";
-        $string = $string . $this->escapeForHTML($addressArray["state"]);
-        $string = $string . " ";
-        $string = $string . $this->escapeForHTML($addressArray["zip_code"]);
+        $string .= "<br>";
+        $string .= $this->escapeForHTML($addressArray["city"]);
+        $string .= ", ";
+        $string .= $this->escapeForHTML($addressArray["state"]);
+        $string .= " ";
+        $string .= $this->escapeForHTML($addressArray["zip_code"]);
         return $string;
+    }
+
+    public function formatOrderForHTML(array $order = NULL) : string {
+        $string = "";
+        $string .= "<ul class='line-items-container'>";
+        foreach($order['line_items'] as $lineItem){
+            $string .= "<li class='line-item' id='{$lineItem['id']}-line-item'>";
+            $string .= "<span class='line-item-quantity'>";
+            $string .= $lineItem['quantity'];
+            $string .= "</span>";
+            $string .= ' ' . $lineItem['name'];
+            foreach($lineItem['choices'] as $choice){
+                $string .= "<div class='line-item-choice'>";
+                $string .= $choice['name'];
+                $string .= "<ul class='options-container'>";
+                foreach($choice['options'] as $option){
+                    $string .= "<li class='line-item-option'>";
+                    $string .= $option['name'];
+                    $string .= "</li>";
+                }
+                $string .= "</ul>";
+                $string .= "</div>";
+            }
+            if(count($lineItem['additions']) != 0){
+                $string .= "Additions";
+                $string .= "<ul class='additions-container'>";
+                foreach($lineItem['additions'] as $addition){
+                    $string .= "<li class='line-item-addition'>";
+                    $string .= $addition['name'];
+                    $string .= "</li>";
+                }
+                $string .= "</ul>";
+            }
+            $string .= "</li>";
+        }
+        $string .= "</ul>";
+
+        return $string;
+    }
+
+    public function intToCurrency(int $price) : string {
+        return number_format((float)($price / 100.0), 2);
     }
 
     public function printOneTimeMessages(string $messageType) : void {

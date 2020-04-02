@@ -1,3 +1,9 @@
+import { postJSON } from './utility.js';
+
+"use strict";
+
+let CSRFToken = document.querySelector('#CSRFToken').value;
+
 // This code must be structured in such a way
 // that one of multiple payment processors will be used
 // The customer will decide which one they want to use.
@@ -42,7 +48,6 @@ const submitButton = document.querySelector('#stripe-payment-submit');
 const clientSecret = submitButton.dataset.secret;
 const orderID = submitButton.dataset.orderid;
 
-
 submitButton.addEventListener('click', function(e) {
   e.preventDefault();
 
@@ -70,7 +75,19 @@ submitButton.addEventListener('click', function(e) {
         // payment_intent.succeeded event that handles any business critical
         // post-payment actions.
 
-        window.location.replace(`/Order/confirmed?order=${orderID}`);
+        // TODO(Trystan): Show some success while this waits for confirmation.
+        for(let attempts = 0; attempts < 3; attempts++){
+          let url = '/Order/checkOrderConfirmation';
+          let json = {'order_id' : orderID};
+          postJSON(url, json, CSRFToken).then(response => response.text()).then(result => {
+            if(result === 'confirmed'){
+              window.location.replace(`/Order/confirmed?order=${orderID}`);
+            }
+          });
+          
+        }
+        // Show some type of error message.
+        // 'confirmation timed out.'
       }
     }
   });

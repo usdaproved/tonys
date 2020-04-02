@@ -4,15 +4,6 @@
 
 <?php $this->printOneTimeMessages(USER_ALERT); ?>
 <article>
-    <h1>Cart</h1>
-    <p>
-	<ul>
-	    <?php foreach($this->orderStorage['line_items'] as $lineItem): ?>
-		<li><?= $this->escapeForHTML($lineItem['name']) . ' ' . $lineItem['quantity']; ?></li>
-	    <?php endforeach; ?>
-	</ul>
-    </p>
-    <p><strong>Subtotal</strong>: <?= "$" . $this->orderStorage['subtotal']; ?></p>
     <h3>Personal information</h3>
     <strong>Name</strong>:
     <br>
@@ -31,10 +22,26 @@
     <br>
     <?= $this->escapeForHTML($this->user['phone_number'] ?? NULL); ?>
     <br>
-    <strong>Address</strong>:
-    <br>
-    <?= $this->formatAddressForHTML($this->user['address'] ?? NULL); ?>
-
+    <?php if($this->orderStorage["order_type"] == DELIVERY): ?>
+	<strong>Address</strong>:
+	<br>
+	<?= $this->formatAddressForHTML($this->user['address'] ?? NULL); ?>
+    <?php endif; ?>
+    <h3>Cart</h3>
+    <p>
+	<ul>
+	    <?php foreach($this->orderStorage['line_items'] as $lineItem): ?>
+		<li><?= $this->escapeForHTML($lineItem['name']) . ' ' . $lineItem['quantity']; ?></li>
+	    <?php endforeach; ?>
+	</ul>
+    </p>
+    <p><strong>Subtotal:</strong> $<?=$this->intToCurrency($this->orderStorage['cost']['subtotal'])?></p>
+    <?php if($this->orderStorage['cost']['fee'] > 0): ?>
+	<p><strong>Fees:</strong> $<?=$this->intToCurrency($this->orderStorage['cost']['fee'])?></p>
+    <?php endif; ?>
+    <p><strong>Tax:</strong> $<?=$this->intToCurrency($this->orderStorage['cost']['tax'])?></p>
+    <p><strong>Total:</strong> $<?=$this->intToCurrency($this->orderStorage['cost']['total'])?></p>
+    
     <div id="stripe-card-element">
 	<!-- Elements will create input elements here -->
     </div>
@@ -50,5 +57,5 @@
 </article>
 <script src="https://www.paypal.com/sdk/js?client-id=<?=PAYPAL_PUBLIC_KEY?>&disable-funding=credit,card"></script>
 <script src="https://js.stripe.com/v3/"></script>
-<script src="<?=$this->getFile('js', __FILE__);?>"></script>
+<script src="<?=$this->getFile('js', __FILE__);?>" type="module"></script>
 <?php require APP_ROOT . "/views/includes/footer.php" ?>

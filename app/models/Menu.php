@@ -3,7 +3,7 @@
 class Menu extends Model{
 
     public function createMenuItem(int $activeState, int $category,
-                                   string $name, float $price, string $description) : void {
+                                   string $name, int $price, string $description) : void {
         $sql = "INSERT INTO menu_items 
 (active, category_id, name, price, description, position) 
 VALUES (:active, :category_id, :name, :price, :description, :position);";
@@ -23,7 +23,7 @@ VALUES (:active, :category_id, :name, :price, :description, :position);";
     }
 
     public function updateMenuItem(int $menuItemID, int $activeState, int $category,
-                                   string $name, float $price, string $description) : void {
+                                   string $name, int $price, string $description) : void {
         $sql = "UPDATE menu_items 
 SET active = :active, category_id = :category_id, name = :name, price = :price, 
 description = :description, position = :position
@@ -142,7 +142,7 @@ SET category_id = :category_id, position = :position WHERE id = :id";
         $this->db->executeStatement();
     }
 
-    public function createAddition(string $name, float $priceModifier) : void {
+    public function createAddition(string $name, int $priceModifier) : void {
         $sql = "INSERT INTO additions 
 (name, price_modifier) VALUES (:name, :price_modifier);";
 
@@ -155,7 +155,7 @@ SET category_id = :category_id, position = :position WHERE id = :id";
     }
 
     public function updateAddition(int $additionID, string $name,
-                                   float $priceModifier) : void {
+                                   int $priceModifier) : void {
         $sql = "UPDATE additions
 SET name = :name, price_modifier = :price_modifier WHERE id = :id;";
 
@@ -335,7 +335,7 @@ WHERE id = :id;";
     }
 
     public function createChoiceOption(int $groupID, string $name,
-                                       float $priceModifier) : int {
+                                       int $priceModifier) : int {
         $sql = "INSERT INTO choices_children
 (parent_id, name, price_modifier, position) 
 VALUES (:parent_id, :name, :price_modifier, :position);";
@@ -355,7 +355,7 @@ VALUES (:parent_id, :name, :price_modifier, :position);";
     }
 
     public function updateChoiceOption(int $choiceID, string $name,
-                                       float $priceModifier) : void {
+                                       int $priceModifier) : void {
         $sql = "UPDATE choices_children
 SET name = :name, price_modifier = :price_modifier 
 WHERE id = :id;";
@@ -448,14 +448,14 @@ ORDER BY position ASC;";
         return $menu;
     }
 
-    public function getCategories() : ?array {
+    public function getCategories() : array {
         $sql = "SELECT * FROM menu_categories ORDER BY position ASC;";
 
         $this->db->beginStatement($sql);
         $this->db->executeStatement();
 
         $result = $this->db->getResultSet();
-        if(empty($result)) return NULL;
+        if(empty($result)) return array();
         return $result;
     }
 
@@ -469,18 +469,18 @@ ORDER BY position ASC;";
         return $this->db->getResult();
     }
 
-    public function getAllAdditions() : ?array {
+    public function getAllAdditions() : array {
         $sql = "SELECT * FROM additions;";
 
         $this->db->beginStatement($sql);
         $this->db->executeStatement();
 
         $result = $this->db->getResultSet();
-        if(empty($result)) return NULL;
+        if(empty($result)) return array();
         return $result;
     }
 
-    public function getItemAdditions(int $itemID) : ?array {
+    public function getItemAdditions(int $itemID) : array {
         $sql = "SELECT addition_id 
 FROM item_additions 
 WHERE item_id = :item_id
@@ -491,7 +491,7 @@ ORDER BY position ASC;";
         $this->db->executeStatement();
 
         $itemAdditions = $this->db->getResultSet();
-        if(empty($itemAdditions)) return NULL;
+        if(empty($itemAdditions)) return array();
 
         $additions = [];
         foreach($itemAdditions as $itemAddition){
@@ -525,7 +525,7 @@ ORDER BY position ASC;";
         return $this->db->getResult();
     }
     
-    public function getItemNestedChoices(int $itemID) : ?array {
+    public function getItemNestedChoices(int $itemID) : array {
         $sql = "SELECT choice_parent_id as id 
 FROM item_choices 
 WHERE item_id = :item_id
@@ -536,7 +536,7 @@ ORDER BY position ASC;";
         $this->db->executeStatement();
 
         $itemChoiceGroups = $this->db->getResultSet();
-        if(empty($itemChoiceGroups)) return NULL;
+        if(empty($itemChoiceGroups)) return array();
 
         $choices = [];
         foreach($itemChoiceGroups as $choiceGroup){
@@ -550,7 +550,7 @@ ORDER BY position ASC;";
         return $choices;
     }
 
-    public function getActiveMenu() : ?array {
+    public function getActiveMenu() : array {
         
     }
 

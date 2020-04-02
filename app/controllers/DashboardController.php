@@ -6,6 +6,7 @@ class DashboardController extends Controller{
     private $menuManager;
 
     public $menuStorage;
+    public $orderStorage;
     public $employeeStorage;
 
     public function __construct(){
@@ -24,13 +25,70 @@ class DashboardController extends Controller{
         require_once APP_ROOT . "/views/dashboard/dashboard-page.php";
     }
 
-    public function orders_get() : void {
+    public function orders_active_get() : void {
         $userID = $this->getUserID();
         if(!$this->validateAuthority(EMPLOYEE, $userID)){
             $this->redirect("/");
         }
 
         require_once APP_ROOT . "/views/dashboard/dashboard-orders-page.php";
+    }
+
+    public function orders_search_get() : void {
+        // TODO(Trystan): This page will first contain a list of filters,
+        // search by name, order type, date. A combination thereof.
+
+        
+    }
+    
+    public function orders_submit_get() : void {
+        $userID = $this->getUserID();
+        if(!$this->validateAuthority(EMPLOYEE, $userID)){
+            $this->redirect("/");
+        }
+
+        $cartID = $this->orderManager->getCartID($userID);
+        $this->orderStorage = $this->orderManager->getOrderByID($cartID);
+        if($this->orderStorage["order_type"] != IN_RESTAURANT){
+            $this->redirect("/Order/submit");
+        }
+        if(count($this->orderStorage["line_items"]) === 0){
+            $this->redirect("/Order");
+        }
+
+        require_once APP_ROOT . "/views/dashboard/dashboard-orders-submit-page.php";
+    }
+
+    // Technically called by javascript. Just wanted to keep it close to the other.
+    public function orders_submit_post() : void {
+        $userID = $this->getUserID();
+        if(!$this->validateAuthority(EMPLOYEE, $userID)){
+            echo "fail";
+            exit;
+        }
+
+        $cartID = $this->orderManager->getCartID($userID);
+        $this->orderStorage = $this->orderManager->getOrderByID($cartID);
+        if($cartID === NULL || $this->orderStorage["order_type"] != IN_RESTAURANT){
+            echo "fail";
+            exit;
+        }
+
+        $json = file_get_contents("php://input");
+        $postData = json_decode($json, true);
+
+        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
+            echo "fail";
+            exit;
+        }
+
+        $customerID = $this->userManager->getUserIDByEmail($postData["customer_email"]);
+
+        $this->orderManager->assignUserToOrder($cartID, $customerID);
+        $this->orderManager->submitOrder($cartID);
+        
+        $this->sessionManager->pushOneTimeMessage(USER_ALERT, "Order successfully submitted.");
+        echo "submitted";
     }
 
     public function menu_get() : void {
@@ -136,6 +194,8 @@ class DashboardController extends Controller{
         }
     }
 
+    // TODO(Trystan): Validate inputs. Especially ensure price is a number within range.
+    // TODO(Trystan): Update all prices to be taken in 0.00 format, but then multiply by 100 to store in database.
     public function menu_item_post() : void {
         $userID = $this->getUserID();
         if(!$this->validateAuthority(ADMIN, $userID)){
@@ -219,27 +279,222 @@ class DashboardController extends Controller{
 
     // JS CALLS
 
-    // Hope to be depricated soon.
-    public function orders_getOrders_get() : void {
-        // TODO: in a get request we could have the following things:
-        // view - this would change either full view or just order view.
-        // showComplete - this would show all orders
+    public function searchUsers_post() : void {
         $userID = $this->getUserID();
         if(!$this->validateAuthority(EMPLOYEE, $userID)){
             echo json_encode(NULL);
             exit;
         }
 
-        $orders = $this->orderManager->getAllActiveOrders();
+        $json = file_get_contents("php://input");
+        $postData = json_decode($json, true);
+        
+        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
+            echo json_encode(NULL);
+            exit;
+        }
+
+        unset($postData["CSRFToken"]);
+
+        // If every filter is empty then we'd return the entire database.
+        $emptyFilters = true;
+        $acceptableFilters = ["first_name", "last_name", "email", "phone_number"];
+        foreach($postData as $key => $filter){
+            if(!empty($filter) && in_array($key, $acceptableFilters)){
+                $emptyFilters = false;
+            }
+        }
+
+        if($emptyFilters){
+            echo json_encode(NULL);
+            exit;
+        }
+
+        $users = $this->userManager->getUsersMatchingFilters($postData["first_name"], $postData["last_name"],
+                                                             $postData["email"], $postData["phone_number"]);
+
+        echo json_encode($users);
+    }
+
+    public function orders_active_getOrders_post() : void {
+        $userID = $this->getUserID();
+        if(!$this->validateAuthority(EMPLOYEE, $userID)){
+            echo json_encode(NULL);
+            exit;
+        }
+
+        $json = file_get_contents("php://input");
+        $postData = json_decode($json, true);
+        
+        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
+            echo json_encode(NULL);
+            exit;
+        }
+
+        $lastReceived = "NULL";
+        if(isset($postData["last_received"])){
+            $lastReceived = $postData["last_received"];
+        }
+
+        $orders = array();
+        if($lastReceived === "NULL"){
+            $orders = $this->orderManager->getAllActiveOrders();
+        } else {
+            $orders = $this->orderManager->getActiveOrdersAfterDate($lastReceived);
+        }
 
         $numberOfOrders = count($orders);
         for($i = 0; $i < $numberOfOrders; $i++){
-            $orders[$i]["user_info"] = $this->userManager->getUserInfoByID($orders[$i]["user_id"]);
+            if($orders[$i]["user_id"] != NULL){
+                $orders[$i]["user_info"] = $this->userManager->getUserInfoByID($orders[$i]["user_id"]);
+            }
+            if($orders[$i]["order_type"] == DELIVERY){
+                $orders[$i]["address"] = $this->orderManager->getDeliveryAddress($orders[$i]["id"]);
+            }
+            $orders[$i]["is_paid"] = $this->orderManager->isPaid($orders[$i]["id"]);
         }
 
         echo json_encode($orders);
     }
 
+    public function orders_active_getStatus_post() : void {
+        $userID = $this->getUserID();
+        if(!$this->validateAuthority(EMPLOYEE, $userID)){
+            echo json_encode(NULL);
+            exit;
+        }
+
+        $json = file_get_contents("php://input");
+        $postData = json_decode($json, true);
+        
+        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
+            echo json_encode(NULL);
+            exit;
+        }
+
+        echo json_encode($this->orderManager->getActiveOrderStatus());
+    }
+
+    public function orders_active_updateStatus_post() : void {
+        $userID = $this->getUserID();
+        if(!$this->validateAuthority(EMPLOYEE, $userID)){
+            echo json_encode(NULL);
+            exit;
+        }
+        
+        $json = file_get_contents("php://input");
+        $postData = json_decode($json, true);
+        
+        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
+            echo json_encode(NULL);
+            exit;
+        }
+
+        $orders = $postData;
+        unset($orders["CSRFToken"]);
+
+        if(empty($orders)){
+            echo json_encode(NULL);
+            exit;
+        }
+
+        $updatedInfo = [];
+
+        foreach($orders["status"] as $orderID){
+            $order = $this->orderManager->getOrderByID($orderID);
+
+            $index = array_search((int)$order["status"], ORDER_STATUS_FLOW[$order["order_type"]]);
+            $updatedStatus = ORDER_STATUS_FLOW[$order["order_type"]][$index + 1];
+
+            $this->orderManager->updateOrderStatus($orderID, $updatedStatus);
+            $updatedInfo[$orderID] = $updatedStatus;
+        }
+        
+        echo json_encode($updatedInfo);
+    }
+
+    public function orders_active_checkPayment_post() : void {
+        $userID = $this->getUserID();
+        if(!$this->validateAuthority(EMPLOYEE, $userID)){
+            echo json_encode(NULL);
+            exit;
+        }
+        
+        $json = file_get_contents("php://input");
+        $postData = json_decode($json, true);
+        
+        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
+            echo json_encode(NULL);
+            exit;
+        }
+
+        $orders = $postData;
+        unset($orders["CSRFToken"]);
+
+        if(empty($orders)){
+            echo json_encode(null);
+            exit;
+        }
+
+        $isPaid = [];
+        
+        foreach($orders["id"] as $orderID){
+            $isPaid[$orderID] = $this->orderManager->isPaid($orderID);
+        }
+
+        echo json_encode($isPaid);
+    }
+
+    // Returns both the order_cost and order_payment
+    public function orders_active_getPaymentInfo_post() : void {
+        $userID = $this->getUserID();
+        if(!$this->validateAuthority(EMPLOYEE, $userID)){
+            echo json_encode(NULL);
+            exit;
+        }
+        
+        $json = file_get_contents("php://input");
+        $postData = json_decode($json, true);
+        
+        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
+            echo json_encode(NULL);
+            exit;
+        }
+
+        $orderID = $postData["id"];
+
+        $result = [];
+        $result["cost"] = $this->orderManager->getCost($orderID);
+        $result["payments"] = $this->orderManager->getPayments($orderID);
+
+        echo json_encode($result);
+    }
+
+    public function orders_active_submitPayment_post() : void {
+        $userID = $this->getUserID();
+        if(!$this->validateAuthority(EMPLOYEE, $userID)){
+            echo json_encode(NULL);
+            exit;
+        }
+        
+        $json = file_get_contents("php://input");
+        $postData = json_decode($json, true);
+        
+        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
+            echo json_encode(NULL);
+            exit;
+        }
+
+        $orderID = $postData["id"];
+        $amount = (int)($postData["amount"] * 100);
+        $method = $postData["method"];
+
+        $this->orderManager->submitPayment($orderID, $amount, $method);
+        $this->orderManager->updateOrderStatus($orderID, COMPLETE);
+    }
+
+    // TODO(Trystan): Update the c code to reflect the switch to orders_active
+    // Leaving for now so as to not break anything.
     public function orders_printerStream_get(){
         $userID = $this->getUserID();
         if($this->userManager->getUserAuthorityLevelByID($userID) != PRINTER){
@@ -319,44 +574,6 @@ class DashboardController extends Controller{
             // So we actually need "now" to be now - sleep interval.
             $orders = $this->orderManager->getActiveOrdersAfterDate($lastReceived);
         }
-    }
-
-    public function orders_updateOrderStatus_post() : void {
-        $userID = $this->getUserID();
-        if(!$this->validateAuthority(EMPLOYEE, $userID)){
-            echo json_encode(NULL);
-            exit;
-        }
-        
-        $json = file_get_contents("php://input");
-        $postData = json_decode($json, true);
-        
-        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
-            echo json_encode(NULL);
-            exit;
-        }
-
-        $orders = $postData;
-        unset($orders["CSRFToken"]);
-
-        if(empty($orders)){
-            echo json_encode(NULL);
-            exit;
-        }
-
-        $updatedInfo = [];
-
-        foreach($orders["status"] as $orderID){
-            $order = $this->orderManager->getOrderByID($orderID);
-
-            $index = array_search((int)$order["status"], ORDER_STATUS_FLOW[$order["order_type"]]);
-            $updatedStatus = ORDER_STATUS_FLOW[$order["order_type"]][$index + 1];
-
-            $this->orderManager->updateOrderStatus($orderID, $updatedStatus);
-            $updatedInfo[$orderID] = $updatedStatus;
-        }
-        
-        echo json_encode($updatedInfo);
     }
 
     public function menu_updateMenuSequence_post() : void {
