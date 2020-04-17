@@ -2,12 +2,13 @@
 
 class DashboardController extends Controller{
 
-    private $orderManager;
-    private $menuManager;
+    private Order $orderManager;
+    private Menu $menuManager;
 
     public $menuStorage;
     public $orderStorage;
     public $employeeStorage;
+    public $userStorage;
 
     public function __construct(){
         parent::__construct();
@@ -25,20 +26,119 @@ class DashboardController extends Controller{
         require_once APP_ROOT . "/views/dashboard/dashboard-page.php";
     }
 
+    // Tentative, not sure if we need this.
+    // But it would be a way to go to a specific customer and view all their actvity.
+    // It would show total spent and list all orders made by customer.
+    // Maybe even something like amount spent in the last 30 days.
+    public function customers_get() : void {
+        $userID = $this->getUserID();
+        if(!$this->validateAuthority(EMPLOYEE, $userID)){
+            $this->redirect("/");
+        }
+
+        if(!isset($_GET["id"])){
+            $this->redirect("/Dashboard/orders/search");
+        }
+
+        $this->userStorage = $this->userManager->getUserInfoByID($_GET["id"]);
+        $this->orderStorage = $this->orderManager->getAllOrdersByUserID($_GET["id"]);
+
+        require_once APP_ROOT . "/views/dashboard/dashboard-customers-page.php";
+    }
+
+    public function customers_search_get() : void {
+        $userID = $this->getUserID();
+        if(!$this->validateAuthority(EMPLOYEE, $userID)){
+            $this->redirect("/");
+        }
+
+        require_once APP_ROOT . "/views/dashboard/dashboard-customers-search-page.php";
+    }
+
+    public function orders_get() : void {
+        $userID = $this->getUserID();
+        if(!$this->validateAuthority(EMPLOYEE, $userID)){
+            $this->redirect("/");
+        }
+
+        if(!isset($_GET["id"])){
+            $this->redirect("/Dashboard/orders/search");
+        }
+
+        $this->orderStorage = $this->orderManager->getOrderByID($_GET["id"]);
+        $this->orderStorage["user_info"] = $this->userManager->getUserInfoByID($this->orderStorage["user_id"]);
+        // TODO(Trystan): We can grab any specifics from the respective processors if data is necessary.
+        $this->orderStorage["payments"] = $this->orderManager->getPayments($_GET["id"]);
+        $cost = $this->orderManager->getCost($_GET["id"]);
+        $cost["total"] = $cost["subtotal"] + $cost["fee"] + $cost["tax"];
+        $this->orderStorage["cost"] = $cost;
+
+        foreach($this->orderStorage["payments"] as &$payment){
+            $payment["refund_total"] = $this->orderManager->getRefundTotal($payment["id"]);
+        }
+        // A quirk of PHP references: you have to break them after the scope ends. If you were to use $payment
+        // without doing that, it would point to the last element of the previous foreach loop. Like what?
+        unset($payment);
+        
+        require_once APP_ROOT . "/views/dashboard/dashboard-orders-page.php";
+    }
+
+    // Handles all types of refunds in one function. Cash, Stripe, paypal, apple.
+    public function orders_refund_post() : void {
+        $userID = $this->getUserID();
+        if(!$this->validateAuthority(EMPLOYEE, $userID)){
+            echo json_encode(NULL);
+            exit;
+        }
+
+        $json = file_get_contents("php://input");
+        $postData = json_decode($json, true);
+        
+        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
+            echo json_encode(NULL);
+            exit;
+        }
+
+        $payment = $this->orderManager->getPaymentByID($postData["payment_id"]);
+        $refundTotal = $this->orderManager->getRefundTotal($postData["payment_id"]);
+
+        if(($payment["amount"] - $refundTotal) < $postData["amount"]){
+            echo json_encode(NULL);
+            exit;
+        }
+
+        // TODO(Trystan): Paypal refunds. And then whenever we add Apple Pay.
+        switch($payment["method"]){
+        case PAYMENT_STRIPE:
+            \Stripe\Stripe::setApiKey(STRIPE_PRIVATE_KEY);
+            $paymentIntentID = $this->getStripeToken($postData["order_id"]);
+            \Stripe\Refund::create(['amount' => $postData["amount"], 'payment_intent' => $paymentIntentID]);
+            $this->orderManager->submitRefund($postData["payment_id"], $postData["amount"]);
+            break;
+        case PAYMENT_CASH:
+            $this->orderManager->submitRefund($postData["payment_id"], $postData["amount"]);
+            break;
+        }
+
+        echo json_encode("success");
+    }
+
     public function orders_active_get() : void {
         $userID = $this->getUserID();
         if(!$this->validateAuthority(EMPLOYEE, $userID)){
             $this->redirect("/");
         }
 
-        require_once APP_ROOT . "/views/dashboard/dashboard-orders-page.php";
+        require_once APP_ROOT . "/views/dashboard/dashboard-orders-active-page.php";
     }
 
     public function orders_search_get() : void {
-        // TODO(Trystan): This page will first contain a list of filters,
-        // search by name, order type, date. A combination thereof.
+        $userID = $this->getUserID();
+        if(!$this->validateAuthority(EMPLOYEE, $userID)){
+            $this->redirect("/");
+        }
 
-        
+        require_once APP_ROOT . "/views/dashboard/dashboard-orders-search-page.php";
     }
     
     public function orders_submit_get() : void {
@@ -278,6 +378,61 @@ class DashboardController extends Controller{
     }
 
     // JS CALLS
+
+    public function searchOrders_post() : void {
+        $userID = $this->getUserID();
+        if(!$this->validateAuthority(EMPLOYEE, $userID)){
+            echo json_encode(NULL);
+            exit;
+        }
+
+        $json = file_get_contents("php://input");
+        $postData = json_decode($json, true);
+        
+        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
+            echo json_encode(NULL);
+            exit;
+        }
+
+        unset($postData["CSRFToken"]);
+
+        // If every filter is empty then we'd return the entire database.
+        $emptyFilters = true;
+        $acceptableFilters = ["start_date", "end_date", "start_amount", "end_amount",
+                              "first_name", "last_name", "email", "phone_number", "order_type"];
+        foreach($postData as $key => $filter){
+            if(!empty($filter) && in_array($key, $acceptableFilters)){
+                $emptyFilters = false;
+            } else {
+                if($key === "order_type" && !is_null($filter)){
+                    $emptyFilters = false;
+                } else {
+                    $postData[$key] = NULL;
+                }
+            }
+        }
+
+        if($emptyFilters){
+            echo json_encode(NULL);
+            exit;
+        }
+
+        $ids = $this->orderManager->getOrdersMatchingFilters($postData["start_date"], $postData["end_date"],
+                                                                $postData["start_amount"], $postData["end_amount"],
+                                                                $postData["order_type"], $postData["first_name"],
+                                                                $postData["last_name"], $postData["email"],
+                                                                $postData["phone_number"]);
+
+        $orders = [];
+        foreach($ids as $id){
+            $order = $this->orderManager->getOrderByID($id["id"]);
+            $order["user_info"] = $this->userManager->getUserInfoByID($id["user_id"]);
+
+            $orders[] = $order;
+        }
+        
+        echo json_encode($orders);
+    }
 
     public function searchUsers_post() : void {
         $userID = $this->getUserID();

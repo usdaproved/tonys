@@ -214,6 +214,18 @@ WHERE id = (SELECT address_id FROM delivery_address WHERE order_id = :order_id);
         $this->db->executeStatement();
     }
 
+    // TODO(Trystan): We probably want to add a Date column. So that way we know when refunds were issued.
+    public function submitRefund(int $paymentID, int $amount) : void {
+        $sql = "INSERT INTO payment_refunds (payment_id, amount) VALUES (:payment_id, :amount);";
+        
+        $this->db->beginStatement($sql);
+        
+        $this->db->bindValueToStatement(":payment_id", $paymentID);
+        $this->db->bindValueToStatement(":amount", $amount);
+
+        $this->db->executeStatement();
+    }
+
     public function isPaid(int $orderID) : bool {
         $sql = "SELECT 
 CASE WHEN (SUM(op.amount) = (oc.subtotal + oc.tax + oc.fee)) THEN 1 ELSE 0 END AS is_paid 
@@ -402,7 +414,10 @@ WHERE lia.line_item_id = :line_item_id;";
     }
 
     public function getAllOrdersByUserID(int $userID) : ?array {
-        $sql = "SELECT id FROM orders o WHERE user_id = :user_id ORDER BY o.date ASC;";
+        $sql = "SELECT id FROM orders o 
+WHERE user_id = :user_id
+AND status > " . CART . "
+ORDER BY o.date ASC;";
 
         $this->db->beginStatement($sql);
         $this->db->bindValueToStatement(":user_id", $userID);
@@ -420,6 +435,7 @@ WHERE lia.line_item_id = :line_item_id;";
         return $orders;
     }
 
+    // TODO(Trystan): Nobody calls this. Something from a bygone era probably.
     public function getAllOrdersByStatus(int $status) : array {
         $sql = "SELECT id FROM orders o WHERE status = :status ORDER BY o.date ASC;";
 
@@ -537,6 +553,47 @@ WHERE oli.id = :id;";
         return (bool)$result["is_line_item_in_order"];
     }
 
+    public function getOrdersMatchingFilters(string $startDate = NULL, string $endDate = NULL, int $startAmount = NULL,
+                                             int $endAmount = NULL, int $orderType = NULL, string $firstName = NULL,
+                                             string $lastName = NULL, string $email = NULL, string $phoneNumber = NULL) : array {
+        $sql = "SELECT o.id, o.user_id FROM orders o 
+LEFT JOIN order_cost c
+ON c.order_id = o.id 
+LEFT JOIN users u
+ON o.user_id = u.id
+WHERE
+(u.name_first   LIKE CONCAT('%', :name_first, '%')   OR :name_first   IS NULL) AND
+(u.name_last    LIKE CONCAT('%', :name_last, '%')    OR :name_last    IS NULL) AND
+(u.email        LIKE CONCAT('%', :email, '%')        OR :email        IS NULL) AND
+(u.phone_number LIKE CONCAT('%', :phone_number, '%') OR :phone_number IS NULL) AND 
+((o.date BETWEEN :start_date AND :end_date) OR (:start_date IS NULL AND :end_date IS NULL)) AND
+(((c.fee + c.subtotal + c.tax) BETWEEN :start_amount AND :end_amount) OR (:start_amount IS NULL AND :end_amount IS NULL)) AND
+(o.order_type = :order_type OR :order_type IS NULL) AND
+o.status = " . COMPLETE . "
+GROUP BY o.id
+ORDER BY o.date DESC;";
+
+        $this->db->beginStatement($sql);
+
+        $this->db->bindValueToStatement(":start_date", $startDate);
+        $this->db->bindValueToStatement(":end_date", $endDate);
+        $this->db->bindValueToStatement(":start_amount", $startAmount);
+        $this->db->bindValueToStatement(":end_amount", $endAmount);
+        $this->db->bindValueToStatement(":order_type", $orderType);
+        $this->db->bindValueToStatement(":name_first", $firstName);
+        $this->db->bindValueToStatement(":name_last", $lastName);
+        $this->db->bindValueToStatement(":email", $email);
+        $this->db->bindValueToStatement(":phone_number", $phoneNumber);
+        
+        $this->db->executeStatement();
+
+        $result = $this->db->getResultSet();
+
+        if(is_bool($result)) return array();
+
+        return $result;
+    }
+
     public function getCost(int $orderID) : array {
         $sql = "SELECT * FROM order_cost WHERE order_id = :order_id;";
 
@@ -548,7 +605,7 @@ WHERE oli.id = :id;";
     }
 
     public function getPayments(int $orderID) : array {
-        $sql = "SELECT amount, method FROM order_payments WHERE order_id = :order_id;";
+        $sql = "SELECT id, amount, method FROM order_payments WHERE order_id = :order_id;";
 
         $this->db->beginStatement($sql);
         $this->db->bindValueToStatement(":order_id", $orderID);
@@ -556,7 +613,31 @@ WHERE oli.id = :id;";
 
         $result = $this->db->getResultSet();
         if(is_bool($result)) return array();
-        return $this->db->getResultSet();
+        return $result;
+    }
+
+    public function getPaymentByID(int $paymentID) : array {
+        $sql = "SELECT order_id, amount, method FROM order_payments WHERE id = :id;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":id", $paymentID);
+        $this->db->executeStatement();
+
+        return $this->db->getResult();
+    }
+
+    // Refund total for the individual payments.
+    // TODO(Trystan): We may want to add a date column. So that way we can track when refunds were given out.
+    public function getRefundTotal(int $paymentID) : int {
+        $sql = "SELECT SUM(amount) as refund_total FROM payment_refunds WHERE payment_id = :payment_id;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":payment_id", $paymentID);
+        $this->db->executeStatement();
+
+        $result = $this->db->getResult();
+        if(is_null($result)) return 0;
+        return (int)$result["refund_total"];
     }
 
     public function setPaypalToken(int $orderID, string $token) : void {

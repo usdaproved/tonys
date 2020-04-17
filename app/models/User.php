@@ -186,7 +186,7 @@ WHERE session_id = :session_id;";
     }
 
     public function getUsersMatchingFilters(string $firstName = NULL, string $lastName = NULL,
-                                            string $email = NULL, string $phoneNumber = NULL) : ?array {
+                                            string $email = NULL, string $phoneNumber = NULL) : array {
         $sql = "SELECT * FROM users WHERE 
 (name_first   LIKE CONCAT('%', :name_first, '%')   OR :name_first   IS NULL) AND
 (name_last    LIKE CONCAT('%', :name_last, '%')    OR :name_last    IS NULL) AND
@@ -200,32 +200,6 @@ WHERE session_id = :session_id;";
         $this->db->bindValueToStatement(":email", $email);
         $this->db->bindValueToStatement(":phone_number", $phoneNumber);
         
-        $this->db->executeStatement();
-
-        $users = $this->db->getResultSet();
-
-        if(is_bool($users)) return array();
-        return $users;
-    }
-
-    public function getUsersWithLastName(string $lastName) : ?array {
-        $sql = "SELECT * FROM users WHERE name_last = :name_last;";
-
-        $this->db->beginStatement($sql);
-        $this->db->bindValueToStatement(":name_last", $lastName);
-        $this->db->executeStatement();
-
-        $users = $this->db->getResultSet();
-
-        if(is_bool($users)) return array();
-        return $users;
-    }
-
-    public function getUsersWithFullName(string $firstName, string $lastName) : ?array {
-        $sql = "SELECT * FROM users WHERE name_last = :name_last;";
-
-        $this->db->beginStatement($sql);
-        $this->db->bindValueToStatement(":name_last", $lastName);
         $this->db->executeStatement();
 
         $users = $this->db->getResultSet();

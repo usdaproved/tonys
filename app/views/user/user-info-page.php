@@ -19,6 +19,7 @@
 <input type="text" id="state" name="state" value="<?=$this->escapeForAttributes($this->user["address"]["state"] ?? NULL);?>" autocomplete="address-level1">
 <label for="zip_code">Zip code</label>
 <input type="text" id="zip_code" name="zip_code" value="<?=$this->escapeForAttributes($this->user["address"]["zip_code"] ?? NULL);?>" autocomplete="postal-code">
+<input type="submit" id="update-info" value="Update">
 
 <input type="hidden" name="CSRFToken"  id="CSRFToken" value="<?= $this->sessionManager->getCSRFToken(); ?>">
 

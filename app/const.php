@@ -42,6 +42,7 @@ const PREPARED   = 3;
 const DELIVERING = 4;
 // NOTE(Trystan): The order is 'complete' when the order has ended. Delivered, picked up, paid.
 const COMPLETE   = 5;
+const REFUNDED   = 6;
 
 const STATUS_ARRAY = ['cart','submitted','preparing','prepared','delivering','complete'];
 
@@ -60,6 +61,8 @@ const PAYMENT_CASH   = 0;
 const PAYMENT_STRIPE = 1;
 const PAYMENT_PAYPAL = 2;
 const PAYMENT_APPLE  = 3;
+
+const PAYMENT_ARRAY = ['cash', 'stripe', 'paypal', 'apple'];
 
 const MAX_LENGTH_NAME_FIRST   = 50;
 const MAX_LENGTH_NAME_LAST    = 50;

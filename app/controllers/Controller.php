@@ -238,6 +238,10 @@ class Controller{
                 $string .= "</ul>";
             }
             $string .= "</li>";
+
+            $string .= "<div class='line-item-comment'>";
+            $string .= $this->escapeForHTML($lineItem['comment']);
+            $string .= "</div>";
         }
         $string .= "</ul>";
 

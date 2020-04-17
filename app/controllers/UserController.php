@@ -77,6 +77,17 @@ class UserController extends Controller{
         // TODO(Trystan): This is where customers can view order history.
 
     }
+
+    // JS functions
+
+    public function updateInfo_post() : void {
+        if(!$this->sessionManager->validateCSRFToken($_POST["CSRFToken"])){
+            echo json_encode(NULL);
+            exit;
+        }
+
+        
+    }
 }
 
 ?>

@@ -3,31 +3,35 @@
 <header>Tony's Taco House</header>
 <a href="/Dashboard">Dashboard</a>
 <br>
-<div id="order-type-filters">
-    Filter Orders:
-    <label for="view-delivery">Delivery</label>
-    <input type="checkbox" id="view-delivery" checked>
-    <label for="view-pickup">Pickup</label>
-    <input type="checkbox" id="view-pickup" checked>
-    <label for="view-in-restaurant">Restaurant</label>
-    <input type="checkbox" id="view-in-restaurant" checked>
+<div id="user_info">
+    <a href="/Dashboard/customers?id=<?=$this->orderStorage["user_info"]["id"] ?? NULL?>">
+	<?=$this->orderStorage["user_info"]["name_first"] ?? NULL;?>
+    </a>
 </div>
-<input type="submit" id="update-status-button" value="Update status">
-<h3 id="order-type-name-delivery" class="order-type-name">
-    DELIVERY:
-</h3>
-<div id="delivery-orders" class="orders-container">
+<div class="order-container" id="order-<?=$this->orderStorage["id"]?>">
+    <?=$this->formatOrderForHTML($this->orderStorage);?>
 </div>
-<h3 id="order-type-name-pickup" class="order-type-name">
-    PICKUP:
-</h3>
-<div id="pickup-orders" class="orders-container">
+
+<p>subtotal: $<?=$this->intToCurrency($this->orderStorage["cost"]["subtotal"])?></p>
+<p>fee: $<?=$this->intToCurrency($this->orderStorage["cost"]["fee"])?></p>
+<p>tax: $<?=$this->intToCurrency($this->orderStorage["cost"]["tax"])?></p>
+<p>total: $<span id="cost_total"><?=$this->intToCurrency($this->orderStorage["cost"]["total"])?></span></p>
+
+<div class="payments-container">
+    <h3>Payment(s)</h3>
+    <?php foreach($this->orderStorage["payments"] as $payment): ?>
+	<div class="payment-container" id="payment-<?=$payment['id']?>">
+	    <p>Method: <?=PAYMENT_ARRAY[$payment["method"]];?></p>
+	    <p>Amount: $<span class="payment-amount"><?=$this->intToCurrency($payment["amount"])?></span></p>
+	    <p>Refund total: $<span class="refund-total"><?=$this->intToCurrency($payment["refund_total"])?></span></p>
+	    <?php if($payment["refund_total"] != $payment["amount"]): ?>
+		<input type="number" step="0.01" max="<?=$this->intToCurrency($payment["amount"] - $payment["refund_total"])?>" autocomplete="off">
+		<input type="button" class="refund-button" value="Refund" data-payment-id="<?=$payment["id"]?>">
+	    <?php endif; ?>
+	</div>
+    <?php endforeach;?>
 </div>
-<h3 id="order-type-name-in-restaurant" class="order-type-name">
-    IN RESTAURANT:
-</h3>
-<div id="in-restaurant-orders" class="orders-container">
-</div>
+
 <input type="hidden" name="CSRFToken"  id="CSRFToken" value="<?= $this->sessionManager->getCSRFToken(); ?>">
 
 <script src="<?=$this->getFile('js', __FILE__);?>" type="module"></script>

@@ -1,0 +1,38 @@
+.order-container.selected{
+    border: thin solid rgb(32, 200, 80);
+}
+
+.order-container.unpaid{
+    box-shadow: 0px 0px 5px rgb(21, 29, 145);
+}
+
+.order-container.completed{
+    box-shadow: 0px 0px 5px rgb(26, 143, 59);
+}
+
+.order-status{
+    bottom: 10px;
+    right: 10px;
+    position: absolute;
+    color: rgb(7, 41, 0);
+}
+
+.selected .order-status{
+    color: rgb(26, 143, 59);
+}
+
+.info-icon{
+    top: 10px;
+    right: 10px;
+    position: absolute;
+}
+
+@keyframes update-flash {
+    from { color: yellow; }
+    to   { color: default; }
+}
+
+.flash .order-status{
+    animation-name: update-flash;
+    animation-duration: 3.0s;
+};
