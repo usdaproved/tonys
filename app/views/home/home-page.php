@@ -7,7 +7,7 @@
 <?php if(isset($this->user['name_first'])): ?>
     <h3>Welcome, <?= $this->escapeForHTML($this->user['name_first']); ?>.</h3>
 <?php endif; ?>
-<?php if($this->isLoggedIn):?>
+<?php if($this->user["logged_in"]):?>
     <a href="/logout">Log out</a>
 <?php else: ?>
     <a href="/register">Register</a>

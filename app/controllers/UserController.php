@@ -68,14 +68,49 @@ class UserController extends Controller{
         // TODO(Trystan): This is where users can view and edit all
         // their information.
         $userID = $this->getUserID();
+        if(is_null($userID)){
+            $this->redirect("/");
+        }
+        if(!$this->sessionManager->isUserLoggedIn()){
+            $infoLevel = $this->userManager->getUnregisteredInfoLevel($userID);
+            if($infoLevel == INFO_NONE){
+                $this->redirect("/register");
+            }
+        }
+        
         $this->user = $this->userManager->getUserInfoByID($userID);
 
         require_once APP_ROOT . "/views/user/user-info-page.php";
     }
 
+    public function address_get() : void {
+        // If no addresses exist we can add one here.
+        // Multiple addresses, select default address.
+        $userID = $this->getUserID();
+        if(is_null($userID)){
+            $this->redirect("/");
+        }
+        if(!$this->sessionManager->isUserLoggedIn()){
+            $infoLevel = $this->userManager->getUnregisteredInfoLevel($userID);
+            if($infoLevel == INFO_NONE){
+                $this->redirect("/register");
+            }
+        }
+
+        $this->user = $this->userManager->getUserInfoByID($userID);
+        $this->user["other_addresses"] = $this->userManager->getNonDefaultAddresses($userID);
+
+        require_once APP_ROOT . "/views/user/user-address-page.php";
+    }
+
     public function orders_get() : void {
         // TODO(Trystan): This is where customers can view order history.
-
+        $userID = $this->getUserID();
+        if(is_null($userID)){
+            $this->redirect("/");
+        }
+        
+        require_once APP_ROOT . "/views/user/user-orders-page.php";
     }
 
     // JS functions

@@ -13,12 +13,16 @@ class App {
     public function __construct() {
         $url = $this->parseUrl();
 
+        $pageFound = true;
+        
         $controller = $this->getController($url);
-        $method = $this->getMethod($controller, $url);
+        $method = $this->getMethod($controller, $url, $pageFound);
 
-        // TODO(Trystan): If this function fails, like it will when you call a private function.
-        // Then have it pull up the 404 not found page.
-        call_user_func(array($controller, $method));
+        if($pageFound){
+            $controller->$method();
+        } else {
+            Controller::display404Page();
+        }
     }
 
     private function parseUrl() : array {
@@ -43,17 +47,16 @@ class App {
             $controllerUrl = APP_ROOT . "/controllers/$passedController.php";
 
             if(file_exists($controllerUrl)) {
-                $passedController;
                 unset($url[0]);
 
                 return new $passedController();
             }
         }
 
-        return new HomeController(); // Default controller, the index page.
+        return new HomeController(); // An empty url equals the home page.  
     }
 
-    private function getMethod(Controller $controller, array &$url = NULL) : string {
+    private function getMethod(Controller $controller, array &$url = NULL, bool &$pageFound) : string {
         $requestMethod = strtolower($_SERVER["REQUEST_METHOD"]);
         
         $passedMethod = $requestMethod;
@@ -68,6 +71,7 @@ class App {
         }
         
         if(!method_exists($controller, $passedMethod)){
+            $pageFound = false;
             return strtolower($_SERVER["REQUEST_METHOD"]);
         }
 

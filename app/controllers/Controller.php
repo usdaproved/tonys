@@ -14,8 +14,14 @@ class Controller{
         $this->sessionManager = new Session();
         $this->handleOneTimeMessages();
     }
+
+    public static function display404Page() : void {
+        header("HTTP/1.0 404 Not Found");
+        require_once APP_ROOT . "/views/page-not-found.php";
+        exit;
+    }
     
-    public function getFile(string $fileType, string $file) : string {
+    public static function getFile(string $fileType, string $file) : string {
         if(strpos($file, ".php") !== false){
             $file = explode("/", $file);
             $file = end($file);

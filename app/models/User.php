@@ -179,7 +179,7 @@ WHERE session_id = :session_id;";
         $this->db->executeStatement();
 
         $userInfo = $this->db->getResult();
-        $userInfo["address"] = $this->getUserAddressByID($userID);
+        $userInfo["address"] = $this->getDefaultAddress($userID);
 
         if(is_bool($userInfo)) return array();
         return $userInfo;
@@ -208,14 +208,39 @@ WHERE session_id = :session_id;";
         return $users;
     }
 
-    public function getUserAddressByID(int $userID = NULL) : array {
-        $sql = "SELECT line, city, state, zip_code FROM address WHERE user_id = :user_id;";
+    public function getDefaultAddress(int $userID = NULL) : array {
+        $sql = "SELECT line, city, state, zip_code 
+FROM address a
+LEFT JOIN users u
+ON a.user_id = u.id
+WHERE a.user_id = :user_id
+AND u.default_address = a.id;";
 
         $this->db->beginStatement($sql);
         $this->db->bindValueToStatement(":user_id", $userID);
         $this->db->executeStatement();
 
         $result = $this->db->getResult();
+
+        if(is_bool($result)) return array();
+        return $result;
+    }
+
+    // This isn't all addresses because any time we grab addresses we already know the default one.
+    // What we really want is to know the others, we could grab all at once
+    // but then we'd just filter out the default one. Best to just grab exactly what we want.
+    public function getNonDefaultAddresses(int $userID = NULL) : array {
+        $sql = "SELECT line, city, state, zip_code FROM address a
+LEFT JOIN users u
+ON a.user_id = u.id
+WHERE a.user_id = :user_id
+AND u.default_address != a.id;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":user_id", $userID);
+        $this->db->executeStatement();
+
+        $result = $this->db->getResultSet();
 
         if(is_bool($result)) return array();
         return $result;

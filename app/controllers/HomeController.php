@@ -7,10 +7,9 @@
 // Or some over arching contoller that handles all things user auth and user view related.
 
 class HomeController extends Controller{
-    private $orderManager;
+    private Order $orderManager;
     
     public $user;
-    public $isLoggedIn;
     // TODO: Update this with javascript.
     public $activeOrderStatus;
     
@@ -24,7 +23,7 @@ class HomeController extends Controller{
         $userID = $this->getUserID();
         $this->user = $this->userManager->getUserInfoByID($userID);
 
-        $this->isLoggedIn = $this->sessionManager->isUserLoggedIn();
+        $this->user["logged_in"] = $this->sessionManager->isUserLoggedIn();
 
         $this->activeOrderStatus = $this->orderManager->getUserActiveOrderStatus($userID);
 
