@@ -64,7 +64,8 @@ VALUES (:user_id, :password);";
 
         return $userID;
     }
-    
+
+    // TODO(Trystan): Allow this to be updated more than once?
     public function setEmail(int $userID, string $email) : void {
         $sql = "UPDATE users SET email = :email WHERE id = :id";
 
@@ -95,7 +96,7 @@ name_first = :name_first, name_last = :name_last
         $this->db->executeStatement();
     }
 
-    public function setAddress(int $userID, string $line, string $city, string $state, string $zipCode) : void {
+    public function addAddress(int $userID, string $line, string $city, string $state, string $zipCode) : int {
         $sql = "INSERT INTO address (user_id, line, city, state, zip_code)
  VALUES (:user_id, :line, :city, :state, :zip_code);";
 
@@ -105,6 +106,19 @@ name_first = :name_first, name_last = :name_last
         $this->db->bindValueToStatement(":city", $city);
         $this->db->bindValueToStatement(":state", $state);
         $this->db->bindValueToStatement(":zip_code", $zipCode);
+        $this->db->executeStatement();
+
+        return $this->db->lastInsertID();
+    }
+
+    public function setDefaultAddress(int $userID, int $addressID) : void {
+        $sql = "UPDATE users SET default_address = :default_address WHERE id = :id;";
+
+        $this->db->beginStatement($sql);
+
+        $this->db->bindValueToStatement(":id", $userID);
+        $this->db->bindValueToStatement(":default_address", $addressID);
+
         $this->db->executeStatement();
     }
 
@@ -209,7 +223,7 @@ WHERE session_id = :session_id;";
     }
 
     public function getDefaultAddress(int $userID = NULL) : array {
-        $sql = "SELECT line, city, state, zip_code 
+        $sql = "SELECT a.id, line, city, state, zip_code 
 FROM address a
 LEFT JOIN users u
 ON a.user_id = u.id
@@ -230,7 +244,7 @@ AND u.default_address = a.id;";
     // What we really want is to know the others, we could grab all at once
     // but then we'd just filter out the default one. Best to just grab exactly what we want.
     public function getNonDefaultAddresses(int $userID = NULL) : array {
-        $sql = "SELECT line, city, state, zip_code FROM address a
+        $sql = "SELECT a.id, line, city, state, zip_code FROM address a
 LEFT JOIN users u
 ON a.user_id = u.id
 WHERE a.user_id = :user_id

@@ -65,6 +65,11 @@ class OrderController extends Controller{
         $cost["total"] = $cost["subtotal"] + $cost["tax"] + $cost["fee"];
         $this->orderStorage["cost"] = $cost;
 
+        // Load selected address, which is the default address at the start.
+        // Can be updated by selecting another address.
+        // This is the delivery address that gets submitted.
+        $this->user["other_addresses"] = $this->userManager->getNonDefaultAddresses($userID);
+
         require_once APP_ROOT . "/views/order/order-submit-page.php";
     }
 
@@ -155,6 +160,34 @@ class OrderController extends Controller{
             exit;
         }
         
+    }
+
+    public function submit_setDeliveryAddress_post() : void {
+        $userID = $this->getUserID();
+
+        $json = file_get_contents("php://input");
+        $postData = json_decode($json, true);
+        
+        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
+            echo "fail";
+            exit;
+        }
+
+        $addressID = $postData["address_id"];
+
+        $addresses = $this->userManager->getNonDefaultAddresses($userID);
+        $addressIDFound = false;
+        foreach($addresses as $address){
+            if($address["id"] === $addressID){
+                $addressIDFound = true;
+            }
+        }
+        if(!$addressIDFound){
+            echo "fail";
+            exit;
+        }
+        
+        $this->orderManager->setDeliveryAddressID($orderID, $addressID);
     }
 
     public function getItemDetails_post() : void {

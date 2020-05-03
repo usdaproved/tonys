@@ -12,6 +12,10 @@
     cursor: pointer;
 }
 
+.order-container.selected{
+    border: thin solid rgb(32, 200, 80);
+}
+
 .dialog-container{
     position: fixed;
     background: rgba(31, 31, 31, 0.8) none repeat scroll 0% 0%;

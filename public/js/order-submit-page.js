@@ -4,6 +4,26 @@ import { postJSON } from './utility.js';
 
 let CSRFToken = document.querySelector('#CSRFToken').value;
 
+const addressContainer = document.querySelector('#address-select-container');
+const changeAddressButton = document.querySelector('#change-address');
+
+changeAddressButton.addEventListener('click', (e) => {
+  addressContainer.hidden = !addressContainer.hidden;
+  if(addressContainer.hidden){
+    changeAddressButton.value = 'Change';
+  } else {
+    changeAddressButton.value = 'Cancel';
+  }
+});
+
+addressContainer.querySelectorAll('.order-container').addEventListener('click', (e) => {
+  let container = e.target.closest('.order-container');
+  let addressID = container.id.split('-')[1];
+
+  // Send post request to set delivery id to the selected one.
+  // hide the address containers upon success and update the delivery address.
+});
+
 // This code must be structured in such a way
 // that one of multiple payment processors will be used
 // The customer will decide which one they want to use.

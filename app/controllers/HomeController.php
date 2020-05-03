@@ -84,7 +84,8 @@ class HomeController extends Controller{
 
         $this->userManager->setName($userID, $_POST["name_first"], $_POST["name_last"]);
         $this->userManager->setPhoneNumber($userID, $_POST["phone"]);
-        $this->userManager->setAddress($userID, $_POST["address_line"], $_POST["city"], $_POST["state"], $_POST["zip_code"]);
+        $addressID = $this->userManager->addAddress($userID, $_POST["address_line"], $_POST["city"], $_POST["state"], $_POST["zip_code"]);
+        $this->userManager->setDefaultAddress($userID, $addressID);
         
         $this->sessionManager->login($userID);
 

@@ -413,7 +413,7 @@ WHERE lia.line_item_id = :line_item_id;";
         return $order;
     }
 
-    public function getAllOrdersByUserID(int $userID) : ?array {
+    public function getAllOrdersByUserID(int $userID) : array {
         $sql = "SELECT id FROM orders o 
 WHERE user_id = :user_id
 AND status > " . CART . "
@@ -424,7 +424,7 @@ ORDER BY o.date ASC;";
         $this->db->executeStatement();
 
         $ids = $this->db->getResultSet();
-        if(is_bool($ids)) return NULL;
+        if(is_bool($ids)) return array();
         
         $orders = [];
 

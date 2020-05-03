@@ -1,5 +1,6 @@
 <?php require APP_ROOT . "/views/includes/header.php" ?>
 
+<link href="<?=$this->getFile('css', 'components');?>" rel="stylesheet">
 <link href="<?= $this->getFile("css", __FILE__); ?>" rel="stylesheet">
 
 <?php $this->printOneTimeMessages(USER_ALERT); ?>
@@ -26,6 +27,14 @@
 	<strong>Address</strong>:
 	<br>
 	<?= $this->formatAddressForHTML($this->user['address'] ?? NULL); ?>
+	<input type="button" id="change-address" value="Change">
+	<div id="address-select-container" class="orders-container" hidden>
+	    <?php foreach($this->user["other_addresses"] as $address): ?>
+		<div class="order-container" id="address-<?=$address['id']?>">
+		    <?=$this->formatAddressForHTML($address)?>
+		</div>
+	    <?php endforeach; ?>
+	</div>
     <?php endif; ?>
     <h3>Cart</h3>
     <p>
@@ -43,11 +52,10 @@
     <p><strong>Total:</strong> $<?=$this->intToCurrency($this->orderStorage['cost']['total'])?></p>
     
     <div id="stripe-card-element">
-	<!-- Elements will create input elements here -->
     </div>
 
-    <!-- We'll put the error messages in this element -->
-    <div id="stripe-card-errors" role="alert"></div>
+    <div id="stripe-card-errors" role="alert">
+    </div>
 
     <input type="hidden" id="CSRFToken" name="CSRFToken" value="<?= $this->sessionManager->getCSRFToken(); ?>">
     <button id="stripe-payment-submit" data-secret="<?=$this->user['stripe_client_secret']?>" data-orderid="<?=$this->orderStorage['id']?>">Pay</button>
