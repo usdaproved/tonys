@@ -20,11 +20,11 @@ class UserController extends Controller{
             $this->redirect("/Order/submit");
         }
 
-        $userID = $this->getUserID();
-        $this->user = $this->userManager->getUserInfoByID($userID);
+        $userUUID = $this->getUserUUID();
+        $this->user = $this->userManager->getUserInfo($userUUID);
 
-        $cartID = $this->orderManager->getCartID($userID);
-        $order = $this->orderManager->getOrderByID($cartID);
+        $cartUUID = $this->orderManager->getCartUUID($userUUID);
+        $order = $this->orderManager->getOrderByUUID($cartUUID);
 
         if(!isset($order["order_type"]) || $order["order_type"] == DELIVERY){
             $this->getAddress = true;
@@ -41,9 +41,9 @@ class UserController extends Controller{
 
         // Check to see if we should validate address.
         // If no cart is found then the default behavior is to collect the address.
-        $userID = $this->getUserID();
-        $cartID = $this->orderManager->getCartID($userID);
-        $order = $this->orderManager->getOrderByID($cartID);
+        $userUUID = $this->getUserUUID();
+        $cartUUID = $this->orderManager->getCartUUID($userUUID);
+        $order = $this->orderManager->getOrderByUUID($cartUUID);
 
         $collectAddress = !isset($order["order_type"]) || $order["order_type"] == DELIVERY;
         
@@ -51,34 +51,48 @@ class UserController extends Controller{
             $this->redirect("/User/new");
         }
         
-        $this->userManager->setEmail($userID, $_POST["email"]);
-        $this->userManager->setName($userID, $_POST["name_first"], $_POST["name_last"]);
-        $this->userManager->setPhoneNumber($userID, $_POST["phone"]);
-        $this->userManager->setUnregisteredInfoLevel($userID, INFO_PARTIAL);
+        $this->userManager->setEmail($userUUID, $_POST["email"]);
+        $this->userManager->setName($userUUID, $_POST["name_first"], $_POST["name_last"]);
+        $this->userManager->setPhoneNumber($userUUID, $_POST["phone"]);
+        $this->userManager->setUnregisteredInfoLevel($userUUID, INFO_PARTIAL);
 
         if($collectAddress){
-            $this->userManager->setUnregisteredInfoLevel($userID, INFO_FULL);
-            $this->userManager->setAddress($userID, $_POST["address_line"], $_POST["city"], $_POST["state"], $_POST["zip_code"]);
+            $USPS = $this->validateAddressUSPS();
+            if(empty($USPS)){
+                $this->sessionManager->pushOneTimeMessage(USER_ALERT, "Address not found.");
+                $this->redirect("/User/new");
+            }
+
+            $addressUUID = $this->userManager->addAddress($userUUID, $USPS["address_line"], $USPS["city"],
+                                                          $USPS["state"], $USPS["zip_code"]);
+
+            if($this->isAddressDeliverable($USPS)){
+                $this->userManager->setAddressDeliverable($addressUUID);
+                $this->userManager->setDefaultAddress($userUUID, $addressUUID);
+                $this->userManager->setUnregisteredInfoLevel($userUUID, INFO_FULL);
+            } else {
+                $this->sessionManager->pushOneTimeMessage(USER_ALERT, "Delivery to this address is currently unavailable.");
+                $this->redirect("/User/new");
+            }
         }
         
         $this->redirect("/Order/submit");
     }
 
     public function info_get() : void {
-        // TODO(Trystan): This is where users can view and edit all
-        // their information.
-        $userID = $this->getUserID();
-        if(is_null($userID)){
+        // TODO(Trystan): Add a resend verification email button here.
+        $userUUID = $this->getUserUUID();
+        if(is_null($userUUID)){
             $this->redirect("/");
         }
         if(!$this->sessionManager->isUserLoggedIn()){
-            $infoLevel = $this->userManager->getUnregisteredInfoLevel($userID);
+            $infoLevel = $this->userManager->getUnregisteredInfoLevel($userUUID);
             if($infoLevel == INFO_NONE){
                 $this->redirect("/register");
             }
         }
         
-        $this->user = $this->userManager->getUserInfoByID($userID);
+        $this->user = $this->userManager->getUserInfo($userUUID);
 
         require_once APP_ROOT . "/views/user/user-info-page.php";
     }
@@ -86,8 +100,8 @@ class UserController extends Controller{
     // TODO(Trystan): At the moment we aren't allowing updating of email address.
     // Should we allow?
     public function info_post() : void {
-        $userID = $this->getUserID();
-        if(is_null($userID)){
+        $userUUID = $this->getUserUUID();
+        if(is_null($userUUID)){
             $this->redirect("/");
         }
 
@@ -111,8 +125,8 @@ class UserController extends Controller{
             $this->redirect("/User/info");
         }
 
-        $this->userManager->setName($userID, $_POST["name_first"], $_POST["name_last"]);
-        $this->userManager->setPhoneNumber($userID, $_POST["phone"]);
+        $this->userManager->setName($userUUID, $_POST["name_first"], $_POST["name_last"]);
+        $this->userManager->setPhoneNumber($userUUID, $_POST["phone"]);
         
         $this->sessionManager->pushOneTimeMessage(USER_SUCCESS, "Info updated successfully.");
         $this->redirect("/User/info");
@@ -121,42 +135,60 @@ class UserController extends Controller{
     public function address_get() : void {
         // If no addresses exist we can add one here.
         // Multiple addresses, select default address.
-        $userID = $this->getUserID();
-        if(is_null($userID)){
+        $userUUID = $this->getUserUUID();
+        if(is_null($userUUID)){
             $this->redirect("/");
         }
         if(!$this->sessionManager->isUserLoggedIn()){
-            $infoLevel = $this->userManager->getUnregisteredInfoLevel($userID);
+            $infoLevel = $this->userManager->getUnregisteredInfoLevel($userUUID);
             if($infoLevel == INFO_NONE){
                 $this->redirect("/register");
             }
         }
 
-        $this->user = $this->userManager->getUserInfoByID($userID);
-        $this->user["other_addresses"] = $this->userManager->getNonDefaultAddresses($userID);
+        $this->user = $this->userManager->getUserInfo($userUUID);
+        $this->user["default_address"] = $this->userManager->getDefaultAddress($userUUID);
+        $this->user["other_addresses"] = $this->userManager->getNonDefaultAddresses($userUUID);
 
         require_once APP_ROOT . "/views/user/user-address-page.php";
     }
 
     public function address_post() : void {
-        $userID = $this->getUserID();
-        if(is_null($userID)){
+        $userUUID = $this->getUserUUID();
+        if(is_null($userUUID)){
             $this->redirect("/");
         }
 
         if(!$this->sessionManager->validateCSRFToken($_POST["CSRFToken"])){
             $this->redirect("/User/address");
         }
+
         
         if(!$this->validateAddress()){
-            $this->sessionManager->pushOneTimeMessage(USER_ALERT, "Invalid address.");
+            $this->redirect("/User/address");
+        }
+
+        $USPS = $this->validateAddressUSPS();
+        if(empty($USPS)){
+            $this->sessionManager->pushOneTimeMessage(USER_ALERT, "Address not found.");
             $this->redirect("/User/address");
         }
         
-        $addressID = $this->userManager->addAddress($userID, $_POST["address_line"], $_POST["city"], $_POST["state"], $_POST["zip_code"]);
-
-        if($_POST["set_default"]){
-            $this->userManager->setDefaultAddress($userID, $addressID);
+        $addressUUID = $this->userManager->addAddress($userUUID, $USPS["address_line"], $USPS["city"], $USPS["state"], $USPS["zip_code"]);
+        
+        if($this->isAddressDeliverable($USPS)){
+            // TODO(Trystan): Check if user is unregistered and has partial_info.
+            // If they do then upgrade them to full_info
+            $this->userManager->setAddressDeliverable($addressUUID);
+            // We only want addresses to be default if they're deliverable.
+            // We also want to automatically set the first valid address as default.
+            if(isset($_POST["set_default"]) || empty($this->userManager->getDefaultAddress($userUUID))){
+                $this->userManager->setDefaultAddress($userUUID, $addressUUID);
+            }
+        } else {
+            // Note(Trystan): Design choice, allowing user to add address even if not deliverable.
+            // Another option would be to reject adding it completely. But that means making the user type it in again later.
+            $this->sessionManager->pushOneTimeMessage(USER_ALERT, "Delivery to this address is currently unavailable.");
         }
         
         $this->sessionManager->pushOneTimeMessage(USER_SUCCESS, "Address added successfully.");
@@ -166,15 +198,15 @@ class UserController extends Controller{
 
     public function orders_get() : void {
         // TODO(Trystan): This is where customers can view order history.
-        $userID = $this->getUserID();
-        if(is_null($userID)){
+        $userUUID = $this->getUserUUID();
+        if(is_null($userUUID)){
             $this->redirect("/");
         }
 
-        $orders = $this->orderManager->getAllOrdersByUserID($userID);
+        $orders = $this->orderManager->getAllOrdersByUserUUID($userUUID);
 
         foreach($orders as &$order){
-            $cost = $this->orderManager->getCost($order["id"]);
+            $cost = $this->orderManager->getCost($order["uuid"]);
             $cost["total"] = $cost["subtotal"] + $cost["tax"] + $cost["fee"];
             $order["cost"] = $cost;
         }
@@ -183,10 +215,84 @@ class UserController extends Controller{
         require_once APP_ROOT . "/views/user/user-orders-page.php";
     }
 
+    // NOTE(Trystan): We could require the user to verify that they know additional information inside the other
+    // sessions. However, things like delivery address, order dollar amount would already be sent to their email.
+    public function verify_get() : void {
+        $userUUID = $this->getUserUUID();
+        if(is_null($userUUID)){
+            $this->redirect("/");
+        }
+        if(!$this->sessionManager->isUserLoggedIn() || !$this->userManager->isVerificationRequired($userUUID)){
+            $this->pushOneTimeMessage(USER_ALERT, "Email verification not required.");
+            $this->redirect("/");
+        }
+
+        $verified = false;
+        if(isset($_GET["token"])){
+            $userToken = explode("-", $_GET["token"]);
+            $selector = $userToken[0];
+            $token = $userToken[1];
+            $selectorBytes = UUID::arrangedStringToOrderedBytes($selector);
+            $emailVerifyInfo = $this->userManager->getEmailVerificationInfo($selectorBytes);
+
+            if(!empty($emailVerifyInfo) && (session_id() === $emailVerifyInfo["session_id"])){
+                $hashedToken = hash("sha256", $token);
+                if(hash_equals(bin2hex($emailVerifyInfo["hashed_token"]), $hashedToken)){
+                    $this->userManager->deleteEmailVerificationToken($userUUID);
+                    $verified = true;
+                }
+            }
+        }
+
+        $this->user = $this->userManager->getUserInfo($userUUID);
+        if($verified){
+            // CONSOLIDATION
+            $unregisteredUsers = $this->userManager->getAllUnregisteredUserUUIDsWithEmail($this->user["email"]);
+            foreach($unregisteredUsers as $unregistered){
+                $this->orderManager->updateOrdersFromUnregisteredToRegistered($unregistered["user_uuid"], $userUUID);
+                $this->userManager->updateAddressesFromUnregisteredToRegistered($unregistered["user_uuid"], $userUUID);
+                $this->userManager->deleteUnregisteredCredentials($unregistered["user_uuid"]);
+                $this->userManager->deleteUser($unregistered["user_uuid"]);
+            }
+        }
+
+        if($verified){
+            require_once APP_ROOT . "/views/user/user-verify-success-page.php";
+        } else {
+            require_once APP_ROOT . "/views/user/user-verify-fail-page.php";
+        }
+    }
+
     // JS functions
 
+    public function verify_post() : void {
+        $userUUID = $this->getUserUUID();
+
+        $json = file_get_contents("php://input");
+        $postData = json_decode($json, true);
+        
+        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
+            echo "fail";
+            exit;
+        }
+
+        // Remove old token if there is one.
+        $this->userManager->deleteEmailVerificationToken($userUUID);
+        
+        $token = bin2hex(random_bytes(32));
+        $hashedTokenBytes = hash("sha256", $token, true);
+        $selectorBytes = UUID::generateOrderedBytes();
+        $selector = UUID::orderedBytesToArrangedString($selectorBytes);
+        $selector = str_replace("-", "", $selector);
+
+        $emailToken = $selector . "-" . $token;
+
+        $expires = time() + (60*60); // expires in one hour.
+        $this->userManager->setEmailVerificationToken($userUUID, $token["selector"], $token["hash"]);
+    }
+
     public function address_setDefault_post() : void {
-        $userID = $this->getUserID();
+        $userUUID = $this->getUserUUID();
 
         $json = file_get_contents("php://input");
         $postData = json_decode($json, true);
@@ -196,35 +302,64 @@ class UserController extends Controller{
             exit;
         }
         
-        $addressID = $postData["address_id"];
+        $addressUUID = UUID::arrangedStringToOrderedBytes($postData["address_uuid"]);
 
-        $addresses = $this->userManager->getNonDefaultAddresses($userID);
-        $addressIDFound = false;
+        $addresses = $this->userManager->getNonDefaultAddresses($userUUID);
+        $ourAddress = array();
         foreach($addresses as $address){
-            if($address["id"] === $addressID){
-                $addressIDFound = true;
+            if($address["uuid"] === $addressUUID){
+                $ourAddress = $address;
             }
         }
-        if(!$addressIDFound){
+
+        if(empty($ourAddress)){
             echo "fail";
             exit;
         }
 
-        $this->userManager->setDefaultAddress($userID, $addressID);
+        if($this->isAddressDeliverable($ourAddress)){
+            $this->userManager->setDefaultAddress($userUUID, $addressUUID);
+            $this->sessionManager->pushOneTimeMessage(USER_SUCCESS, "New default selected.");
+        } else {
+            $this->sessionManager->pushOneTimeMessage(USER_ALERT, "Delivery to this address is currently unavailable.");
+        }
 
-        $this->sessionManager->pushOneTimeMessage(USER_SUCCESS, "New default selected.");
 
         echo "success";
     }
 
-    public function updateInfo_post() : void {
-        if(!$this->sessionManager->validateCSRFToken($_POST["CSRFToken"])){
-            echo json_encode(NULL);
+    public function address_delete_post() : void {
+        $userUUID = $this->getUserUUID();
+
+        $json = file_get_contents("php://input");
+        $postData = json_decode($json, true);
+        
+        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
+            echo "fail";
+            exit;
+        }
+        
+        $addressUUID = UUID::arrangedStringToOrderedBytes($postData["address_uuid"]);
+
+        $addresses = $this->userManager->getNonDefaultAddresses($userUUID);
+        $addressUUIDFound = false;
+        foreach($addresses as $address){
+            if($address["uuid"] === $addressUUID){
+                $addressUUIDFound = true;
+            }
+        }
+        if(!$addressUUIDFound){
+            echo "fail";
             exit;
         }
 
-        
+        $this->userManager->deleteAddress($addressUUID);
+
+        $this->sessionManager->pushOneTimeMessage(USER_SUCCESS, "Address successfully deleted.");
+
+        echo "success";
     }
+
 }
 
 ?>

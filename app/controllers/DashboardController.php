@@ -4,6 +4,7 @@ class DashboardController extends Controller{
 
     private Order $orderManager;
     private Menu $menuManager;
+    private RestaurantSettings $settingsManager;
 
     public $menuStorage;
     public $orderStorage;
@@ -15,11 +16,12 @@ class DashboardController extends Controller{
 
         $this->orderManager = new Order();
         $this->menuManager = new Menu();
+        $this->settingsManager = new RestaurantSettings();
     }
     
     public function get() : void {
-        $userID = $this->getUserID();
-        if(!$this->validateAuthority(EMPLOYEE, $userID)){
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(EMPLOYEE, $userUUID)){
             $this->redirect("/");
         }
         
@@ -31,24 +33,28 @@ class DashboardController extends Controller{
     // It would show total spent and list all orders made by customer.
     // Maybe even something like amount spent in the last 30 days.
     public function customers_get() : void {
-        $userID = $this->getUserID();
-        if(!$this->validateAuthority(EMPLOYEE, $userID)){
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(EMPLOYEE, $userUUID)){
             $this->redirect("/");
         }
 
-        if(!isset($_GET["id"])){
-            $this->redirect("/Dashboard/orders/search");
+        if(!isset($_GET["uuid"])){
+            $this->redirect("/Dashboard/customers/search");
         }
 
-        $this->userStorage = $this->userManager->getUserInfoByID($_GET["id"]);
-        $this->orderStorage = $this->orderManager->getAllOrdersByUserID($_GET["id"]);
+        $userUUIDBytes = UUID::arrangedStringToOrderedBytes($_GET["uuid"]);
+        $this->userStorage = $this->userManager->getUserInfo($userUUIDBytes);
+        if(empty($this->userStorage)){
+            $this->redirect("/Dashboard/customers/search");
+        }
+        $this->orderStorage = $this->orderManager->getAllOrdersByUserUUID($userUUIDBytes);
 
         require_once APP_ROOT . "/views/dashboard/dashboard-customers-page.php";
     }
 
     public function customers_search_get() : void {
-        $userID = $this->getUserID();
-        if(!$this->validateAuthority(EMPLOYEE, $userID)){
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(EMPLOYEE, $userUUID)){
             $this->redirect("/");
         }
 
@@ -56,20 +62,21 @@ class DashboardController extends Controller{
     }
 
     public function orders_get() : void {
-        $userID = $this->getUserID();
-        if(!$this->validateAuthority(EMPLOYEE, $userID)){
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(EMPLOYEE, $userUUID)){
             $this->redirect("/");
         }
 
-        if(!isset($_GET["id"])){
+        if(!isset($_GET["uuid"])){
             $this->redirect("/Dashboard/orders/search");
         }
 
-        $this->orderStorage = $this->orderManager->getOrderByID($_GET["id"]);
-        $this->orderStorage["user_info"] = $this->userManager->getUserInfoByID($this->orderStorage["user_id"]);
+        $orderUUIDBytes = UUID::arrangedStringToOrderedBytes($_GET["uuid"]);
+        $this->orderStorage = $this->orderManager->getOrderByUUID($orderUUIDBytes);
+        $this->orderStorage["user_info"] = $this->userManager->getUserInfo($this->orderStorage["user_uuid"]);
         // TODO(Trystan): We can grab any specifics from the respective processors if data is necessary.
-        $this->orderStorage["payments"] = $this->orderManager->getPayments($_GET["id"]);
-        $cost = $this->orderManager->getCost($_GET["id"]);
+        $this->orderStorage["payments"] = $this->orderManager->getPayments($orderUUIDBytes);
+        $cost = $this->orderManager->getCost($orderUUIDBytes);
         $cost["total"] = $cost["subtotal"] + $cost["fee"] + $cost["tax"];
         $this->orderStorage["cost"] = $cost;
 
@@ -85,8 +92,8 @@ class DashboardController extends Controller{
 
     // Handles all types of refunds in one function. Cash, Stripe, paypal, apple.
     public function orders_refund_post() : void {
-        $userID = $this->getUserID();
-        if(!$this->validateAuthority(EMPLOYEE, $userID)){
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(EMPLOYEE, $userUUID)){
             echo json_encode(NULL);
             exit;
         }
@@ -95,7 +102,7 @@ class DashboardController extends Controller{
         $postData = json_decode($json, true);
         
         if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
-            echo json_encode(NULL);
+            echo "fail";
             exit;
         }
 
@@ -103,7 +110,7 @@ class DashboardController extends Controller{
         $refundTotal = $this->orderManager->getRefundTotal($postData["payment_id"]);
 
         if(($payment["amount"] - $refundTotal) < $postData["amount"]){
-            echo json_encode(NULL);
+            echo "fail";
             exit;
         }
 
@@ -111,7 +118,7 @@ class DashboardController extends Controller{
         switch($payment["method"]){
         case PAYMENT_STRIPE:
             \Stripe\Stripe::setApiKey(STRIPE_PRIVATE_KEY);
-            $paymentIntentID = $this->getStripeToken($postData["order_id"]);
+            $paymentIntentID = $this->orderManager->getStripeToken($payment["order_uuid"]);
             \Stripe\Refund::create(['amount' => $postData["amount"], 'payment_intent' => $paymentIntentID]);
             $this->orderManager->submitRefund($postData["payment_id"], $postData["amount"]);
             break;
@@ -120,12 +127,12 @@ class DashboardController extends Controller{
             break;
         }
 
-        echo json_encode("success");
+        echo "success";
     }
 
     public function orders_active_get() : void {
-        $userID = $this->getUserID();
-        if(!$this->validateAuthority(EMPLOYEE, $userID)){
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(EMPLOYEE, $userUUID)){
             $this->redirect("/");
         }
 
@@ -133,8 +140,8 @@ class DashboardController extends Controller{
     }
 
     public function orders_search_get() : void {
-        $userID = $this->getUserID();
-        if(!$this->validateAuthority(EMPLOYEE, $userID)){
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(EMPLOYEE, $userUUID)){
             $this->redirect("/");
         }
 
@@ -142,13 +149,13 @@ class DashboardController extends Controller{
     }
     
     public function orders_submit_get() : void {
-        $userID = $this->getUserID();
-        if(!$this->validateAuthority(EMPLOYEE, $userID)){
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(EMPLOYEE, $userUUID)){
             $this->redirect("/");
         }
 
-        $cartID = $this->orderManager->getCartID($userID);
-        $this->orderStorage = $this->orderManager->getOrderByID($cartID);
+        $cartUUID = $this->orderManager->getCartUUID($userUUID);
+        $this->orderStorage = $this->orderManager->getOrderByUUID($cartUUID);
         if($this->orderStorage["order_type"] != IN_RESTAURANT){
             $this->redirect("/Order/submit");
         }
@@ -159,17 +166,17 @@ class DashboardController extends Controller{
         require_once APP_ROOT . "/views/dashboard/dashboard-orders-submit-page.php";
     }
 
-    // Technically called by javascript. Just wanted to keep it close to the other.
+    // Technically called by javascript. Just wanted to keep it close to the other for clarity.
     public function orders_submit_post() : void {
-        $userID = $this->getUserID();
-        if(!$this->validateAuthority(EMPLOYEE, $userID)){
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(EMPLOYEE, $userUUID)){
             echo "fail";
             exit;
         }
 
-        $cartID = $this->orderManager->getCartID($userID);
-        $this->orderStorage = $this->orderManager->getOrderByID($cartID);
-        if($cartID === NULL || $this->orderStorage["order_type"] != IN_RESTAURANT){
+        $cartUUID = $this->orderManager->getCartUUID($userUUID);
+        $this->orderStorage = $this->orderManager->getOrderByUUID($cartUUID);
+        if($cartUUID === NULL || $this->orderStorage["order_type"] != IN_RESTAURANT){
             echo "fail";
             exit;
         }
@@ -182,18 +189,18 @@ class DashboardController extends Controller{
             exit;
         }
 
-        $customerID = $this->userManager->getUserIDByEmail($postData["customer_email"]);
+        $customerUUID = UUID::arrangedStringToOrderedBytes($postData["user_uuid"]);
 
-        $this->orderManager->assignUserToOrder($cartID, $customerID);
-        $this->orderManager->submitOrder($cartID);
+        $this->orderManager->assignUserToOrder($cartUUID, $customerUUID);
+        $this->orderManager->submitOrder($cartUUID);
         
         $this->sessionManager->pushOneTimeMessage(USER_ALERT, "Order successfully submitted.");
-        echo "submitted";
+        echo "success";
     }
 
     public function menu_get() : void {
-        $userID = $this->getUserID();
-        if(!$this->validateAuthority(ADMIN, $userID)){
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(ADMIN, $userUUID)){
             $this->redirect("/Dashboard");
         }
         
@@ -203,8 +210,8 @@ class DashboardController extends Controller{
     }
 
     public function menu_categories_get() : void {
-        $userID = $this->getUserID();
-        if(!$this->validateAuthority(ADMIN, $userID)){
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(ADMIN, $userUUID)){
             $this->redirect("/Dashboard");
         }
 
@@ -214,8 +221,8 @@ class DashboardController extends Controller{
     }
 
     public function menu_categories_post() : void {
-        $userID = $this->getUserID();
-        if(!$this->validateAuthority(ADMIN, $userID)){
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(ADMIN, $userUUID)){
             $this->redirect("/Dashboard");
         }
         if(!$this->sessionManager->validateCSRFToken($_POST["CSRFToken"])){
@@ -243,8 +250,8 @@ class DashboardController extends Controller{
     }
 
     public function menu_additions_get() : void {
-        $userID = $this->getUserID();
-        if(!$this->validateAuthority(ADMIN, $userID)){
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(ADMIN, $userUUID)){
             $this->redirect("/Dashboard");
         }
 
@@ -254,23 +261,23 @@ class DashboardController extends Controller{
     }
 
     public function menu_additions_post() : void {
-        $userID = $this->getUserID();
-        if(!$this->validateAuthority(ADMIN, $userID)){
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(ADMIN, $userUUID)){
             $this->redirect("/Dashboard");
         }
         if(!$this->sessionManager->validateCSRFToken($_POST["CSRFToken"])){
             $this->redirect("/");
         }
 
-        $this->menuManager->createAddition($_POST["name"], $_POST["price"]);
+        $this->menuManager->createAddition($_POST["name"], $_POST["price"] * 100);
 
         // TODO(trystan): Probably should push a message here.
         $this->redirect("/Dashboard/menu/additions");
     }
 
     public function menu_item_get() : void {
-        $userID = $this->getUserID();
-        if(!$this->validateAuthority(ADMIN, $userID)){
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(ADMIN, $userUUID)){
             $this->redirect("/Dashboard");
         }
 
@@ -280,7 +287,7 @@ class DashboardController extends Controller{
             $this->menuStorage["all_additions"] = $this->menuManager->getAllAdditions();
 
             // Cull out additions that are already associated with this item.
-            foreach((array)$this->menuStorage["additions"] as $addition){
+            foreach($this->menuStorage["additions"] as $addition){
                 $index = array_search($addition, $this->menuStorage["all_additions"]);
 
                 if($index !== false){
@@ -295,10 +302,9 @@ class DashboardController extends Controller{
     }
 
     // TODO(Trystan): Validate inputs. Especially ensure price is a number within range.
-    // TODO(Trystan): Update all prices to be taken in 0.00 format, but then multiply by 100 to store in database.
     public function menu_item_post() : void {
-        $userID = $this->getUserID();
-        if(!$this->validateAuthority(ADMIN, $userID)){
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(ADMIN, $userUUID)){
             $this->redirect("/Dashboard");
         }
         if(!$this->sessionManager->validateCSRFToken($_POST["CSRFToken"])){
@@ -311,11 +317,11 @@ class DashboardController extends Controller{
 
         if($isNewItem){
             $this->menuManager->createMenuItem($activeState, $_POST["category"],
-                                               $_POST["name"], $_POST["price"],
+                                               $_POST["name"], $_POST["price"] * 100,
                                                $_POST["description"]);
         } else {
             $this->menuManager->updateMenuItem($_POST["id"], $activeState, $_POST["category"],
-                                               $_POST["name"], $_POST["price"],
+                                               $_POST["name"], $_POST["price"] * 100,
                                                $_POST["description"]);
         }
 
@@ -326,11 +332,9 @@ class DashboardController extends Controller{
         $this->redirect("/Dashboard/menu");
     }
 
-    // TODO: This page is for adding employees and setting them as admins.
-    // Removing employees and removing admin-ship.
     public function employees_get() : void {
-        $userID = $this->getUserID();
-        if(!$this->validateAuthority(ADMIN, $userID)){
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(ADMIN, $userUUID)){
             $this->redirect("/Dashboard");
         }
 
@@ -339,49 +343,27 @@ class DashboardController extends Controller{
         require_once APP_ROOT . "/views/dashboard/dashboard-employees-edit-page.php";
     }
 
-    public function employees_post() : void {
-        $userID = $this->getUserID();
-        if(!$this->validateAuthority(ADMIN, $userID)){
+    public function settings_get() : void {
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(ADMIN, $userUUID)){
             $this->redirect("/Dashboard");
         }
-        if(!$this->sessionManager->validateCSRFToken($_POST["CSRFToken"])){
-            $this->redirect("/");
-        }
 
-        if(isset($_POST["email"])){
-            $employeeAdded = $this->userManager->addEmployeeByEmail($_POST["email"]);
-            if($employeeAdded){
-                $message = "Employee successfully added.";
-                $this->sessionManager->pushOneTimeMessage(USER_SUCCESS, $message);
-            } else {
-                $message = "Email not linked to any user.";
-                $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
-            }
-        }
-        if(isset($_POST["delete"])){
-            foreach($_POST["employees"] as $employeeID){
-                $this->userManager->removeEmployee($employeeID);
-            }
-            $message = "Employee(s) successfully removed.";
-            $this->sessionManager->pushOneTimeMessage(USER_SUCCESS, $message);
-        }
-        if(isset($_POST["admin"])){
-            foreach($_POST["employees"] as $employeeID){
-                $this->userManager->toggleEmployeeAdminStatus($employeeID);
-            }
-            $message = "Employee(s) admin status updated.";
-            $this->sessionManager->pushOneTimeMessage(USER_SUCCESS, $message);
-        }
+        $settings = [];
+        $settings["delivery_schedule"] = $this->settingsManager->getDeliverySchedule();
+        $settings["pickup_schedule"] = $this->settingsManager->getPickupSchedule();
+        $settings["delivery_on"] = $this->orderManager->isDeliveryOn();
+        $settings["pickup_on"] = $this->orderManager->isPickupOn();
+        $week = array_keys(DAY_TO_INT);
 
-        // TODO: Send email informing user of status change.
-        $this->redirect("/Dashboard/employees");
+        require_once APP_ROOT . "/views/dashboard/dashboard-settings-page.php";
     }
 
     // JS CALLS
 
     public function searchOrders_post() : void {
-        $userID = $this->getUserID();
-        if(!$this->validateAuthority(EMPLOYEE, $userID)){
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(EMPLOYEE, $userUUID)){
             echo json_encode(NULL);
             exit;
         }
@@ -417,16 +399,18 @@ class DashboardController extends Controller{
             exit;
         }
 
-        $ids = $this->orderManager->getOrdersMatchingFilters($postData["start_date"], $postData["end_date"],
+        $uuids = $this->orderManager->getOrdersMatchingFilters($postData["start_date"], $postData["end_date"],
                                                                 $postData["start_amount"], $postData["end_amount"],
                                                                 $postData["order_type"], $postData["first_name"],
                                                                 $postData["last_name"], $postData["email"],
                                                                 $postData["phone_number"]);
 
         $orders = [];
-        foreach($ids as $id){
-            $order = $this->orderManager->getOrderByID($id["id"]);
-            $order["user_info"] = $this->userManager->getUserInfoByID($id["user_id"]);
+        foreach($uuids as $uuid){
+            $order = $this->orderManager->getOrderByUUID($uuid["uuid"]);
+            $order["uuid"] = UUID::orderedBytesToArrangedString($order["uuid"]);
+            $order["user_uuid"] = UUID::orderedBytesToArrangedString($order["user_uuid"]);
+            $order["user_info"] = $this->userManager->getUserInfo($uuid["user_uuid"]);
 
             $orders[] = $order;
         }
@@ -435,8 +419,8 @@ class DashboardController extends Controller{
     }
 
     public function searchUsers_post() : void {
-        $userID = $this->getUserID();
-        if(!$this->validateAuthority(EMPLOYEE, $userID)){
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(EMPLOYEE, $userUUID)){
             echo json_encode(NULL);
             exit;
         }
@@ -453,6 +437,7 @@ class DashboardController extends Controller{
 
         // If every filter is empty then we'd return the entire database.
         $emptyFilters = true;
+        // Registered users alone is not an acceptable filter, we don't want to return every registered user.
         $acceptableFilters = ["first_name", "last_name", "email", "phone_number"];
         foreach($postData as $key => $filter){
             if(!empty($filter) && in_array($key, $acceptableFilters)){
@@ -464,16 +449,15 @@ class DashboardController extends Controller{
             echo json_encode(NULL);
             exit;
         }
-
         $users = $this->userManager->getUsersMatchingFilters($postData["first_name"], $postData["last_name"],
-                                                             $postData["email"], $postData["phone_number"]);
+                                                             $postData["email"], $postData["phone_number"], $postData["registered"]);
 
         echo json_encode($users);
     }
 
     public function orders_active_getOrders_post() : void {
-        $userID = $this->getUserID();
-        if(!$this->validateAuthority(EMPLOYEE, $userID)){
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(EMPLOYEE, $userUUID)){
             echo json_encode(NULL);
             exit;
         }
@@ -486,10 +470,7 @@ class DashboardController extends Controller{
             exit;
         }
 
-        $lastReceived = "NULL";
-        if(isset($postData["last_received"])){
-            $lastReceived = $postData["last_received"];
-        }
+        $lastReceived = $postData["last_received"] ?? "NULL";
 
         $orders = array();
         if($lastReceived === "NULL"){
@@ -498,23 +479,27 @@ class DashboardController extends Controller{
             $orders = $this->orderManager->getActiveOrdersAfterDate($lastReceived);
         }
 
-        $numberOfOrders = count($orders);
-        for($i = 0; $i < $numberOfOrders; $i++){
-            if($orders[$i]["user_id"] != NULL){
-                $orders[$i]["user_info"] = $this->userManager->getUserInfoByID($orders[$i]["user_id"]);
+        $orderCount = count($orders);
+        for($i = 0; $i < $orderCount; $i++){
+            if($orders[$i]["user_uuid"] != NULL){
+                $orders[$i]["user_info"] = $this->userManager->getUserInfo($orders[$i]["user_uuid"]);
+                $orders[$i]["user_uuid"] = UUID::orderedBytesToArrangedString($orders[$i]["user_uuid"]);
             }
             if($orders[$i]["order_type"] == DELIVERY){
-                $orders[$i]["address"] = $this->orderManager->getDeliveryAddress($orders[$i]["id"]);
+                $orders[$i]["address"] = $this->orderManager->getDeliveryAddress($orders[$i]["uuid"]);
+                // NOTE(Trystan): I don't think this function actually utilizes this value, but just to be safe.
+                $orders[$i]["address"]["uuid"] = UUID::orderedBytesToArrangedString($orders[$i]["address"]["uuid"]);
             }
-            $orders[$i]["is_paid"] = $this->orderManager->isPaid($orders[$i]["id"]);
+            $orders[$i]["is_paid"] = $this->orderManager->isPaid($orders[$i]["uuid"]);
+            $orders[$i]["uuid"] = UUID::orderedBytesToArrangedString($orders[$i]["uuid"]);
         }
 
         echo json_encode($orders);
     }
 
     public function orders_active_getStatus_post() : void {
-        $userID = $this->getUserID();
-        if(!$this->validateAuthority(EMPLOYEE, $userID)){
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(EMPLOYEE, $userUUID)){
             echo json_encode(NULL);
             exit;
         }
@@ -527,12 +512,18 @@ class DashboardController extends Controller{
             exit;
         }
 
-        echo json_encode($this->orderManager->getActiveOrderStatus());
+        $result = [];
+        foreach($postData["orderUUIDs"] as $orderUUID){
+            $orderUUID = UUID::arrangedStringToOrderedBytes($orderUUID);
+            $result[] = $this->orderManager->getOrderStatus($orderUUID);
+        }
+
+        echo json_encode($result);
     }
 
     public function orders_active_updateStatus_post() : void {
-        $userID = $this->getUserID();
-        if(!$this->validateAuthority(EMPLOYEE, $userID)){
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(EMPLOYEE, $userUUID)){
             echo json_encode(NULL);
             exit;
         }
@@ -555,22 +546,23 @@ class DashboardController extends Controller{
 
         $updatedInfo = [];
 
-        foreach($orders["status"] as $orderID){
-            $order = $this->orderManager->getOrderByID($orderID);
+        foreach($orders["status"] as $orderUUID){
+            $orderUUIDBytes = UUID::arrangedStringToOrderedBytes($orderUUID);
+            $order = $this->orderManager->getOrderByUUID($orderUUIDBytes);
 
             $index = array_search((int)$order["status"], ORDER_STATUS_FLOW[$order["order_type"]]);
             $updatedStatus = ORDER_STATUS_FLOW[$order["order_type"]][$index + 1];
 
-            $this->orderManager->updateOrderStatus($orderID, $updatedStatus);
-            $updatedInfo[$orderID] = $updatedStatus;
+            $this->orderManager->updateOrderStatus($orderUUIDBytes, $updatedStatus);
+            $updatedInfo[$orderUUID] = $updatedStatus;
         }
         
         echo json_encode($updatedInfo);
     }
 
     public function orders_active_checkPayment_post() : void {
-        $userID = $this->getUserID();
-        if(!$this->validateAuthority(EMPLOYEE, $userID)){
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(EMPLOYEE, $userUUID)){
             echo json_encode(NULL);
             exit;
         }
@@ -593,8 +585,8 @@ class DashboardController extends Controller{
 
         $isPaid = [];
         
-        foreach($orders["id"] as $orderID){
-            $isPaid[$orderID] = $this->orderManager->isPaid($orderID);
+        foreach($orders["uuid"] as $orderUUID){
+            $isPaid[$orderUUID] = $this->orderManager->isPaid($orderUUID);
         }
 
         echo json_encode($isPaid);
@@ -602,8 +594,8 @@ class DashboardController extends Controller{
 
     // Returns both the order_cost and order_payment
     public function orders_active_getPaymentInfo_post() : void {
-        $userID = $this->getUserID();
-        if(!$this->validateAuthority(EMPLOYEE, $userID)){
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(EMPLOYEE, $userUUID)){
             echo json_encode(NULL);
             exit;
         }
@@ -616,19 +608,19 @@ class DashboardController extends Controller{
             exit;
         }
 
-        $orderID = $postData["id"];
+        $orderUUID = UUID::arrangedStringToOrderedBytes($postData["uuid"]);
 
         $result = [];
-        $result["cost"] = $this->orderManager->getCost($orderID);
-        $result["payments"] = $this->orderManager->getPayments($orderID);
+        $result["cost"] = $this->orderManager->getCost($orderUUID);
+        $result["payments"] = $this->orderManager->getPayments($orderUUID);
 
         echo json_encode($result);
     }
 
     public function orders_active_submitPayment_post() : void {
-        $userID = $this->getUserID();
-        if(!$this->validateAuthority(EMPLOYEE, $userID)){
-            echo json_encode(NULL);
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(EMPLOYEE, $userUUID)){
+            echo "fail";
             exit;
         }
         
@@ -636,23 +628,26 @@ class DashboardController extends Controller{
         $postData = json_decode($json, true);
         
         if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
-            echo json_encode(NULL);
+            echo "fail";
             exit;
         }
 
-        $orderID = $postData["id"];
-        $amount = (int)($postData["amount"] * 100);
+        $orderUUID = UUID::arrangedStringToOrderedBytes($postData["uuid"]);
+        $amount = $postData["amount"];
         $method = $postData["method"];
 
-        $this->orderManager->submitPayment($orderID, $amount, $method);
-        $this->orderManager->updateOrderStatus($orderID, COMPLETE);
+        $this->orderManager->submitPayment($orderUUID, $amount, $method);
+        $this->orderManager->updateOrderStatus($orderUUID, COMPLETE);
+        
+        echo "success";
     }
 
     // TODO(Trystan): Update the c code to reflect the switch to orders_active
     // Leaving for now so as to not break anything.
+    // TODO(Trystan): This function needs a major relook. Lots has changed.
     public function orders_printerStream_get(){
-        $userID = $this->getUserID();
-        if($this->userManager->getUserAuthorityLevelByID($userID) != PRINTER){
+        $userUUID = $this->getUserUUID();
+        if($this->userManager->getUserAuthorityLevel($userUUID) != PRINTER){
             echo "User Access Denied" . PHP_EOL;
             exit;
         }
@@ -681,8 +676,8 @@ class DashboardController extends Controller{
             echo PRINTER_DELIMITER;
             foreach($orders as $order){
                 // Maybe print some over arching order info.
-                echo "ORDER " . $order["id"] . PHP_EOL;
-                $customer = $this->userManager->getUserInfoByID($order["user_id"]);
+                echo "ORDER " . UUID::orderedBytesToArrangedString($order["uuid"]) . PHP_EOL;
+                $customer = $this->userManager->getUserInfo($order["user_uuid"]);
                 // Note(Trystan): We may want to print the address on this receipt.
                 echo "NAME " . $customer["name_first"] . " " . $customer["name_last"] . PHP_EOL;
             
@@ -732,8 +727,8 @@ class DashboardController extends Controller{
     }
 
     public function menu_updateMenuSequence_post() : void {
-        $userID = $this->getUserID();
-        if(!$this->validateAuthority(ADMIN, $userID)){
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(ADMIN, $userUUID)){
             echo "fail";
             exit;
         }
@@ -770,8 +765,8 @@ class DashboardController extends Controller{
      * Updates the all the values and positions of the choice groups and options.
      */
     public function menu_item_updateChoices_post() : void {
-        $userID = $this->getUserID();
-        if(!$this->validateAuthority(ADMIN, $userID)){
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(ADMIN, $userUUID)){
             echo "fail";
             exit;
         }
@@ -806,7 +801,7 @@ class DashboardController extends Controller{
             foreach($choiceGroup as $choiceID => $choice){
                 $choiceID = explode("-", $choiceID)[0];
                 $choiceName = $choice["name"];
-                $choicePrice = $choice["price"];
+                $choicePrice = $choice["price"] * 100;
 
                 $this->menuManager->updateChoiceOption($choiceID, $choiceName, $choicePrice);
                 $this->menuManager->updateChoiceOptionPosition($choiceID, $choicePosition);
@@ -820,8 +815,8 @@ class DashboardController extends Controller{
     }
 
     public function menu_item_addChoiceGroup_post() : void {
-        $userID = $this->getUserID();
-        if(!$this->validateAuthority(ADMIN, $userID)){
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(ADMIN, $userUUID)){
             echo "fail";
             exit;
         }
@@ -843,8 +838,8 @@ class DashboardController extends Controller{
     }
 
     public function menu_item_removeChoiceGroup_post() : void {
-        $userID = $this->getUserID();
-        if(!$this->validateAuthority(ADMIN, $userID)){
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(ADMIN, $userUUID)){
             echo "fail";
             exit;
         }
@@ -865,8 +860,8 @@ class DashboardController extends Controller{
     }
 
     public function menu_item_addChoiceOption_post() : void {
-        $userID = $this->getUserID();
-        if(!$this->validateAuthority(ADMIN, $userID)){
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(ADMIN, $userUUID)){
             echo "fail";
             exit;
         }
@@ -887,8 +882,8 @@ class DashboardController extends Controller{
     }
 
     public function menu_item_removeChoiceOption_post() : void {
-        $userID = $this->getUserID();
-        if(!$this->validateAuthority(ADMIN, $userID)){
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(ADMIN, $userUUID)){
             echo "fail";
             exit;
         }
@@ -909,8 +904,8 @@ class DashboardController extends Controller{
     }
 
     public function menu_item_addAddition_post() : void {
-        $userID = $this->getUserID();
-        if(!$this->validateAuthority(ADMIN, $userID)){
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(ADMIN, $userUUID)){
             echo "fail";
             exit;
         }
@@ -932,8 +927,8 @@ class DashboardController extends Controller{
     }
     
     public function menu_item_updateAdditionPositions_post() : void {
-        $userID = $this->getUserID();
-        if(!$this->validateAuthority(ADMIN, $userID)){
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(ADMIN, $userUUID)){
             echo "fail";
             exit;
         }
@@ -958,8 +953,8 @@ class DashboardController extends Controller{
     }
 
     public function menu_item_removeAddition_post() : void {
-        $userID = $this->getUserID();
-        if(!$this->validateAuthority(ADMIN, $userID)){
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(ADMIN, $userUUID)){
             echo "fail";
             exit;
         }
@@ -981,8 +976,8 @@ class DashboardController extends Controller{
     }
 
     public function menu_additions_isLinkedToItem_get() : void {
-        $userID = $this->getUserID();
-        if(!$this->validateAuthority(ADMIN, $userID)){
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(ADMIN, $userUUID)){
             echo "fail";
             exit;
         }
@@ -995,8 +990,8 @@ class DashboardController extends Controller{
     }
 
     public function menu_additions_updateAddition_post() : void {
-        $userID = $this->getUserID();
-        if(!$this->validateAuthority(ADMIN, $userID)){
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(ADMIN, $userUUID)){
             echo "fail";
             exit;
         }
@@ -1011,7 +1006,7 @@ class DashboardController extends Controller{
 
         $additionID = $postData["addition-id"];
         $name = $postData["name"];
-        $price = $postData["price"];
+        $price = $postData["price"] * 100;
 
         $this->menuManager->updateAddition($additionID, $name, $price);
 
@@ -1019,8 +1014,8 @@ class DashboardController extends Controller{
     }
 
     public function menu_additions_removeAddition_post() : void {
-        $userID = $this->getUserID();
-        if(!$this->validateAuthority(ADMIN, $userID)){
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(ADMIN, $userUUID)){
             echo "fail";
             exit;
         }
@@ -1040,14 +1035,219 @@ class DashboardController extends Controller{
         echo "success";
     }
 
-    private function validateAuthority(int $requiredAuthority, int $userID = NULL) : bool {
+    public function employees_add_post() : void {
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(ADMIN, $userUUID)){
+            echo "fail";
+            exit;
+        }
+
+        $json = file_get_contents("php://input");
+        $postData = json_decode($json, true);
+        
+        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
+            echo "fail";
+            exit;
+        }
+
+        $employeeUUID = UUID::arrangedStringToOrderedBytes($postData["user_uuid"]);
+        $this->userManager->setUserAsEmployee($employeeUUID);
+
+        $message = "Employee successfully added.";
+        $this->sessionManager->pushOneTimeMessage(USER_SUCCESS, $message);
+
+        // TODO(Trystan): Send out emails to both admins and the new employee about status updates.
+        // Other employee related emails might need to be sent out for deletion and admin.
+        
+        echo "success";
+    }
+    
+    public function employees_delete_post() : void {
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(ADMIN, $userUUID)){
+            echo "fail";
+            exit;
+        }
+
+        $json = file_get_contents("php://input");
+        $postData = json_decode($json, true);
+        
+        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
+            echo "fail";
+            exit;
+        }
+
+        $employeeUUID = UUID::arrangedStringToOrderedBytes($postData["user_uuid"]);
+        if($userUUID === $employeeUUID){
+            $message = "The system will not allow you to remove yourself.";
+            $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
+            exit;
+        }
+        
+        $this->userManager->removeEmployee($employeeUUID);
+
+        $message = "Employee successfully removed.";
+        $this->sessionManager->pushOneTimeMessage(USER_SUCCESS, $message);
+
+        echo "success";
+    }
+
+    public function employees_toggleAdmin_post() : void {
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(ADMIN, $userUUID)){
+            echo "fail";
+            exit;
+        }
+
+        $json = file_get_contents("php://input");
+        $postData = json_decode($json, true);
+        
+        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
+            echo "fail";
+            exit;
+        }
+
+        $employeeUUID = UUID::arrangedStringToOrderedBytes($postData["user_uuid"]);
+        if($userUUID === $employeeUUID){
+            $message = "The system will not allow you to remove your own admin status.";
+            $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
+            exit;
+        }
+
+        $this->userManager->toggleEmployeeAdminStatus($employeeUUID);
+
+        $message = "Employee admin status updated.";
+        $this->sessionManager->pushOneTimeMessage(USER_SUCCESS, $message);
+        
+        echo "success";
+    }
+
+    public function settings_updateDeliveryStatus_post() : void {
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(ADMIN, $userUUID)){
+            echo "fail";
+            exit;
+        }
+
+        $json = file_get_contents("php://input");
+        $postData = json_decode($json, true);
+        
+        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
+            echo "fail";
+            exit;
+        }
+
+        $status = false;
+        if($postData["status"]) $status = true;
+        
+        $this->settingsManager->switchDelivery($status);
+        echo "success";
+    }
+
+    public function settings_updatePickupStatus_post() : void {
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(ADMIN, $userUUID)){
+            echo "fail";
+            exit;
+        }
+
+        $json = file_get_contents("php://input");
+        $postData = json_decode($json, true);
+        
+        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
+            echo "fail";
+            exit;
+        }
+
+        $status = false;
+        if($postData["status"]) $status = true;
+        
+        $this->settingsManager->switchPickup($status);
+        echo "success";
+    }
+
+    public function settings_updateDeliverySchedule_post() : void {
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(ADMIN, $userUUID)){
+            echo "fail";
+            exit;
+        }
+
+        $json = file_get_contents("php://input");
+        $postData = json_decode($json, true);
+        
+        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
+            echo "fail";
+            exit;
+        }
+
+        foreach($postData["days"] as $day) {
+            if(strtotime($day["end_time"]) < strtotime($day["start_time"])){
+                continue;
+            }
+            $this->settingsManager->updateDeliverySchedule($day["day"], $day["start_time"], $day["end_time"]);
+        }
+
+        echo "success";
+    }
+
+    public function settings_updatePickupSchedule_post() : void {
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(ADMIN, $userUUID)){
+            echo "fail";
+            exit;
+        }
+
+        $json = file_get_contents("php://input");
+        $postData = json_decode($json, true);
+        
+        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
+            echo "fail";
+            exit;
+        }
+
+        foreach($postData["days"] as $day) {
+            if(strtotime($day["end_time"]) < strtotime($day["start_time"])){
+                continue;
+            }
+            $this->settingsManager->updatePickupSchedule($day["day"], $day["start_time"], $day["end_time"]);
+        }
+
+        echo "success";
+    }
+
+    private function validateAuthority(int $requiredAuthority, string $userUUID = NULL) : bool {
         if(!$this->sessionManager->isUserLoggedIn()){
             return false;
         }
 
-        $userAuthority = $this->userManager->getUserAuthorityLevelByID($userID);
+        $userAuthority = $this->userManager->getUserAuthorityLevel($userUUID);
         
         return $userAuthority >= $requiredAuthority;
+    }
+
+    private function searchUserComponent(bool $getRegisteredOnly) : string {
+        $modifiers = "";
+        if($getRegisteredOnly) $modifiers = "checked disabled hidden";
+        $string = "";
+        $string .= "<p>Use as many filters as necessary.</p>";
+        if($getRegisteredOnly) $string .= "<p>Note: registered users only.</p>";
+        $string .= "<div id='search-filters'>";
+        $string .= "<label for='name_first'>First Name: </label>";
+        $string .= "<input type='text'  id='name_first' autocomplete='off'>";
+        $string .= "<label for='name_last'>Last Name: </label>";
+        $string .= "<input type='text'  id='name_last' autocomplete='off'>";
+        $string .= "<label for='email'>Email: </label>";
+        $string .= "<input type='email' id='email'  autocomplete='off'>";
+        $string .= "<label for='phone_number'>Phone Number: </label>";
+        $string .= "<input type='text' id='phone_number' autocomplete='off'>";
+        if(!$getRegisteredOnly) $string .= "<label for='registered-only'>Registered Users Only:</label>";
+        $string .= "<input type='checkbox' id='registered-only' " . $modifiers . ">";
+        $string .= "</div>";
+        $string .= "<input type='submit' id='user-search-button' value='Search'>";
+        $string .= "<div id='user-table' class='orders-container'>";
+        $string .= "</div>";
+        return $string;
     }
     
 }

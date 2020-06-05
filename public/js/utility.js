@@ -1,11 +1,13 @@
 "use strict";
 
-const postJSON = (url, json, token) => {
+const CSRFToken = document.querySelector('#CSRFToken').value;
+
+const postJSON = (url, json) => {
     // TODO(trystan): Handle the repsonse better here.
     // in case something goes wrong. Then return the results of
     // the response.
     url = window.location.origin + url;
-    json["CSRFToken"] = token;
+    json["CSRFToken"] = CSRFToken;
     const data = JSON.stringify(json);
     return fetch(url, {
         method: 'POST',
@@ -19,7 +21,7 @@ const postJSON = (url, json, token) => {
 const createLineItemElement = (lineItem) => {
     let lineItemContainer = document.createElement('li');
     lineItemContainer.classList.add('line-item');
-    lineItemContainer.id = `${lineItem.id}-line-item`;
+    lineItemContainer.id = `${lineItem.uuid}`;
 
     let itemQuantitySpan = document.createElement('span');
     itemQuantitySpan.classList.add('line-item-quantity');
@@ -80,7 +82,7 @@ const createLineItemElement = (lineItem) => {
 const createOrderElement = (order) => {
     let orderContainer = document.createElement('div');
     orderContainer.classList.add('order-container');
-    orderContainer.id = `order-${order.id}`;
+    orderContainer.id = `${order.uuid}`;
 
     const lineItems = order.line_items;
     for(var lineItem in lineItems){
@@ -91,12 +93,113 @@ const createOrderElement = (order) => {
     return orderContainer;
 };
 
+const initSearchUsersComponent = (callback) => {
+    const button = document.querySelector('#user-search-button');
+    const table = document.querySelector('#user-table');
+    
+    button.addEventListener('click', (e) => {
+        while (table.firstChild) {
+            table.removeChild(table.firstChild);
+        }
+    
+        let firstName = document.querySelector('#name_first').value;
+        let lastName = document.querySelector('#name_last').value;
+        let email = document.querySelector('#email').value;
+        let phoneNumber = document.querySelector('#phone_number').value;
+        let registeredOnly = document.querySelector('#registered-only').checked;
+    
+        let url = '/Dashboard/searchUsers';
+        let json = {
+            'first_name' : firstName,
+            'last_name' : lastName,
+            'email' : email,
+            'phone_number' : phoneNumber,
+            'registered' : registeredOnly
+        };
+    
+        postJSON(url, json).then(response => response.json()).then(users => {
+            if(!users) return;
+            users.forEach(user => {
+                let userContainer = document.createElement('div');
+                userContainer.id = user.uuid;
+                userContainer.classList.add('order-container');
+    
+                let userName = document.createElement('div')
+                userName.innerText = user.name_first + ' ' + user.name_last;
+    
+                userContainer.appendChild(userName);
+    
+                let userEmail = document.createElement('div');
+                userEmail.innerText = user.email;
+    
+                userContainer.appendChild(userEmail);
+    
+                let userNumber = document.createElement('div');
+                userNumber.innerText = user.phone_number;
+    
+                userContainer.appendChild(userNumber);
+    
+                userContainer.addEventListener('click', callback);
+    
+                table.appendChild(userContainer);
+            });
+        });
+    });
+
+    const searchFilterInputs = document.querySelector('#search-filters').querySelectorAll('input');
+
+    searchFilterInputs.forEach(input => {
+        input.addEventListener('keyup', (e) => {
+            if(e.keyCode === 13){
+                button.click();
+            }
+        });
+    });
+};
+
+class SingleContainerSelector {
+    constructor(containerList, buttonList){
+        this.selectedContainerUUID = null;
+        this.containerList = containerList;
+        this.buttonList = buttonList;
+        this.containerList.forEach(container => {
+            container.addEventListener('click', (e) => {
+                let container = e.target.closest('.order-container');
+                if(container.classList.contains('selected')){
+                    container.classList.remove('selected');
+                    this.selectedContainerUUID = null;
+                    this.buttonList.forEach(button => button.hidden = true);
+                    return;
+                }
+                this.containerList.forEach(container => container.classList.remove('selected'));
+                container.classList.add('selected');
+                this.selectedContainerUUID = container.id;
+                this.buttonList.forEach(button => button.hidden = false);
+            })
+        });
+    }
+
+    get selectedUUID() {
+        // Whenever we grab the value, we want to clear it.
+        this.containerList.forEach(container => container.classList.remove('selected'));
+        this.buttonList.forEach(button => button.hidden = true);
+        let result = this.selectedContainerUUID;
+        this.selectedContainerUUID = null;
+        return result;
+    }
+}
+
 const STATUS_ARRAY = ['cart','submitted','preparing','prepared','delivering','complete'];
 
 const intToCurrency = (price) => {
+    if(typeof price === "number"){
+        price = price.toString();
+    }
     let leadingZero = '';
     if(price < 100) leadingZero = '0';
     return leadingZero + price.slice(0, -2) + '.' + price.slice(-2);
 };
 
-export { postJSON, createLineItemElement, createOrderElement, STATUS_ARRAY, intToCurrency }
+export { postJSON, createLineItemElement, createOrderElement, 
+         STATUS_ARRAY, intToCurrency, initSearchUsersComponent,
+         SingleContainerSelector }

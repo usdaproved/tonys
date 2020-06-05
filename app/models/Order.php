@@ -5,16 +5,17 @@ class Order extends Model{
     /**
      * A cart is just an order that hasn't been submitted yet.
      */
-    public function createCart(int $userID) : int {
+    public function createCart(string $userUUID) : string {
         // Create order, then add line items associated with order.
-        $sql = "INSERT INTO orders (user_id)
-VALUES (:user_id);";
+        $cartUUID = $this->db->generateUUID();
+
+        $sql = "INSERT INTO orders (uuid, user_uuid)
+VALUES (:uuid, :user_uuid);";
 
         $this->db->beginStatement($sql);
-        $this->db->bindValueToStatement(":user_id", $userID);
+        $this->db->bindValueToStatement(":uuid", $cartUUID);
+        $this->db->bindValueToStatement(":user_uuid", $userUUID);
         $this->db->executeStatement();
-
-        $cartID = $this->db->lastInsertID();
 
         // Create payment tokens and anything explicitly tied to the cart.
         \Stripe\Stripe::setApiKey(STRIPE_PRIVATE_KEY);
@@ -23,41 +24,52 @@ VALUES (:user_id);";
             "amount" => 50, // create a stub transaction of 50 cents, stripe min.
             "currency" => "usd",
             "metadata" => [
-                "user_id" => $userID,
-                "order_id" => $cartID,
+                "user_uuid" => UUID::orderedBytesToArrangedString($userUUID),
+                "order_uuid" => UUID::orderedBytesToArrangedString($cartUUID),
             ],
         ]);
         
         $stripePaymentID = $paymentIntent["id"];
 
         // We can then insert all necessary payment tokens into the same table.
-        $sql = "INSERT INTO stripe_tokens (order_id, stripe_token)
-VALUES (:order_id, :stripe_token);";
+        $sql = "INSERT INTO stripe_tokens (order_uuid, stripe_token)
+VALUES (:order_uuid, :stripe_token);";
 
         $this->db->beginStatement($sql);
 
-        $this->db->bindValueToStatement(":order_id", $cartID);
+        $this->db->bindValueToStatement(":order_uuid", $cartUUID);
         $this->db->bindValueToStatement(":stripe_token", $stripePaymentID);
 
         $this->db->executeStatement();
 
-        $sql = "INSERT INTO order_cost (order_id) VALUES (:order_id);";
+        $sql = "INSERT INTO order_cost (order_uuid) VALUES (:order_uuid);";
 
         $this->db->beginStatement($sql);
-        $this->db->bindValueToStatement(":order_id", $cartID);
+        $this->db->bindValueToStatement(":order_uuid", $cartUUID);
         $this->db->executeStatement();
 
-        return $cartID;
+        // Even if the order isn't a delivery we want to be able to update this value.
+        $sql = "INSERT INTO delivery_address 
+(order_uuid, address_uuid) VALUES (:order_uuid, NULL);";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":order_uuid", $cartUUID);
+        $this->db->executeStatement();
+
+        return $cartUUID;
     }
 
-    public function addLineItemToCart(int $cartID, int $itemID,
-                                       int $quantity, int $price, string $comment) : int {
-        $sql = "INSERT INTO order_line_items (order_id, menu_item_id, quantity, price, comment) 
-VALUES (:order_id, :menu_item_id, :quantity, :price, :comment);";
+    public function addLineItemToCart(string $cartUUID, int $itemID,
+                                       int $quantity, int $price, string $comment) : string {
+        $lineItemUUID = $this->db->generateUUID();
+
+        $sql = "INSERT INTO order_line_items (uuid, order_uuid, menu_item_id, quantity, price, comment) 
+VALUES (:uuid, :order_uuid, :menu_item_id, :quantity, :price, :comment);";
 
         $this->db->beginStatement($sql);
         
-        $this->db->bindValueToStatement(":order_id", $cartID);
+        $this->db->bindValueToStatement(":uuid", $lineItemUUID);
+        $this->db->bindValueToStatement(":order_uuid", $cartUUID);
         $this->db->bindValueToStatement(":menu_item_id", $itemID);
         $this->db->bindValueToStatement(":quantity", $quantity);
         $this->db->bindValueToStatement(":price", $price);
@@ -65,88 +77,86 @@ VALUES (:order_id, :menu_item_id, :quantity, :price, :comment);";
         
         $this->db->executeStatement();
 
-        $lineItemID = $this->db->lastInsertID();
+        $this->updateCost($cartUUID);
 
-        $this->updateCost($cartID);
-
-        return $lineItemID;
+        return $lineItemUUID;
     }
 
-    public function addOptionToLineItem(int $lineItemID, int $choiceID, int $optionID) : void {
-        $sql = "INSERT INTO line_item_choices (line_item_id, choice_parent_id, choice_child_id)
-VALUES (:line_item_id, :choice_parent_id, :choice_child_id);";
+    public function addOptionToLineItem(string $lineItemUUID, int $choiceID, int $optionID) : void {
+        $sql = "INSERT INTO line_item_choices (line_item_uuid, choice_parent_id, choice_child_id)
+VALUES (:line_item_uuid, :choice_parent_id, :choice_child_id);";
 
         $this->db->beginStatement($sql);
 
-        $this->db->bindValueToStatement(":line_item_id", $lineItemID);
+        $this->db->bindValueToStatement(":line_item_uuid", $lineItemUUID);
         $this->db->bindValueToStatement(":choice_parent_id", $choiceID);
         $this->db->bindValueToStatement(":choice_child_id", $optionID);
 
         $this->db->executeStatement();
     }
 
-    public function addAdditionToLineItem(int $lineItemID, int $additionID) : void {
-        $sql = "INSERT INTO line_item_additions (line_item_id, addition_id)
-VALUES (:line_item_id, :addition_id);";
+    public function addAdditionToLineItem(string $lineItemUUID, int $additionID) : void {
+        $sql = "INSERT INTO line_item_additions (line_item_uuid, addition_id)
+VALUES (:line_item_uuid, :addition_id);";
 
         $this->db->beginStatement($sql);
 
-        $this->db->bindValueToStatement(":line_item_id", $lineItemID);
+        $this->db->bindValueToStatement(":line_item_uuid", $lineItemUUID);
         $this->db->bindValueToStatement(":addition_id", $additionID);
 
         $this->db->executeStatement();
     }
 
-    public function deleteLineItem(int $cartID, int $lineItemID) : void {
-        $sql = "DELETE FROM line_item_choices WHERE line_item_id = :line_item_id;";
+    public function deleteLineItem(string $cartUUID, string $lineItemUUID) : void {
+        $sql = "DELETE FROM line_item_choices WHERE line_item_uuid = :line_item_uuid;";
 
         $this->db->beginStatement($sql);
-        $this->db->bindValueToStatement(":line_item_id", $lineItemID);
+        $this->db->bindValueToStatement(":line_item_uuid", $lineItemUUID);
         $this->db->executeStatement();
 
-        $sql = "DELETE FROM line_item_additions WHERE line_item_id = :line_item_id;";
+        $sql = "DELETE FROM line_item_additions WHERE line_item_uuid = :line_item_uuid;";
 
         $this->db->beginStatement($sql);
-        $this->db->bindValueToStatement(":line_item_id", $lineItemID);
+        $this->db->bindValueToStatement(":line_item_uuid", $lineItemUUID);
         $this->db->executeStatement();
 
-        $sql = "DELETE FROM order_line_items WHERE id = :id;";
+        $sql = "DELETE FROM order_line_items WHERE uuid = :uuid;";
 
         $this->db->beginStatement($sql);
-        $this->db->bindValueToStatement(":id", $lineItemID);
+        $this->db->bindValueToStatement(":uuid", $lineItemUUID);
         $this->db->executeStatement();
 
         // At the end make sure we update the new cost
-        $this->updateCost($cartID);
+        $this->updateCost($cartUUID);
     }
 
-    public function setOrderType(int $cartID, int $orderType) : void {
-        $sql = "UPDATE orders SET order_type = :order_type WHERE id = :id;";
+    public function setOrderType(string $cartUUID, int $orderType) : void {
+        $sql = "UPDATE orders SET order_type = :order_type WHERE uuid = :uuid;";
 
         $this->db->beginStatement($sql);
 
-        $this->db->bindValueToStatement(":id", $cartID);
+        $this->db->bindValueToStatement(":uuid", $cartUUID);
         $this->db->bindValueToStatement(":order_type", $orderType);        
         
         $this->db->executeStatement();
     }
 
-    public function getOrderType(int $orderID) : int {
-        $sql = "SELECT order_type FROM orders WHERE id = :id";
+    public function getOrderType(string $orderUUID) : int {
+        $sql = "SELECT order_type FROM orders WHERE uuid = :uuid";
 
         $this->db->beginStatement($sql);
-        $this->db->bindValueToStatement(":id", $orderID);
+        $this->db->bindValueToStatement(":uuid", $orderUUID);
         $this->db->executeStatement();
 
         return $this->db->getResult()["order_type"];
     }
 
-    public function updateFee(int $cartID, int $amount) : void {
-        $sql = "UPDATE order_cost SET fee = :fee WHERE order_id = :order_id;";
+    public function updateFee(string $cartUUID, int $amount) : void {
+        $sql = "UPDATE order_cost SET fee = :fee WHERE order_uuid = :order_uuid;";
 
         $this->db->beginStatement($sql);
         
-        $this->db->bindValueToStatement(":order_id", $cartID);
+        $this->db->bindValueToStatement(":order_uuid", $cartUUID);
         $this->db->bindValueToStatement(":fee", $amount);
 
         $this->db->executeStatement();
@@ -156,13 +166,13 @@ VALUES (:line_item_id, :addition_id);";
      * Only to be used by employees to associate a customer with IN_RESTAURANT orders.
      * Also to not fill up the employees order history with other customer orders.
      */
-    public function assignUserToOrder(int $orderID, $userID = NULL) : void {
-        $sql = "UPDATE orders SET user_id = :user_id WHERE id = :id;";
+    public function assignUserToOrder(string $orderUUID, $userUUID = NULL) : void {
+        $sql = "UPDATE orders SET user_uuid = :user_uuid WHERE uuid = :uuid;";
 
         $this->db->beginStatement($sql);
         
-        $this->db->bindValueToStatement(":id", $orderID);
-        $this->db->bindValueToStatement(":user_id", $userID);
+        $this->db->bindValueToStatement(":uuid", $orderUUID);
+        $this->db->bindValueToStatement(":user_uuid", $userUUID);
         
         $this->db->executeStatement();
     }
@@ -170,44 +180,46 @@ VALUES (:line_item_id, :addition_id);";
     /**
      *Updates the cart into a submitted order.
      */
-    public function submitOrder(int $cartID) : void {
+    public function submitOrder(string $cartUUID) : void {
         $sql = "UPDATE orders SET 
-status = " . SUBMITTED . ", date = NOW() WHERE id = :id;";
+status = " . SUBMITTED . ", date = NOW() WHERE uuid = :uuid;";
 
         $this->db->beginStatement($sql);
-        $this->db->bindValueToStatement(":id", $cartID);
+        $this->db->bindValueToStatement(":uuid", $cartUUID);
         $this->db->executeStatement();
     }
 
-    public function setDeliveryAddressID(int $orderID, int $addressID) : void {
-        $sql = "INSERT INTO delivery_address 
-(order_id, address_id) VALUES (:order_id, :address_id);";
+    public function setDeliveryAddress(string $orderUUID, string $addressUUID = NULL) : void {
+        $sql = "UPDATE delivery_address SET
+address_uuid = :address_uuid WHERE order_uuid = :order_uuid;";
 
         $this->db->beginStatement($sql);
 
-        $this->db->bindValueToStatement(":order_id", $orderID);
-        $this->db->bindValueToStatement(":address_id", $addressID);
+        $this->db->bindValueToStatement(":order_uuid", $orderUUID);
+        $this->db->bindValueToStatement(":address_uuid", $addressUUID);
         
         $this->db->executeStatement();
     }
 
-    public function getDeliveryAddress(int $orderID) : array {
-        $sql = "SELECT * FROM address 
-WHERE id = (SELECT address_id FROM delivery_address WHERE order_id = :order_id);";
+    public function getDeliveryAddress(string $orderUUID) : array {
+        $sql = "SELECT uuid, line, city, state, zip_code FROM address 
+WHERE uuid = (SELECT address_uuid FROM delivery_address WHERE order_uuid = :order_uuid);";
 
         $this->db->beginStatement($sql);
-        $this->db->bindValueToStatement(":order_id", $orderID);
+        $this->db->bindValueToStatement(":order_uuid", $orderUUID);
         $this->db->executeStatement();
 
-        return $this->db->getResult();
+        $result = $this->db->getResult();
+        if(is_bool($result)) return array();
+        return $result;
     }
 
-    public function submitPayment(int $cartID, int $amount, int $method) : void {
-        $sql = "INSERT INTO order_payments (order_id, amount, method) VALUES (:order_id, :amount, :method);";
+    public function submitPayment(string $cartUUID, int $amount, int $method) : void {
+        $sql = "INSERT INTO order_payments (order_uuid, amount, method) VALUES (:order_uuid, :amount, :method);";
         
         $this->db->beginStatement($sql);
         
-        $this->db->bindValueToStatement(":order_id", $cartID);
+        $this->db->bindValueToStatement(":order_uuid", $cartUUID);
         $this->db->bindValueToStatement(":amount", $amount);
         $this->db->bindValueToStatement(":method", $method);
 
@@ -226,99 +238,141 @@ WHERE id = (SELECT address_id FROM delivery_address WHERE order_id = :order_id);
         $this->db->executeStatement();
     }
 
-    public function isPaid(int $orderID) : bool {
+    public function isPaid(string $orderUUID) : bool {
         $sql = "SELECT 
 CASE WHEN (SUM(op.amount) = (oc.subtotal + oc.tax + oc.fee)) THEN 1 ELSE 0 END AS is_paid 
 FROM order_payments op 
 LEFT JOIN order_cost oc
-ON oc.order_id = op.order_id 
-WHERE op.order_id = :order_id;";
+ON oc.order_uuid = op.order_uuid 
+WHERE op.order_uuid = :order_uuid;";
 
         $this->db->beginStatement($sql);
-        $this->db->bindValueToStatement(":order_id", $orderID);
+        $this->db->bindValueToStatement(":order_uuid", $orderUUID);
         $this->db->executeStatement();
 
         return (bool)$this->db->getResult()["is_paid"];
     }
 
     /** 
-     * If an unregistered user already had orders tied to it, and logged into an account
-     * that has a different user associated with it. Then we should bring over all their data
-     * to the registered account. Also update the cart to what it was on the device they
-     * just logged into as that 'should' be the most recent one, logically. 
+     * If an unregistered user generated multiple sessions before registering,
+     * it's possible for them to have orders tied to the other session that should be brought over.
+     * We then want to delete the cart of the old account.
+     * This should be done for each unregistered user that shares an email with the newly registered one.
+     * Only after email verification has been completed.
      */
-    // TODO(Trystan): Carts don't look like they used to. Now there's all kinds of line items and additions,
-    // deleting a cart ain't this easy anymore. When we get to deleting cart items, we will re-implement this.
-    public function updateOrdersFromUnregisteredToRegistered(int $unregisteredUserID, int $registeredUserID) : void {
-        //$previousCartID = $this->getCartID($registeredUserID);
+    public function updateOrdersFromUnregisteredToRegistered(string $unregisteredUserUUID, string $registeredUserUUID) : void {
+        $previousCartUUID = $this->getCartUUID($unregisteredUserUUID);
         
-        $sql = "UPDATE orders SET user_id = :registered_user_id
-WHERE user_id = :unregistered_user_id;";
+        $sql = "UPDATE orders SET user_uuid = :registered_user_uuid
+WHERE user_uuid = :unregistered_user_uuid;";
 
         $this->db->beginStatement($sql);
-        $this->db->bindValueToStatement(":registered_user_id", $registeredUserID);
-        $this->db->bindValueToStatement(":unregistered_user_id", $unregisteredUserID);
+        $this->db->bindValueToStatement(":registered_user_uuid", $registeredUserUUID);
+        $this->db->bindValueToStatement(":unregistered_user_uuid", $unregisteredUserUUID);
         $this->db->executeStatement();
 
-        /*
-        $sql = "DELETE FROM orders WHERE id = :previous_cart_id;";
+        $cart = $this->getOrderByUUID($previousCartUUID);
+        foreach($cart["line_items"] ?? array() as $lineItem){
+            $this->deleteLineItem($previousCartUUID, $lineItem["uuid"]);
+        }
+
+        $sql = "DELETE FROM delivery_address WHERE order_uuid = :order_uuid;";
 
         $this->db->beginStatement($sql);
-        $this->db->bindValueToStatement(":previous_cart_id", $previousCartID);
+        $this->db->bindValueToStatement(":order_uuid", $previousCartUUID);
         $this->db->executeStatement();
-        */
+
+        $sql = "DELETE FROM order_cost WHERE order_uuid = :order_uuid;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":order_uuid", $previousCartUUID);
+        $this->db->executeStatement();
+
+        $sql = "DELETE FROM stripe_tokens WHERE order_uuid = :order_uuid;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":order_uuid", $previousCartUUID);
+        $this->db->executeStatement();
+
+        $sql = "DELETE FROM orders WHERE uuid = :uuid;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":uuid", $previousCartUUID);
+        $this->db->executeStatement();
     }
 
-    public function updateOrderStatus(int $orderID, int $status) : void {
-        $sql = "UPDATE orders SET status = :status WHERE id = :id";
+    public function updateOrderStatus(string $orderUUID, int $status) : void {
+        $sql = "UPDATE orders SET status = :status WHERE uuid = :uuid";
 
         $this->db->beginStatement($sql);
         $this->db->bindValueToStatement(":status", $status);
-        $this->db->bindValueToStatement(":id", $orderID);
+        $this->db->bindValueToStatement(":uuid", $orderUUID);
         $this->db->executeStatement();
     }
 
-    public function getCartID(int $userID = NULL) : ?int {
-        $sql = "SELECT id FROM orders WHERE user_id = :user_id AND status = " . CART . ";";
+    public function getCartUUID(string $userUUID = NULL) : ?string {
+        $sql = "SELECT uuid FROM orders WHERE user_uuid = :user_uuid AND status = " . CART . ";";
 
         $this->db->beginStatement($sql);
-        $this->db->bindValueToStatement(":user_id", $userID);
+        $this->db->bindValueToStatement(":user_uuid", $userUUID);
         $this->db->executeStatement();
 
-        $orderID = $this->db->getResult();
+        $orderUUID = $this->db->getResult();
 
-        if(is_bool($orderID)) return NULL;
-        return $orderID["id"];
+        if(is_bool($orderUUID)) return NULL;
+        return (string)$orderUUID["uuid"];
     }
 
     /***
      * Returns top level order info, no line items etc.
      */
-    public function getBasicOrderInfo(int $orderID) : array {
-        $sql = "SELECT * FROM orders WHERE id = :id;";
+    public function getBasicOrderInfo(string $orderUUID) : array {
+        $sql = "SELECT * FROM orders WHERE uuid = :uuid;";
 
         $this->db->beginStatement($sql);
-        $this->db->bindValueToStatement(":id", $orderID);
+        $this->db->bindValueToStatement(":uuid", $orderUUID);
         $this->db->executeStatement();
 
-        return $this->db->getResult();
+        $result = $this->db->getResult();
+        if(is_bool($result)) return array();
+        return $result;
     }
-
-    // TODO(Trystan): It's not even possible to get a NULL return here.
-    public function getOrderByID(int $orderID = NULL) : ?array {
-        $sql = "SELECT * FROM orders WHERE id = :id;";
+    
+    public function getOrderByUUID(string $orderUUID = NULL) : array {
+        $sql = "SELECT * FROM orders WHERE uuid = :uuid;";
 
         $this->db->beginStatement($sql);
-        $this->db->bindValueToStatement(":id", $orderID);
+        $this->db->bindValueToStatement(":uuid", $orderUUID);
         $this->db->executeStatement();
 
         $order = $this->db->getResult();
 
-        
+        if(is_bool($order)){
+            return array();
+        }
 
+        $sql = "SELECT uuid FROM order_line_items WHERE order_uuid = :order_uuid;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":order_uuid", $orderUUID);
+        $this->db->executeStatement();
+        
+        $lineItemUUIDs = $this->db->getResultSet();
+
+        $order["line_items"] = [];
+
+        foreach($lineItemUUIDs as $lineItemUUID){
+            $lineItem = $this->getLineItem($lineItemUUID["uuid"]);
+            $lineItem["uuid"] = UUID::orderedBytesToArrangedString($lineItemUUID["uuid"]);
+            $order["line_items"][] = $lineItem;
+        }
+
+        return $order;
+    }
+
+    public function getLineItem(string $UUID) : array {
         $sql = "SELECT 
-li.id,
-li.order_id,
+li.menu_item_id,
 mi.name,
 li.price,
 li.quantity,
@@ -326,157 +380,131 @@ li.comment
 FROM order_line_items AS li
 LEFT JOIN menu_items AS mi
 ON li.menu_item_id = mi.id
-WHERE li.order_id = :order_id;";
+WHERE li.uuid = :uuid;";
 
         $this->db->beginStatement($sql);
-        $this->db->bindValueToStatement(":order_id", $orderID);
+        $this->db->bindValueToStatement(":uuid", $UUID);
         $this->db->executeStatement();
+        
+        $lineItem = $this->db->getResult();
 
-        $lineItems = $this->db->getResultSet();
-
-        $order["line_items"] = [];
-        foreach($lineItems as $lineItem){
-            $id = $lineItem["id"];
-            $order["line_items"][$id] = $lineItem;
-
-            $sql = "SELECT
+        $sql = "SELECT
 DISTINCT cp.name,
 cp.id
 FROM choices_parents AS cp
 LEFT JOIN line_item_choices AS lic
 ON lic.choice_parent_id = cp.id
-WHERE lic.line_item_id = :line_item_id;";
+WHERE lic.line_item_uuid = :line_item_uuid;";
 
-            $this->db->beginStatement($sql);
-            $this->db->bindValueToStatement(":line_item_id", $id);
-            $this->db->executeStatement();
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":line_item_uuid", $UUID);
+        $this->db->executeStatement();
 
-            $choices = $this->db->getResultSet();
+        $choices = $this->db->getResultSet();
             
-            $order["line_items"][$id]["choices"] = [];
+        $lineItem["choices"] = [];
             
-            foreach($choices as $choice){
-                $choiceID = $choice["id"];
-                $sql = "SELECT 
+        foreach($choices as $choice){
+            $choiceID = $choice["id"];
+            $sql = "SELECT 
 lic.choice_child_id AS id,
 cc.name,
 cc.price_modifier AS price
 FROM line_item_choices AS lic
 LEFT JOIN choices_children AS cc
 ON lic.choice_child_id = cc.id
-WHERE lic.line_item_id = :line_item_id 
+WHERE lic.line_item_uuid = :line_item_uuid 
 AND lic.choice_parent_id = :choice_parent_id;";
 
-                $this->db->beginStatement($sql);
-                $this->db->bindValueToStatement(":line_item_id", $id);
-                $this->db->bindValueToStatement(":choice_parent_id", $choiceID);
-                $this->db->executeStatement();
+            $this->db->beginStatement($sql);
+            $this->db->bindValueToStatement(":line_item_uuid", $UUID);
+            $this->db->bindValueToStatement(":choice_parent_id", $choiceID);
+            $this->db->executeStatement();
 
-                $options = $this->db->getResultSet();
-                $order["line_items"][$id]["choices"][$choiceID] = [];
-                foreach($options as $option){
-                    $optionID = $option["id"];
-                    $order["line_items"][$id]["choices"][$choiceID]["options"][$optionID]["price"]
-                        = $option["price"];
-                    $order["line_items"][$id]["choices"][$choiceID]["options"][$optionID]["name"]
-                        = $option["name"];
-                }
-                $order["line_items"][$id]["choices"][$choiceID]["name"] = $choice["name"];
+            $options = $this->db->getResultSet();
+            $lineItem["choices"][$choiceID] = [];
+            foreach($options as $option){
+                $optionID = $option["id"];
+                $lineItem["choices"][$choiceID]["options"][$optionID]["price"]
+                    = $option["price"];
+                $lineItem["choices"][$choiceID]["options"][$optionID]["name"]
+                    = $option["name"];
             }
+            $lineItem["choices"][$choiceID]["name"] = $choice["name"];
+        }
 
-            // These are guaranteed to be DISTINCT.
-            $sql = "SELECT 
+        // These are guaranteed to be DISTINCT.
+        $sql = "SELECT 
 lia.addition_id AS id,
 a.name,
 a.price_modifier AS price
 FROM line_item_additions AS lia
 LEFT JOIN additions AS a
 ON lia.addition_id = a.id
-WHERE lia.line_item_id = :line_item_id;";
+WHERE lia.line_item_uuid = :line_item_uuid;";
 
-            $this->db->beginStatement($sql);
-            $this->db->bindValueToStatement(":line_item_id", $id);
-            $this->db->executeStatement();
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":line_item_uuid", $UUID);
+        $this->db->executeStatement();
 
-            $additions = $this->db->getResultSet();
+        $additions = $this->db->getResultSet();
 
-            $order["line_items"][$id]["additions"] = [];
-            foreach($additions as $addition){
-                $additionID = $addition["id"];
-                $order["line_items"][$id]["additions"][$additionID]["price"]
-                    = $addition["price"];
-                $order["line_items"][$id]["additions"][$additionID]["name"]
-                    = $addition["name"];
-            }
+        $lineItem["additions"] = [];
+        foreach($additions as $addition){
+            $additionID = $addition["id"];
+            $lineItem["additions"][$additionID]["price"]
+                = $addition["price"];
+            $lineItem["additions"][$additionID]["name"]
+                = $addition["name"];
         }
 
-        return $order;
+        return $lineItem;
     }
 
-    public function getAllOrdersByUserID(int $userID) : array {
-        $sql = "SELECT id FROM orders o 
-WHERE user_id = :user_id
+    public function getAllOrdersByUserUUID(string $userUUID) : array {
+        $sql = "SELECT uuid FROM orders o 
+WHERE user_uuid = :user_uuid
 AND status > " . CART . "
 ORDER BY o.date ASC;";
 
         $this->db->beginStatement($sql);
-        $this->db->bindValueToStatement(":user_id", $userID);
+        $this->db->bindValueToStatement(":user_uuid", $userUUID);
         $this->db->executeStatement();
 
-        $ids = $this->db->getResultSet();
-        if(is_bool($ids)) return array();
+        $uuids = $this->db->getResultSet();
+        if(is_bool($uuids)) return array();
         
         $orders = [];
 
-        foreach($ids as $id){
-            $orders[] = $this->getOrderByID($id["id"]);
-        }
-
-        return $orders;
-    }
-
-    // TODO(Trystan): Nobody calls this. Something from a bygone era probably.
-    public function getAllOrdersByStatus(int $status) : array {
-        $sql = "SELECT id FROM orders o WHERE status = :status ORDER BY o.date ASC;";
-
-        $this->db->beginStatement($sql);
-        $this->db->bindValueToStatement(":status", $status);
-        $this->db->executeStatement();
-
-        $ids = $this->db->getResultSet();
-        if(is_bool($ids)) return array();
-        
-        $orders = [];
-
-        foreach($ids as $id){
-            $orders[] = $this->getOrderByID($id["id"]);
+        foreach($uuids as $uuid){
+            $orders[] = $this->getOrderByUUID($uuid["uuid"]);
         }
 
         return $orders;
     }
 
     public function getAllActiveOrders() : array {
-        $sql = "SELECT id FROM orders o 
+        $sql = "SELECT uuid FROM orders o 
 WHERE status NOT IN (" . CART . "," . COMPLETE . ") 
 ORDER BY o.date ASC;";
 
         $this->db->beginStatement($sql);
         $this->db->executeStatement();
 
-        $ids = $this->db->getResultSet();
-        if(is_bool($ids)) return array();
+        $uuids = $this->db->getResultSet();
+        if(is_bool($uuids)) return array();
         
         $orders = [];
 
-        foreach($ids as $id){
-            $orders[] = $this->getOrderByID($id["id"]);
+        foreach($uuids as $uuid){
+            $orders[] = $this->getOrderByUUID($uuid["uuid"]);
         }
 
         return $orders;
     }
 
     public function getActiveOrdersAfterDate(string $date) : array {
-        $sql = "SELECT id FROM orders o 
+        $sql = "SELECT uuid FROM orders o 
 WHERE status NOT IN (" . CART . ","  . COMPLETE . ")
 AND date > :date 
 ORDER BY o.date ASC;";
@@ -485,46 +513,43 @@ ORDER BY o.date ASC;";
         $this->db->bindValueToStatement(":date", $date);
         $this->db->executeStatement();
 
-        $ids = $this->db->getResultSet();
-        if(is_bool($ids)) return array();
+        $uuids = $this->db->getResultSet();
+        if(is_bool($uuids)) return array();
         
         $orders = [];
 
-        foreach($ids as $id){
-            $orders[] = $this->getOrderByID($id["id"]);
+        foreach($uuids as $uuid){
+            $orders[] = $this->getOrderByUUID($uuid["uuid"]);
         }
 
         return $orders;
     }
 
-    public function getActiveOrderStatus() : array {
-        $sql = "SELECT id, status FROM orders o 
-WHERE status NOT IN (" . CART . ","  . COMPLETE . ")
-ORDER BY o.date ASC;";
+    public function getOrderStatus(string $orderUUID) : array {
+        $sql = "SELECT bin_to_uuid(uuid, true) as uuid, status FROM orders 
+WHERE uuid = :uuid";
 
         $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":uuid", $orderUUID);
         $this->db->executeStatement();
 
-        $result = $this->db->getResultSet();
-        if(is_bool($result)) return array();
-
-        return $result;
+        return $this->db->getResult();
     }
 
-    public function getUserActiveOrderStatus(int $userID = NULL) : ?int {
+    public function getUserActiveOrderStatus(string $userUUID = NULL) : ?int {
         $sql = "SELECT x.status
 FROM orders x
 LEFT OUTER JOIN orders y
-ON x.user_id = y.user_id
+ON x.user_uuid = y.user_uuid
 AND x.date < y.date
 AND y.status NOT IN (" . CART . "," . COMPLETE . ")
-WHERE x.user_id = :user_id
-AND y.user_id IS NULL
+WHERE x.user_uuid = :user_uuid
+AND y.user_uuid IS NULL
 AND x.status NOT IN (" . CART . "," . COMPLETE . ")
 ORDER BY x.date desc;";
 
         $this->db->beginStatement($sql);
-        $this->db->bindValueToStatement(":user_id", $userID);
+        $this->db->bindValueToStatement(":user_uuid", $userUUID);
         $this->db->executeStatement();
 
         $status = $this->db->getResult();
@@ -536,16 +561,16 @@ ORDER BY x.date desc;";
     /***
      * For verification that user owns the line item they are requesting to delete.
      */
-    public function isLineItemInOrder(int $orderID, int $lineItem) : bool {
+    public function isLineItemInOrder(string $orderUUID, string $lineItemUUID) : bool {
         $sql = "SELECT 
-IF(oli.order_id = :order_id,TRUE,FALSE) AS is_line_item_in_order 
+IF(oli.order_uuid = :order_uuid,TRUE,FALSE) AS is_line_item_in_order 
 FROM order_line_items oli 
-WHERE oli.id = :id;";
+WHERE oli.uuid = :uuid;";
 
         $this->db->beginStatement($sql);
         
-        $this->db->bindValueToStatement(":order_id", $orderID);
-        $this->db->bindValueToStatement(":id", $lineItem);
+        $this->db->bindValueToStatement(":order_uuid", $orderUUID);
+        $this->db->bindValueToStatement(":uuid", $lineItemUUID);
 
         $this->db->executeStatement();
 
@@ -556,11 +581,11 @@ WHERE oli.id = :id;";
     public function getOrdersMatchingFilters(string $startDate = NULL, string $endDate = NULL, int $startAmount = NULL,
                                              int $endAmount = NULL, int $orderType = NULL, string $firstName = NULL,
                                              string $lastName = NULL, string $email = NULL, string $phoneNumber = NULL) : array {
-        $sql = "SELECT o.id, o.user_id FROM orders o 
+        $sql = "SELECT o.uuid, o.user_uuid FROM orders o 
 LEFT JOIN order_cost c
-ON c.order_id = o.id 
+ON c.order_uuid = o.uuid 
 LEFT JOIN users u
-ON o.user_id = u.id
+ON o.user_uuid = u.uuid
 WHERE
 (u.name_first   LIKE CONCAT('%', :name_first, '%')   OR :name_first   IS NULL) AND
 (u.name_last    LIKE CONCAT('%', :name_last, '%')    OR :name_last    IS NULL) AND
@@ -570,7 +595,7 @@ WHERE
 (((c.fee + c.subtotal + c.tax) BETWEEN :start_amount AND :end_amount) OR (:start_amount IS NULL AND :end_amount IS NULL)) AND
 (o.order_type = :order_type OR :order_type IS NULL) AND
 o.status = " . COMPLETE . "
-GROUP BY o.id
+GROUP BY o.uuid
 ORDER BY o.date DESC;";
 
         $this->db->beginStatement($sql);
@@ -594,21 +619,21 @@ ORDER BY o.date DESC;";
         return $result;
     }
 
-    public function getCost(int $orderID) : array {
-        $sql = "SELECT * FROM order_cost WHERE order_id = :order_id;";
+    public function getCost(string $orderUUID) : array {
+        $sql = "SELECT subtotal, tax, fee FROM order_cost WHERE order_uuid = :order_uuid;";
 
         $this->db->beginStatement($sql);
-        $this->db->bindValueToStatement(":order_id", $orderID);
+        $this->db->bindValueToStatement(":order_uuid", $orderUUID);
         $this->db->executeStatement();
 
         return $this->db->getResult();
     }
 
-    public function getPayments(int $orderID) : array {
-        $sql = "SELECT id, amount, method FROM order_payments WHERE order_id = :order_id;";
+    public function getPayments(string $orderUUID) : array {
+        $sql = "SELECT id, amount, method FROM order_payments WHERE order_uuid = :order_uuid;";
 
         $this->db->beginStatement($sql);
-        $this->db->bindValueToStatement(":order_id", $orderID);
+        $this->db->bindValueToStatement(":order_uuid", $orderUUID);
         $this->db->executeStatement();
 
         $result = $this->db->getResultSet();
@@ -617,7 +642,7 @@ ORDER BY o.date DESC;";
     }
 
     public function getPaymentByID(int $paymentID) : array {
-        $sql = "SELECT order_id, amount, method FROM order_payments WHERE id = :id;";
+        $sql = "SELECT order_uuid, amount, method FROM order_payments WHERE id = :id;";
 
         $this->db->beginStatement($sql);
         $this->db->bindValueToStatement(":id", $paymentID);
@@ -640,32 +665,32 @@ ORDER BY o.date DESC;";
         return (int)$result["refund_total"];
     }
 
-    public function setPaypalToken(int $orderID, string $token) : void {
-        $sql = "INSERT INTO paypal_tokens (order_id, paypal_token) VALUES (:order_id, :paypal_token);";
+    public function setPaypalToken(string $orderUUID, string $token) : void {
+        $sql = "INSERT INTO paypal_tokens (order_uuid, paypal_token) VALUES (:order_uuid, :paypal_token);";
 
         $this->db->beginStatement($sql);
 
-        $this->db->bindValueToStatement(":order_id", $orderID);
+        $this->db->bindValueToStatement(":order_uuid", $orderUUID);
         $this->db->bindValueToStatement(":paypal_token", $token);
 
         $this->db->executeStatement();
     }
 
-    public function getPaypalToken(int $orderID) : string {
-        $sql = "SELECT * FROM paypal_tokens WHERE order_id = :order_id;";
+    public function getPaypalToken(string $orderUUID) : string {
+        $sql = "SELECT * FROM paypal_tokens WHERE order_uuid = :order_uuid;";
 
         $this->db->beginStatement($sql);
-        $this->db->bindValueToStatement(":order_id", $orderID);
+        $this->db->bindValueToStatement(":order_uuid", $orderUUID);
         $this->db->executeStatement();
 
         return $this->db->getResult()["paypal_token"];
     }
 
-    public function getStripeToken(int $orderID) : string {
-        $sql = "SELECT * FROM stripe_tokens WHERE order_id = :order_id;";
+    public function getStripeToken(string $orderUUID) : string {
+        $sql = "SELECT * FROM stripe_tokens WHERE order_uuid = :order_uuid;";
 
         $this->db->beginStatement($sql);
-        $this->db->bindValueToStatement(":order_id", $orderID);
+        $this->db->bindValueToStatement(":order_uuid", $orderUUID);
         $this->db->executeStatement();
 
         return $this->db->getResult()["stripe_token"];
@@ -674,16 +699,76 @@ ORDER BY o.date DESC;";
     /**
      * Updates the subtotal and the tax.
      */
-    private function updateCost(int $cartID) : void {
+    private function updateCost(string $cartUUID) : void {
         $sql = "UPDATE order_cost o SET 
-o.subtotal = (SELECT SUM(price) FROM order_line_items WHERE order_id = :id),
+o.subtotal = (SELECT SUM(price) FROM order_line_items WHERE order_uuid = :uuid),
 o.tax = ROUND(o.subtotal * 0.07)
-WHERE order_id = :id;"; // NOTE(Trystan): 0.07 is IOWA tax rate.
+WHERE order_uuid = :uuid;"; // NOTE(Trystan): 0.07 is IOWA tax rate.
         
         $this->db->beginStatement($sql);
-        $this->db->bindValueToStatement(":id", $cartID);
+        $this->db->bindValueToStatement(":uuid", $cartUUID);
         $this->db->executeStatement();
     }
+
+    public function isDeliveryOn() : bool {
+        $sql = "SELECT status FROM toggle_options WHERE id = 'delivery';";
+
+        $this->db->beginStatement($sql);
+        $this->db->executeStatement();
+
+        $result = $this->db->getResult()["status"];
+
+        if($result == 1) return true;
+        return false;
+    }
+
+    public function isValidDeliveryTime(int $day) : bool {
+        $sql = "SELECT CASE WHEN CURTIME() > ds.start_time AND CURTIME() < ds.end_time
+THEN 1
+ELSE 0
+END result
+FROM delivery_schedule ds 
+WHERE ds.day = :day;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":day", $day);
+        $this->db->executeStatement();
+
+        $result = $this->db->getResult()["result"];
+
+        if($result == 1) return true;
+        return false;
+    }
+
+    public function isPickupOn() : bool {
+        $sql = "SELECT status FROM toggle_options WHERE id = 'pickup';";
+
+        $this->db->beginStatement($sql);
+        $this->db->executeStatement();
+
+        $result = $this->db->getResult()["status"];
+
+        if($result == 1) return true;
+        return false;
+    }
+
+    public function isValidPickupTime(int $day) : bool {
+        $sql = "SELECT CASE WHEN CURTIME() > ps.start_time AND CURTIME() < ps.end_time
+THEN 1
+ELSE 0
+END result
+FROM pickup_schedule ps 
+WHERE ps.day = :day;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":day", $day);
+        $this->db->executeStatement();
+
+        $result = $this->db->getResult()["result"];
+
+        if($result == 1) return true;
+        return false;
+    }    
 }
 
 ?>

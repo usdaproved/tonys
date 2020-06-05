@@ -1,3 +1,5 @@
+import { postJSON, intToCurrency } from './utility.js';
+
 "use strict";
 
 const submitChoicesButton = document.querySelector('#update-choices');
@@ -10,7 +12,6 @@ let removeOptionButtons = document.querySelectorAll('.remove-option-button');
 let addAdditionButton = document.querySelector('#add-addition-button');
 let removeAdditionButtons = document.querySelectorAll('.remove-addition-button');
 let additionSelectList = document.querySelector('#addition-select-list');
-const CSRFToken = document.querySelector('#CSRFToken').value;
 const menuItemID = document.querySelector('#menu-item-id').value;
 
 let inChoiceEditMode = false;
@@ -18,20 +19,6 @@ let inAdditionEditMode = false;
 
 let choicesContainer = document.querySelector('#choices-container');
 let additionsContainer = document.querySelector('#additions-container');
-
-// Every request is a post request with the CSRFToken attached.
-const postJSON = (url, json) => {
-    url = window.location.origin + url;
-    json["CSRFToken"] = CSRFToken;
-    const data = JSON.stringify(json);
-    return fetch(url, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: data
-    });
-};
 
 const removeOptionHandler = (e) => {
     e.preventDefault();

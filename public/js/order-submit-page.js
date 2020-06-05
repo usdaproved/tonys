@@ -3,26 +3,37 @@ import { postJSON } from './utility.js';
 "use strict";
 
 let CSRFToken = document.querySelector('#CSRFToken').value;
-
 const addressContainer = document.querySelector('#address-select-container');
 const changeAddressButton = document.querySelector('#change-address');
 
-changeAddressButton.addEventListener('click', (e) => {
-  addressContainer.hidden = !addressContainer.hidden;
-  if(addressContainer.hidden){
-    changeAddressButton.value = 'Change';
-  } else {
-    changeAddressButton.value = 'Cancel';
-  }
-});
+if(addressContainer){
+  changeAddressButton.addEventListener('click', (e) => {
+    addressContainer.hidden = !addressContainer.hidden;
+    if(addressContainer.hidden){
+      changeAddressButton.value = 'Change';
+    } else {
+      changeAddressButton.value = 'Cancel';
+    }
+  });
 
-addressContainer.querySelectorAll('.order-container').addEventListener('click', (e) => {
-  let container = e.target.closest('.order-container');
-  let addressID = container.id.split('-')[1];
-
-  // Send post request to set delivery id to the selected one.
-  // hide the address containers upon success and update the delivery address.
-});
+  addressContainer.querySelectorAll('.order-container').forEach(container => {
+    container.addEventListener('click', (e) => {
+      let container = e.target.closest('.order-container');
+      let addressUUID = container.id;
+    
+      // Send post request to set delivery id to the selected one.
+      // hide the address containers upon success and update the delivery address.
+      const url = '/Order/submit/setDeliveryAddress';
+      let json = {'address_uuid':addressUUID};
+      postJSON(url, json, CSRFToken).then(response => response.text()).then(result => {
+        if(result === 'success'){
+          addressContainer.hidden = true;
+          location.reload();
+        }
+      });
+    });
+  });
+}
 
 // This code must be structured in such a way
 // that one of multiple payment processors will be used
@@ -66,12 +77,23 @@ const name_last = document.querySelector('#name_last').innerText;
   
 const submitButton = document.querySelector('#stripe-payment-submit');
 const clientSecret = submitButton.dataset.secret;
-const orderID = submitButton.dataset.orderid;
+const orderUUID = submitButton.dataset.orderuuid;
+
+let intervalID = null;
+
+const checkOrderConfirmation = () => {
+  let url = '/Order/submit/checkOrderConfirmation';
+  let json = {'order_uuid' : orderUUID};
+  postJSON(url, json, CSRFToken).then(response => response.text()).then(result => {
+    if(result === 'confirmed'){
+      clearInterval(intervalID);
+      window.location.replace(`/Order/confirmed?order=${orderUUID}`);
+    }
+  });
+};
 
 submitButton.addEventListener('click', function(e) {
   e.preventDefault();
-
-  
 
   stripe.confirmCardPayment(clientSecret, {
     payment_method: {
@@ -89,25 +111,9 @@ submitButton.addEventListener('click', function(e) {
     } else {
       // The payment has been processed!
       if (result.paymentIntent.status === 'succeeded') {
-        // Show a success message to your customer
-        // There's a risk of the customer closing the window before callback
-        // execution. Set up a webhook or plugin to listen for the
-        // payment_intent.succeeded event that handles any business critical
-        // post-payment actions.
-
         // TODO(Trystan): Show some success while this waits for confirmation.
-        for(let attempts = 0; attempts < 3; attempts++){
-          let url = '/Order/checkOrderConfirmation';
-          let json = {'order_id' : orderID};
-          postJSON(url, json, CSRFToken).then(response => response.text()).then(result => {
-            if(result === 'confirmed'){
-              window.location.replace(`/Order/confirmed?order=${orderID}`);
-            }
-          });
-          
-        }
-        // Show some type of error message.
-        // 'confirmation timed out.'
+        // disable all inputs.
+        intervalID = setInterval(checkOrderConfirmation, 2000);
       }
     }
   });

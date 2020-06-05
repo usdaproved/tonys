@@ -20,12 +20,12 @@ class HomeController extends Controller{
     }
 
     public function get() : void {
-        $userID = $this->getUserID();
-        $this->user = $this->userManager->getUserInfoByID($userID);
+        $userUUID = $this->getUserUUID();
+        $this->user = $this->userManager->getUserInfo($userUUID);
 
         $this->user["logged_in"] = $this->sessionManager->isUserLoggedIn();
 
-        $this->activeOrderStatus = $this->orderManager->getUserActiveOrderStatus($userID);
+        $this->activeOrderStatus = $this->orderManager->getUserActiveOrderStatus($userUUID);
 
         require_once APP_ROOT . "/views/home/home-page.php";
     }
@@ -35,9 +35,9 @@ class HomeController extends Controller{
             $this->redirect("/");
         }
 
-        $userID = $this->getUserID();
+        $userUUID = $this->getUserUUID();
 
-        $this->user = $this->userManager->getUserInfoByID($userID);
+        $this->user = $this->userManager->getUserInfo($userUUID);
 
         $this->sessionManager->setRedirect();
         
@@ -73,23 +73,65 @@ class HomeController extends Controller{
             $this->redirect("/register");
         }
 
-        
-        $userID = $this->getUserID();
-        if(is_null($userID)){
-            $userID = $this->userManager->createRegisteredCredentials($_POST["email"], $_POST["password"]);
-        } else {
-            $this->userManager->createRegisteredCredentials($_POST["email"], $_POST["password"], $userID);
-            $this->userManager->deleteUnregisteredCredentials($userID);
+        $USPS = $this->validateAddressUSPS();
+        if(empty($USPS)){
+            $this->pushOneTimeMessage(USER_ALERT, "Address not found.");
+            $redirect = $this->sessionManager->getRedirect();
+            if(!is_null($redirect)){
+                $this->redirect("/register?redirect=" . $redirect);
+            }
+            $this->redirect("/register");
         }
 
-        $this->userManager->setName($userID, $_POST["name_first"], $_POST["name_last"]);
-        $this->userManager->setPhoneNumber($userID, $_POST["phone"]);
-        $addressID = $this->userManager->addAddress($userID, $_POST["address_line"], $_POST["city"], $_POST["state"], $_POST["zip_code"]);
-        $this->userManager->setDefaultAddress($userID, $addressID);
         
-        $this->sessionManager->login($userID);
+        $userUUID = $this->getUserUUID();
+        // If userUUID is already set, we just get the same value back. Otherwise we get new userUUID
+        $userUUID = $this->userManager->createRegisteredCredentials($_POST["email"], $_POST["password"], $userUUID);
+        // Remove the unregistered credentials if there were any.
+        $this->userManager->deleteUnregisteredCredentials($userUUID);
+        
+        $this->userManager->setName($userUUID, $_POST["name_first"], $_POST["name_last"]);
+        $this->userManager->setPhoneNumber($userUUID, $_POST["phone"]);
+        $addressUUID = $this->userManager->addAddress($userUUID, $USPS["address_line"], $USPS["city"],
+                                                      $USPS["state"], $USPS["zip_code"]);
 
-        
+        $validAddress = true;
+        if($this->isAddressDeliverable($USPS)){
+            $this->userManager->setDefaultAddress($userUUID, $addressUUID);
+            $this->userManager->setAddressDeliverable($addressUUID);
+        } else {
+            $this->sessionManager->pushOneTimeMessage(USER_ALERT, "Delivery to this address is currently unavailable.");
+            $validAddress = false;
+        }
+
+        // If there is another session that used this email prior to registering we want
+        // to begin the process of bringing over that data to this user.
+        // We will require them to verify that email however.
+        $unregisteredUsers = $this->userManager->getAllUnregisteredUserUUIDsWithEmail($_POST["email"]);
+        if(!empty($unregisteredUsers)){
+            $this->userManager->setVerificationRequired($userUUID);
+            
+            $this->sessionManager->pushOneTimeMessage(USER_ALERT, "Please verify email to link account history.");
+            // create a token exactly like the remember me token. With a much shorter expiration length.
+            $token = bin2hex(random_bytes(32));
+            $hashedTokenBytes = hash("sha256", $token, true);
+            $selectorBytes = UUID::generateOrderedBytes();
+            $selector = UUID::orderedBytesToArrangedString($selectorBytes);
+            $selector = str_replace("-", "", $selector);
+
+            $emailToken = $selector . "-" . $token;
+
+            $expires = time() + (60*60); // expires in one hour.
+            $this->userManager->setEmailVerificationToken($userUUID, $selectorBytes, $hashedTokenBytes);
+
+            // TODO(Trystan): send email containing token link
+        }
+
+        $this->sessionManager->login($userUUID);
+
+        if(!$validAddress){
+            $this->redirect("/User/address");
+        }
         $this->redirect($this->sessionManager->getRedirect() ?? "/");
     }
 
@@ -116,9 +158,9 @@ class HomeController extends Controller{
             $this->redirect("/login");
         }
 
-        $userID = $this->validateCredentials($_POST["email"], $_POST["password"]);
+        $userUUID = $this->validateCredentials($_POST["email"], $_POST["password"]);
         
-        if(is_null($userID)){
+        if(is_null($userUUID)){
             $this->sessionManager->pushOneTimeMessage(USER_ALERT, MESSAGE_INVALID_LOGIN);
             $redirect = $this->sessionManager->getRedirect();
             if(!is_null($redirect)){
@@ -126,14 +168,16 @@ class HomeController extends Controller{
             }
             $this->redirect("/login");
         }
+        // TODO(Trystan): Check if verification required.
 
-        $this->sessionManager->login($userID);
+        $this->sessionManager->login($userUUID);
 
-        $unregisteredUserID = $this->userManager->getUserIDByUnregisteredSessionID();
-        if(!is_null($unregisteredUserID) && $unregisteredUserID !== $userID){
-            $this->orderManager->updateOrdersFromUnregisteredToRegistered($unregisteredUserID, $userID);
-            $this->userManager->deleteUnregisteredCredentials($unregisteredUserID);
-            $this->userManager->deleteUser($unregisteredUserID);
+        if(isset($_POST["remember_me"])){
+            $userAuthorityLevel = $this->userManager->getUserAuthorityLevel($userUUID);
+            // Only allow customers to be remembered. Don't want the risk of always logged in employees.
+            if($userAuthorityLevel === CUSTOMER){
+                $this->initializeRememberMe($userUUID);
+            }
         }
 
         $this->redirect($this->sessionManager->getRedirect() ?? "/");
@@ -141,6 +185,15 @@ class HomeController extends Controller{
 
     public function logout_get() : void 
     {
+        if(!$this->sessionManager->isUserLoggedIn()){
+            $this->redirect("/");
+        }
+        if(isset($_COOKIE["remember_me"])){
+            $selector = explode(':', $_COOKIE["remember_me"])[0];
+            $selectorBytes = UUID::arrangedStringToOrderedBytes($selector);
+            $this->userManager->deleteRememberMeToken($this->getUserUUID(), $selectorBytes);
+            setcookie("remember_me", "", time() - 3600);
+        }
         $this->sessionManager->logout();
         
         $this->redirect("/");

@@ -39,22 +39,38 @@ class Session{
         return $_SESSION["CSRFToken"];
     }
 
-    public function login($userID) : void {
-        $_SESSION["user_id"] = $userID;
+    public function login(string $userUUID) : void {
+        $_SESSION["user_uuid"] = $userUUID;
     }
 
     public function logout() : void {
-        unset($_SESSION["user_id"]);
+        unset($_SESSION["user_uuid"]);
+        unset($_SESSION["reauth_required"]);
 
+        // TODO(Trystan): php.net says this shouldn't be called from usual code.
+        // Instead we could setcookie the session cookie as we did above.
         session_destroy();
     }
 
     public function isUserLoggedIn() : bool {
-        return isset($_SESSION["user_id"]);
+        return isset($_SESSION["user_uuid"]);
     }
 
-    public function getUserID() : int {
-        return $_SESSION["user_id"];
+    public function getUserUUID() : string {
+        return $_SESSION["user_uuid"];
+    }
+
+    
+    public function setReauthRequired(bool $value) : void {
+        $_SESSION["reauth_required"] = $value;
+    }
+    
+    /**
+     * If the user logged in using a remember me cookie, make them reauth before allowing
+     * any changes to sensitive info.
+     */
+    public function isReauthRequired() : bool {
+        return $_SESSION["reauth_required"];
     }
 
     public function pushOneTimeMessage(string $type, string $message) : void {

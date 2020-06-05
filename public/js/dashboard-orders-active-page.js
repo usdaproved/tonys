@@ -1,8 +1,7 @@
-import { postJSON, createOrderElement, STATUS_ARRAY} from './utility.js';
+import { postJSON, createOrderElement, STATUS_ARRAY, intToCurrency} from './utility.js';
 
 "use strict";
 
-const CSRFToken = document.querySelector('#CSRFToken').value;
 const deliveryOrdersContainer = document.querySelector('#delivery-orders');
 const pickupOrdersContainer = document.querySelector('#pickup-orders');
 const restaurantOrdersContainer = document.querySelector('#in-restaurant-orders');
@@ -13,16 +12,16 @@ const orderTypeContainers = [deliveryOrdersContainer, pickupOrdersContainer, res
 let lastReceivedOrderDate = null;
 let orderStorage = {};
 let orderSelection = [];
-let unpaidOrderIDs = [];
+let unpaidOrderUUIDs = [];
 
 const addToSelection = (e) => {
     let container = e.target.closest('.order-container');
     let statusElement = container.querySelector('.order-status');
-    let orderID = container.id.split('-')[1];
-    let statusIndex = parseInt(orderStorage[orderID].status);
+    let orderUUID = container.id;
+    let statusIndex = parseInt(orderStorage[orderUUID].status);
     if(container.classList.contains('selected')){
         container.classList.remove('selected');
-        const index = orderSelection.indexOf(orderID);
+        const index = orderSelection.indexOf(orderUUID);
         orderSelection.splice(index, 1);
         statusElement.innerText = STATUS_ARRAY[statusIndex];
     } else {
@@ -32,13 +31,13 @@ const addToSelection = (e) => {
             if(statusIndex === 3) statusIndex = 4;
         }
         container.classList.add('selected');
-        orderSelection.push(orderID);
+        orderSelection.push(orderUUID);
         statusElement.innerText = STATUS_ARRAY[statusIndex + 1];
     }
 }
 
-const orderComplete = (orderID) => {
-    let container = document.querySelector(`#order-${orderID}`);
+const orderComplete = (orderUUID) => {
+    let container = document.querySelector(`[id='${orderUUID}']`);
     container.classList.add('completed');
     container.removeEventListener('click', addToSelection);
     container.removeEventListener('click', clickCollect);
@@ -79,45 +78,46 @@ const clickCollect = (e) => {
     // TODO(Trystan): Come back to this when we get a stripe reader.
     // For now just collect 'cash' payment.
     let container = e.target.closest('.order-container');
-    let orderID = container.id.split('-')[1];
+    let orderUUID = container.id;
 
     let urlGetPaymentInfo = "/Dashboard/orders/active/getPaymentInfo";
-    postJSON(urlGetPaymentInfo, {"id":orderID}, CSRFToken).then(response => response.json()).then(info => {
-        beginDialogMode(info);
+    postJSON(urlGetPaymentInfo, {"uuid":orderUUID}).then(response => response.json()).then(info => {
+        beginDialogMode(info, orderUUID);
     });
 };
 
 const submitCashPayment = (e) => {
     let total = parseFloat(document.querySelector('#total-cost-amount').innerText);
-    let orderID  = document.querySelector('#dialog-container').dataset.orderID;
+    let orderUUID  = document.querySelector('#dialog-container').dataset.orderUUID;
     let cashGiven = parseFloat(document.querySelector('#cash').value);
 
     if(cashGiven >= total){
         let url = '/Dashboard/orders/active/submitPayment';
-        let json = {'id':orderID, 'amount':total, 'method':0} // 0 = cash, 1 = stripe
-        postJSON(url, json, CSRFToken).then(response => response.text()).then(result => {
-            console.log(result);
+        total = parseInt(total * 100);
+        let json = {'uuid':orderUUID, 'amount':total, 'method':0} // 0 = cash, 1 = stripe
+        postJSON(url, json).then(response => response.text()).then(result => {
+
         });
 
-        const unpaidIndex = unpaidOrderIDs.indexOf(orderID);
-        unpaidOrderIDs.splice(unpaidIndex, 1);
-        let container = document.querySelector(`#order-${orderID}`);
+        const unpaidIndex = unpaidOrderUUIDs.indexOf(orderUUID);
+        unpaidOrderUUIDs.splice(unpaidIndex, 1);
+        let container = document.querySelector(`[id='${orderUUID}']`);
         container.classList.remove('unpaid');
         container.querySelector('.info-icon').remove();
         container.removeEventListener('click', clickCollect);
-        orderComplete(orderID);
-        delete orderStorage[orderID];
-        updateOrderStatusText(orderID, STATUS_ARRAY[5]); // Complete
+        orderComplete(orderUUID);
+        delete orderStorage[orderUUID];
+        updateOrderStatusText(orderUUID, STATUS_ARRAY[5]); // Complete
         endDialogMode();
     } else {
         // show error that cash does not meet requirements.
     }
 };
 
-const newDialog = (orderPaymentInfo) => {
+const newDialog = (orderPaymentInfo, orderUUID) => {
     let dialogContainer = document.createElement('div');
     dialogContainer.id = 'dialog-container';
-    dialogContainer.dataset.orderID = orderPaymentInfo.cost.order_id;
+    dialogContainer.dataset.orderUUID = orderUUID;
     dialogContainer.classList.add('dialog-container');
     dialogContainer.addEventListener('click', (e) => {
         if(e.target.id === 'dialog-container'){
@@ -140,19 +140,19 @@ const newDialog = (orderPaymentInfo) => {
     let subtotal = parseInt(cost.subtotal);
 
     let subtotalElement = document.createElement('p');
-    subtotalElement.innerText = 'Subtotal: ' + (subtotal / 100.0);
+    subtotalElement.innerText = 'Subtotal: ' + intToCurrency(subtotal);
 
     dialogInfoContainer.appendChild(subtotalElement);
 
     if(fee !== 0){
         let feeElement = document.createElement('p');
-        feeElement.innerText = 'Fee: ' + (fee / 100.0);
+        feeElement.innerText = 'Fee: ' + intToCurrency(fee);
 
         dialogInfoContainer.appendChild(feeElement);
     }
 
     let taxElement = document.createElement('p');
-    taxElement.innerText = 'Tax: ' + (tax / 100.0);
+    taxElement.innerText = 'Tax: ' + intToCurrency(tax);
 
     dialogInfoContainer.appendChild(taxElement);
 
@@ -160,7 +160,7 @@ const newDialog = (orderPaymentInfo) => {
     totalCostElement.innerText = 'Total: ';
     let totalCostAmount = document.createElement('span');
     totalCostAmount.id = 'total-cost-amount';
-    totalCostAmount.innerText = (fee + tax + subtotal) / 100.0;
+    totalCostAmount.innerText = intToCurrency(fee + tax + subtotal);
     totalCostElement.appendChild(totalCostAmount);
 
     dialogInfoContainer.appendChild(totalCostElement);
@@ -202,8 +202,8 @@ const newDialog = (orderPaymentInfo) => {
     return dialogContainer;
 };
 
-const beginDialogMode = (orderPaymentInfo) => {
-    let dialog = newDialog(orderPaymentInfo);
+const beginDialogMode = (orderPaymentInfo, orderUUID) => {
+    let dialog = newDialog(orderPaymentInfo, orderUUID);
     document.body.appendChild(dialog);
 
     document.body.style.overflow = 'hidden';
@@ -222,9 +222,9 @@ const collectPayment = (orderElement) => {
 const getOrderList = () => {
     const getOrdersURL = '/Dashboard/orders/active/getOrders';
     let getOrdersJson = {"last_received" : lastReceivedOrderDate};
-    postJSON(getOrdersURL, getOrdersJson, CSRFToken).then(response => response.json()).then(orders => {
+    postJSON(getOrdersURL, getOrdersJson).then(response => response.json()).then(orders => {
         orders.forEach(order => {
-            orderStorage[order.id] = order;
+            orderStorage[order.uuid] = order;
             const orderElement = createOrderElement(order);
             orderElement.classList.add(ORDER_TYPE[order.order_type]);
             
@@ -264,7 +264,7 @@ const getOrderList = () => {
             orderTypeContainers[order.order_type].appendChild(orderElement);
 
             if(!order.is_paid){
-                unpaidOrderIDs.push(order.id);
+                unpaidOrderUUIDs.push(order.uuid);
             }
 
             // The orders are given in ascending order, every new order we get
@@ -273,6 +273,7 @@ const getOrderList = () => {
         });
     });
 };
+
 getOrderList();
 
 const fetchInterval = 10000;
@@ -281,7 +282,7 @@ setInterval(getOrderList, fetchInterval);
 const toggleHidden = (element) => {
     element.hidden = !element.hidden;
 }
-// TODO(Trystan): add event listeners on filters. Respond accordingly.
+
 const orderTypeFilters = document.querySelectorAll('#order-type-filters > input');
 orderTypeFilters.forEach(filter => {
     filter.addEventListener('change', (e) => {
@@ -303,21 +304,25 @@ orderTypeFilters.forEach(filter => {
     
 });
 
-const updateOrderStatusText = (orderID, status) => {
-    const orderElement = document.querySelector(`#order-${orderID}`);
+const updateOrderStatusText = (orderUUID, status) => {
+    const orderElement = document.querySelector(`[id='${orderUUID}']`);
     const statusText = orderElement.querySelector('.order-status');
     statusText.innerText = status;
 };
 
 const getStatus = () => {
     const url = '/Dashboard/orders/active/getStatus';
-    const json = {};
-    postJSON(url, json, CSRFToken).then(response => response.json()).then(orders => {
+    let orderUUIDs = [];
+    for(var orderUUID in orderStorage){
+         orderUUIDs.push(orderUUID);
+    }
+    let json = {"orderUUIDs" : orderUUIDs}
+    postJSON(url, json).then(response => response.json()).then(orders => {
         orders.forEach(order => {
-            if(orderStorage[order.id].status != order.status){
-                orderStorage[order.id].status = order.status;
-                const selectionIndex = orderSelection.indexOf(order.id);
-                const container = document.querySelector(`#order-${order.id}`);
+            if(orderStorage[order.uuid].status != order.status){
+                orderStorage[order.uuid].status = order.status;
+                const selectionIndex = orderSelection.indexOf(order.uuid);
+                const container = document.querySelector(`[id='${order.uuid}']`);
                 if(selectionIndex != -1){
                     container.classList.remove('selected');
                     orderSelection.splice(selectionIndex, 1);
@@ -325,41 +330,33 @@ const getStatus = () => {
 
                 container.classList.add('flash');
                 setTimeout(() => {container.classList.remove('flash')}, 4000);
-                updateOrderStatusText(order.id, STATUS_ARRAY[order.status]);
+                updateOrderStatusText(order.uuid, STATUS_ARRAY[order.status]);
                 // See if we need to trigger collectPayment, if it's the status right before
                 // the final status then yes. Different for delivery vs pickup/restaurant.
-                if(((order.status == 3 && parseInt(orderStorage[order.id].order_type) !== 0) 
-                    || (order.status == 4)) && !orderStorage[order.id].is_paid){
-                        let orderElement = document.querySelector(`#order-${order.id}`);
+                if(((order.status == 3 && parseInt(orderStorage[order.uuid].order_type) !== 0) 
+                    || (order.status == 4)) && !orderStorage[order.uuid].is_paid){
+                        let orderElement = document.querySelector(`[id='${order.uuid}']`);
                         collectPayment(orderElement);
+                }
+                // Check if the order is complete.
+                if(order.status == 5){
+                    const selectionIndex = orderSelection.indexOf(order.uuid);
+                    const container = document.querySelector(`[id='${order.uuid}']`);
+                    if(selectionIndex != -1){
+                        container.classList.remove('selected');
+                        orderSelection.splice(selectionIndex, 1);
+                    }
+    
+                    container.classList.add('flash');
+                    setTimeout(() => {container.classList.remove('flash')}, 4000);
+                    updateOrderStatusText(order.uuid, 'complete');
+    
+                    orderComplete(order.uuid);
+                    // We can remove it from local storage as we are not tracking info anymore.
+                    delete orderStorage[order.uuid];
                 }
             }
         });
-        // Check to see if any orders are complete.
-        for(var orderID in orderStorage){
-            let foundOrder = false;
-            orders.forEach(order => {
-                if(order.id == orderID){
-                    foundOrder = true;
-                }
-            });
-            if(!foundOrder){
-                const selectionIndex = orderSelection.indexOf(orderID);
-                const container = document.querySelector(`#order-${orderID}`);
-                if(selectionIndex != -1){
-                    container.classList.remove('selected');
-                    orderSelection.splice(selectionIndex, 1);
-                }
-
-                container.classList.add('flash');
-                setTimeout(() => {container.classList.remove('flash')}, 4000);
-                updateOrderStatusText(orderID, 'complete');
-
-                orderComplete(orderID);
-                // We can remove it from local storage as we are not tracking info anymore.
-                delete orderStorage[orderID];
-            }
-        }
     });
 };
 
@@ -369,18 +366,18 @@ const updateStatusButton = document.querySelector('#update-status-button');
 updateStatusButton.addEventListener('click', (e) => {
     const url = '/Dashboard/orders/active/updateStatus';
     let json = {'status' : orderSelection};
-    postJSON(url, json, CSRFToken).then(response => response.json()).then(orders => {
-        for(var id in orders){
-            orderStorage[id].status = orders[id];
-            if(orders[id] == 5){
-                orderComplete(id);
-                delete orderStorage[id];
-            } else if(((orderStorage[id].status == 3 && parseInt(orderStorage[id].order_type) !== 0) 
-                        || (orderStorage[id].status == 4)) && !orderStorage[id].is_paid){
-                let orderElement = document.querySelector(`#order-${id}`);
+    postJSON(url, json).then(response => response.json()).then(orders => {
+        for(var uuid in orders){
+            orderStorage[uuid].status = orders[uuid];
+            if(orders[uuid] == 5){
+                orderComplete(uuid);
+                delete orderStorage[uuid];
+            } else if(((orderStorage[uuid].status == 3 && parseInt(orderStorage[uuid].order_type) !== 0) 
+                        || (orderStorage[uuid].status == 4)) && !orderStorage[uuid].is_paid){
+                let orderElement = document.querySelector(`[id='${uuid}']`);
                 collectPayment(orderElement);
             } else {
-                updateOrderStatusText(id, STATUS_ARRAY[orders[id]]);
+                updateOrderStatusText(uuid, STATUS_ARRAY[orders[uuid]]);
             }
         }
     });
@@ -393,15 +390,15 @@ updateStatusButton.addEventListener('click', (e) => {
 // Plural to show we can get multiple orders at once.
 const isOrdersPaid = () => {
     const url = '/Dashboard/orders/active/checkPayment';
-    let json = {'id' : unpaidOrderIDs};
-    postJSON(url, json, CSRFToken).then(response => response.json()).then(orders => {
-        for(var id in orders){
-            if(orders[id]){
-                const container = document.querySelector(`#order-${id}`);
+    let json = {'uuid' : unpaidOrderUUIDs};
+    postJSON(url, json).then(response => response.json()).then(orders => {
+        for(var uuid in orders){
+            if(orders[uuid]){
+                const container = document.querySelector(`[id='${uuid}']`);
                 container.classList.remove('unpaid');
                 container.querySelector('.info-icon').remove();
-                const unpaidIndex = unpaidOrderIDs.indexOf(id);
-                unpaidOrderIDs.splice(unpaidIndex, 1);
+                const unpaidIndex = unpaidOrderUUIDs.indexOf(uuid);
+                unpaidOrderUUIDs.splice(unpaidIndex, 1);
             }
         }
     });

@@ -2,8 +2,6 @@ import { postJSON, intToCurrency } from './utility.js';
 
 "use strict";
 
-let CSRFToken = document.querySelector('#CSRFToken').value;
-
 const refundButtons = document.querySelectorAll('.refund-button');
 
 refundButtons.forEach(button => button.addEventListener('click', (e) => {
@@ -28,7 +26,7 @@ refundButtons.forEach(button => button.addEventListener('click', (e) => {
             "payment_id": paymentID,
             "amount": refundValue
         };
-        postJSON(url, json, CSRFToken).then(response => response.json()).then(result => {
+        postJSON(url, json).then(response => response.text()).then(result => {
             refundTotal = parseInt(refundTotalElement.innerText * 100) + refundValue
             refundTotalElement.innerText = intToCurrency(refundTotal.toString());
 

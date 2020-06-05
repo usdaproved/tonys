@@ -3,7 +3,6 @@ import { postJSON, createLineItemElement, intToCurrency } from './utility.js';
 "use strict";
 
 let itemElements = document.querySelectorAll('.item-container');
-let CSRFToken = document.querySelector('#CSRFToken').value;
 let cartContainer = document.querySelector('#cart-container');
 let cartButtonElement = document.querySelector('#cart-button');
 let cartItemCountElement = document.querySelector('#cart-item-count');
@@ -17,10 +16,27 @@ const updateCartItemCount = (modifier) => {
     cartItemCountElement.innerText = currentCount + modifier;
 };
 
+const clickRemoveLineItem = (e) => {
+    let lineItem = e.target.closest('.line-item');
+    let lineItemUUID = lineItem.id;
+    let quantity = parseInt(lineItem.querySelector('.line-item-quantity').innerText);
+
+    let data = {"line_item_uuid": lineItemUUID}
+    let url = '/Order/removeItemFromCart';
+    postJSON(url, data).then(response => response.text()).then(result => {
+        updateCartItemCount(-quantity);
+        lineItem.remove();
+        if(parseInt(cartItemCountElement.innerText) === 0){
+            cartButtonElement.setAttribute('hidden', 'true');
+        }
+    });
+};
+
 const addRemoveToLineItem = (item) => {
     let removeButton = document.createElement('button');
     removeButton.classList.add('remove-line-item');
     removeButton.innerText = 'Remove';
+    removeButton.addEventListener('click', clickRemoveLineItem);
     item.prepend(removeButton);
 }
 
@@ -36,22 +52,10 @@ initializeCart();
 const removeLineItemButtons = document.querySelectorAll('.remove-line-item');
 
 removeLineItemButtons.forEach(button => {
-    button.addEventListener('click', e => {
-        let lineItem = e.target.closest('.line-item');
-        let lineItemID = lineItem.id.split('-')[0];
-        let quantity = parseInt(lineItem.querySelector('.line-item-quantity').innerText);
-
-        let data = {"line_item_id": lineItemID}
-        let url = '/Order/removeItemFromCart';
-        postJSON(url, data, CSRFToken).then(response => response.text()).then(result => {
-            updateCartItemCount(-quantity);
-            lineItem.remove();
-            if(parseInt(cartItemCountElement.innerText) === 0){
-                cartButtonElement.setAttribute('hidden', 'true');
-            }
-        });
-    });
+    button.addEventListener('click', clickRemoveLineItem);
 });
+
+
 
 cartButtonElement.addEventListener('click', (e) => {
     if(cartContainer.hidden){
@@ -303,8 +307,7 @@ const submitDialogHandler = (e) => {
     }
 
     let url = '/Order/addItemToCart';
-    postJSON(url, userItemData, CSRFToken).then(response => response.json()).then(lineItem => {
-        console.log(lineItem);
+    postJSON(url, userItemData).then(response => response.json()).then(lineItem => {
         let element = createLineItemElement(lineItem);
         addRemoveToLineItem(element);
         cartContainer.querySelector('.line-items-container').appendChild(element);
@@ -321,6 +324,9 @@ const submitDialogHandler = (e) => {
 
 
 itemElements.forEach(element => {
+    if(element.classList.contains('inactive')){
+        return;
+    }
     element.addEventListener('click', e => {
         e.preventDefault();
 
@@ -331,7 +337,7 @@ itemElements.forEach(element => {
         let data = {"itemID" : itemID};
         let url = '/Order/getItemDetails';
         
-        postJSON(url, data, CSRFToken).then(response => response.json()).then(result => {
+        postJSON(url, data).then(response => response.json()).then(result => {
             itemDataStorage = result;
 
             beginDialogMode();
@@ -376,7 +382,7 @@ deliveryButton.addEventListener('click', (e) => {
 
     let data = {"order_type" : 0};
 
-    postJSON(orderTypeUpdateURL, data, CSRFToken);
+    postJSON(orderTypeUpdateURL, data);
     submitLink.href = "/Order/submit";
     orderTypeSelected("Delivery");
 });
@@ -386,7 +392,7 @@ pickupButton.addEventListener('click', (e) => {
 
     let data = {"order_type" : 1};
 
-    postJSON(orderTypeUpdateURL, data, CSRFToken);
+    postJSON(orderTypeUpdateURL, data);
     submitLink.href = "/Order/submit";
     orderTypeSelected("Pickup");
 });
@@ -397,7 +403,7 @@ if(restaurantButton){
 
         let data = {"order_type" : 2};
 
-        postJSON(orderTypeUpdateURL, data, CSRFToken);
+        postJSON(orderTypeUpdateURL, data);
         submitLink.href = "/Dashboard/orders/submit";
         orderTypeSelected("Restaurant");
     });

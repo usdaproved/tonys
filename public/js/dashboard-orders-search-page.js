@@ -2,7 +2,6 @@ import { postJSON, createOrderElement } from './utility.js';
 
 "use strict";
 
-let CSRFToken = document.querySelector('#CSRFToken').value;
 const orderTableElement = document.querySelector('#order-table');
 const searchButton = document.querySelector('#order-search-button');
 const orderTypeCheckboxes = document.querySelector('#order-type-container').querySelectorAll('input');
@@ -50,21 +49,9 @@ searchButton.addEventListener('click', (e) => {
         'order_type' : orderType
     };
 
-    postJSON(url, json, CSRFToken).then(response => response.json()).then(orders => {
+    postJSON(url, json).then(response => response.json()).then(orders => {
         orders.forEach(order => {
             const orderElement = createOrderElement(order);
-            
-            // TODO(Trystan): Add any additional info we want to show with orders.
-            // Names, addresses, date etc.
-            let orderType = parseInt(order.order_type);
-            if(orderType === 0){
-                let addressInfoElement = document.createElement('div');
-                let addressLine = document.createElement('div');
-                addressLine.innerText = order.user_info.address.line;
-
-                addressInfoElement.appendChild(addressLine);
-                orderElement.prepend(addressInfoElement);
-            }
             
             let userInfo = order.user_info;
             if(userInfo){
@@ -80,7 +67,7 @@ searchButton.addEventListener('click', (e) => {
             orderElement.prepend(dateElement);
 
             orderElement.addEventListener('click', (e) => {
-                window.open(`/Dashboard/orders?id=${order.id}`);
+                window.open(`/Dashboard/orders?uuid=${order.uuid}`);
             });
 
             orderTableElement.appendChild(orderElement);

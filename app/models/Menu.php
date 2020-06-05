@@ -2,6 +2,9 @@
 
 class Menu extends Model{
 
+    // TODO(Trystan): Make support for deleting menu items, not just setting inactive.
+    // Set the menu items category to null. Then it won't be grabbed by the menu.
+
     public function createMenuItem(int $activeState, int $category,
                                    string $name, int $price, string $description) : void {
         $sql = "INSERT INTO menu_items 
@@ -476,7 +479,7 @@ ORDER BY position ASC;";
         $this->db->executeStatement();
 
         $result = $this->db->getResultSet();
-        if(empty($result)) return array();
+        if(is_bool($result)) return array();
         return $result;
     }
 
@@ -491,7 +494,7 @@ ORDER BY position ASC;";
         $this->db->executeStatement();
 
         $itemAdditions = $this->db->getResultSet();
-        if(empty($itemAdditions)) return array();
+        if(is_bool($itemAdditions)) return array();
 
         $additions = [];
         foreach($itemAdditions as $itemAddition){
@@ -550,10 +553,6 @@ ORDER BY position ASC;";
         return $choices;
     }
 
-    public function getActiveMenu() : array {
-        
-    }
-
     /**
      * Returns a list of menu items where the key => value is item_id => [Item info].
      * This is to get menu item data, when all we have is an id to go off of.
@@ -590,12 +589,24 @@ ORDER BY position ASC;";
         $this->db->executeStatement();
 
         $menuItem = $this->db->getResult();
-        if($menuItem === false) return array();
+        if(is_bool($menuItem)) $menuItem = array();
 
         $menuItem["additions"] = $this->getItemAdditions($menuItemID);
         $menuItem["choices"] = $this->getItemNestedChoices($menuItemID);
         
         return $menuItem;
+    }
+
+    public function isItemActive(int $menuItemID) : bool {
+        $sql = "SELECT active FROM menu_items WHERE id = :id;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":id", $menuItemID);
+        $this->db->executeStatement();
+
+        $result = $this->db->getResult();
+        if($result["active"] == 1) return true;
+        return false;
     }
 
     public function getItemNameByID(int $menuItemID) : string {

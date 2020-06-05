@@ -15,6 +15,11 @@
     position: relative;
 }
 
+.item-container.inactive{
+    cursor: default;
+    background-color: rgba(33,33,33, 0.3);
+}
+
 .item-link{
     text-decoration: none;
     color: inherit;

@@ -4,11 +4,13 @@
 <a href="/Dashboard">Dashboard</a>
 <br>
 <div id="user_info">
-    <a href="/Dashboard/customers?id=<?=$this->orderStorage["user_info"]["id"] ?? NULL?>">
-	<?=$this->orderStorage["user_info"]["name_first"] ?? NULL;?>
+    <a href="/Dashboard/customers?uuid=<?=$this->orderStorage["user_uuid"] ?? NULL?>">
+	<?=$this->escapeForHTML($this->orderStorage["user_info"]["name_first"] ?? NULL)
+	 . ' ' .
+	   $this->escapeForHTML($this->orderStorage["user_info"]["name_last"] ?? NULL);?>
     </a>
 </div>
-<div class="order-container" id="order-<?=$this->orderStorage["id"]?>">
+<div class="order-container" id="<?=UUID::orderedBytesToArrangedString($this->orderStorage["uuid"]);?>">
     <?=$this->formatOrderForHTML($this->orderStorage);?>
 </div>
 

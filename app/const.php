@@ -1,5 +1,7 @@
 <?php
 
+const DAY_TO_INT = ["Mon" => 0, "Tue" => 1, "Wed" => 2, "Thu" => 3, "Fri" => 4, "Sat" => 5, "Sun" => 6];
+
 const USER_ALERT = "alert";
 const USER_SUCCESS = "success";
 
@@ -71,7 +73,7 @@ const MAX_LENGTH_PHONE_NUMBER = 15;
 
 const MAX_LENGTH_ADDRESS_LINE   = 100;
 const MAX_LENGTH_ADDRESS_CITY   = 100;
-const MAX_LENGTH_ADDRESS_STATE   = 20;
+const MAX_LENGTH_ADDRESS_STATE   =  2;
 const MAX_LENGTH_ADDRESS_ZIP_CODE = 5;
 
 ?>

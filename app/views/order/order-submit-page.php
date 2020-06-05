@@ -24,13 +24,13 @@
     <?= $this->escapeForHTML($this->user['phone_number'] ?? NULL); ?>
     <br>
     <?php if($this->orderStorage["order_type"] == DELIVERY): ?>
-	<strong>Address</strong>:
+	<strong>Delivery Address</strong>:
 	<br>
-	<?= $this->formatAddressForHTML($this->user['address'] ?? NULL); ?>
+	<?= $this->formatAddressForHTML($this->user['delivery_address'] ?? NULL); ?>
 	<input type="button" id="change-address" value="Change">
 	<div id="address-select-container" class="orders-container" hidden>
 	    <?php foreach($this->user["other_addresses"] as $address): ?>
-		<div class="order-container" id="address-<?=$address['id']?>">
+		<div class="order-container" id="<?=UUID::orderedBytesToArrangedString($address['uuid'])?>">
 		    <?=$this->formatAddressForHTML($address)?>
 		</div>
 	    <?php endforeach; ?>
@@ -58,7 +58,7 @@
     </div>
 
     <input type="hidden" id="CSRFToken" name="CSRFToken" value="<?= $this->sessionManager->getCSRFToken(); ?>">
-    <button id="stripe-payment-submit" data-secret="<?=$this->user['stripe_client_secret']?>" data-orderid="<?=$this->orderStorage['id']?>">Pay</button>
+    <button id="stripe-payment-submit" data-secret="<?=$this->user['stripe_client_secret']?>" data-orderuuid="<?=UUID::orderedBytesToArrangedString($this->orderStorage['uuid'])?>">Pay</button>
     
     <div id="paypal-button-container"></div>
 

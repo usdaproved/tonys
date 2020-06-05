@@ -18,63 +18,127 @@ class OrderController extends Controller{
     }
 
     public function get() : void {
-        $userID = $this->getUserID();
-        $this->user = ["user_type" => $this->userManager->getUserAuthorityLevelByID($userID)];
+        $userUUID = $this->getUserUUID();
+        $this->user = ["user_type" => $this->userManager->getUserAuthorityLevel($userUUID)];
 
-        $cartID = $this->orderManager->getCartID($userID);
+        $cartUUID = $this->orderManager->getCartUUID($userUUID);
 
-        $this->orderStorage = $this->orderManager->getOrderByID($cartID);
+        $this->orderStorage = $this->orderManager->getOrderByUUID($cartUUID);
         $this->menuStorage = $this->menuManager->getEntireMenu();
 
-        $day = date('l');
-        $this->menuStorage["daily_special"] = $this->menuManager->getDailySpecial($day);
+        //$day = date('l');
+        //$this->menuStorage["daily_special"] = $this->menuManager->getDailySpecial($day);
 
+        $day = DAY_TO_INT[date('D')];
+        
+        $deliveryOn = $this->orderManager->isDeliveryOn();
+        $validDeliveryTime = $this->orderManager->isValidDeliveryTime($day);
+        $this->orderStorage["is_delivery_off"] = !$deliveryOn || !$validDeliveryTime;
+
+        $pickupOn = $this->orderManager->isPickupOn();
+        $validPickupTime = $this->orderManager->isValidPickupTime($day);
+        $this->orderStorage["is_pickup_off"] = !$pickupOn || !$validPickupTime;
+
+        $this->orderStorage["is_closed"] = (!$deliveryOn || !$validDeliveryTime) && (!$pickupOn || !$validPickupTime);
+        
         require_once APP_ROOT . "/views/order/order-select-page.php";
     }
 
     public function submit_get() : void {
-        $userID = $this->getUserID();
+        $userUUID = $this->getUserUUID();
         
-        $cartID = $this->orderManager->getCartID($userID);
-        $this->orderStorage = $this->orderManager->getOrderByID($cartID);
-        if(is_null($cartID) || empty($this->orderStorage["line_items"]) || is_null($this->orderStorage["order_type"])){
+        $cartUUID = $this->orderManager->getCartUUID($userUUID);
+        $this->orderStorage = $this->orderManager->getOrderByUUID($cartUUID);
+        if(is_null($cartUUID) || empty($this->orderStorage["line_items"]) || is_null($this->orderStorage["order_type"])){
             $this->redirect("/Order");
         }
 
-        $this->user = $this->userManager->getUserInfoByID($userID);
+        $this->user = $this->userManager->getUserInfo($userUUID);
 
         // Check if we need to collect more info about the customer.
         if(!$this->sessionManager->isUserLoggedIn()){
-            $infoLevel = $this->userManager->getUnregisteredInfoLevel($userID);
+            $infoLevel = $this->userManager->getUnregisteredInfoLevel($userUUID);
             if($infoLevel == INFO_NONE || ($infoLevel == INFO_PARTIAL && $this->orderStorage["order_type"] == DELIVERY)){
                 $this->redirect("/User/new");
             }
         }
 
+        $day = DAY_TO_INT[date('D')];
+        if($this->orderStorage["order_type"] == DELIVERY){
+            $deliveryOn = $this->orderManager->isDeliveryOn();
+            $validTime = $this->orderManager->isValidDeliveryTime($day);
+            if(!$deliveryOn || !$validTime){
+                $message = "Orders are not currently being accepted for delivery.";
+                $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
+                $this->redirect("/Order");
+            }
+            // It is possible for a registered user to have no default address here.
+            // As we do not set undeliverable addresses as default. You can register with an undeliverable address.
+            $this->user["default_address"] = $this->userManager->getDefaultAddress($userUUID);
+            if(empty($this->user["default_address"])){
+                $this->sessionManager->pushOneTimeMessage(USER_ALERT, "Please enter valid delivery address.");
+                $this->redirect("/User/address");
+            }
+        } else {
+            $pickupOn = $this->orderManager->isPickupOn();
+            $validTime = $this->orderManager->isValidPickupTime($day);
+            if(!$pickupOn || !$validTime){
+                $message = "Orders are not currently being accepted for pickup.";
+                $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
+                $this->redirect("/Order");
+            }
+        }
+
+        $cartModified = false;
+        foreach($this->orderStorage["line_items"] as $lineItem){
+            if(!$this->menuManager->isItemActive($lineItem["menu_item_id"])){
+                $this->orderManager->deleteLineItem($cartUUID, UUID::arrangedStringToOrderedBytes($lineItem["uuid"]));
+                $message = $this->escapeForHTML($lineItem["name"]) . " removed from cart due to availability.";
+                $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
+                $cartModified = true;
+            }
+        }
+
+        if($cartModified){
+            $this->redirect("/Order");
+        }
+
         // At this point in our flow, we have all necessary info to complete the transaction.
 
-        // TODO(Trystan): This might be the most logical place to update the price
-        // for either delivery or pickup. If we wanted to modify the delivery price
-        // based on some type of distance filter, this would be the best place to do it.
         \Stripe\Stripe::setApiKey(STRIPE_PRIVATE_KEY);
-        $stripeToken = $this->orderManager->getStripeToken($cartID);
+        $stripeToken = $this->orderManager->getStripeToken($cartUUID);
         $stripePaymentIntent = \Stripe\PaymentIntent::retrieve($stripeToken);
         $this->user["stripe_client_secret"] = $stripePaymentIntent["client_secret"];
 
-        $cost = $this->orderManager->getCost($cartID);
+        $cost = $this->orderManager->getCost($cartUUID);
         $cost["total"] = $cost["subtotal"] + $cost["tax"] + $cost["fee"];
         $this->orderStorage["cost"] = $cost;
 
-        // Load selected address, which is the default address at the start.
-        // Can be updated by selecting another address.
-        // This is the delivery address that gets submitted.
-        $this->user["other_addresses"] = $this->userManager->getNonDefaultAddresses($userID);
+        if($this->orderStorage["order_type"] == DELIVERY){
+            // We want to seperate the delivery address from the other addresses.
+            // The delivery address could be set, or empty. If empty use default address.
+            // if already set, gather up all addresses then remove delivery address from other addresses.
+            $this->user["other_addresses"] = $this->userManager->getNonDefaultAddresses($userUUID);
+            $this->user["delivery_address"] = $this->orderManager->getDeliveryAddress($cartUUID);
+            if(empty($this->user["delivery_address"])){
+                $this->user["delivery_address"] = $this->user["default_address"];
+                $this->orderManager->setDeliveryAddress($cartUUID, $this->user["delivery_address"]["uuid"]);
+            } else {
+                $this->user["other_addresses"][] = $this->userManager->getDefaultAddress($userUUID);
+                $addressCount = count($this->user["other_addresses"]);
+                for($i = 0; $i < $addressCount; $i++){
+                    if($this->user["delivery_address"]["uuid"] === $this->user["other_addresses"][$i]["uuid"]){
+                        unset($this->user["other_addresses"][$i]);
+                    }
+                }
+            }
+        }
 
         require_once APP_ROOT . "/views/order/order-submit-page.php";
     }
 
     /**
-     * Gets passed the orderID of the confirmed order.
+     * Gets passed the orderUUID of the confirmed order.
      */
     // TODO(Trystan): The submit page is getting bounced back as the stripe webhook isn't called
     // until after the redirect happens. We need to think of a solution.
@@ -82,19 +146,24 @@ class OrderController extends Controller{
         if(!isset($_GET["order"])){
             $this->redirect("/Order");
         }
-        $orderID = $_GET["order"];
+
+        $orderUUID = UUID::arrangedStringToOrderedBytes($_GET["order"]);
         
-        $this->orderStorage = $this->orderManager->getOrderByID($orderID);
+        $this->orderStorage = $this->orderManager->getOrderByUUID($orderUUID);
 
-        $userID = $this->getUserID();
-
-        if($this->orderStorage["user_id"] != $userID || $this->orderStorage["status"] == CART){
+        if(empty($this->orderStorage)){
             $this->redirect("/Order/submit");
         }
 
-        $this->user = $this->userManager->getUserInfoByID($userID);
+        $userUUID = $this->getUserUUID();
 
-        $cost = $this->orderManager->getCost($orderID);
+        if((strcmp($this->orderStorage["user_uuid"], $userUUID) !== 0) || $this->orderStorage["status"] == CART){
+            $this->redirect("/Order/submit");
+        }
+
+        $this->orderStorage["delivery_address"] = $this->orderManager->getDeliveryAddress($orderUUID);
+
+        $cost = $this->orderManager->getCost($orderUUID);
         $cost["total"] = $cost["subtotal"] + $cost["tax"] + $cost["fee"];
         $this->orderStorage["cost"] = $cost;
         
@@ -103,92 +172,6 @@ class OrderController extends Controller{
 
     
     // JS CALLS
-
-    // TODO(Trystan): We now have two entry points into creating an order.
-    // We should absolutely only have one. How best to go about doing that, not sure.
-    // Perhaps we disable adding things to the cart until an order type is selected.
-
-
-    // Another more sensible solution would be to just create a user when they first open the order page.
-    // This also makes sense regarding tracking funneling customers into a purchase.
-    public function setOrderType_post() : void {
-        $userID = $this->getUserID();
-
-        $json = file_get_contents("php://input");
-        $postData = json_decode($json, true);
-        
-        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
-            echo "fail";
-            exit;
-        }
-
-        if(is_null($userID)){
-            $userID = $this->userManager->createUnregisteredCredentials();
-        }
-
-        $cartID = $this->orderManager->getCartID($userID);
-        
-        if(is_null($cartID)){
-            $cartID = $this->orderManager->createCart($userID);
-        }
-
-        $orderType = (int)$postData["order_type"];
-
-        switch ($orderType) {
-        case DELIVERY:
-            $this->orderManager->setOrderType($cartID, DELIVERY);
-            $this->orderManager->updateFee($cartID, 500);
-            $this->updateStripeOrderCost($cartID);
-            break;
-        case PICKUP:
-            $this->orderManager->setOrderType($cartID, PICKUP);
-            $this->orderManager->updateFee($cartID, 0);
-            $this->updateStripeOrderCost($cartID);
-            break;
-        case IN_RESTAURANT:
-            $authorityLevel = $this->userManager->getUserAuthorityLevelByID($userID);
-            if($authorityLevel < EMPLOYEE){
-                echo "fail";
-                exit;
-            }
-            $this->orderManager->setOrderType($cartID, IN_RESTAURANT);
-            $this->orderManager->updateFee($cartID, 0);
-            $this->updateStripeOrderCost($cartID);
-            break;
-        default:
-            echo "fail";
-            exit;
-        }
-        
-    }
-
-    public function submit_setDeliveryAddress_post() : void {
-        $userID = $this->getUserID();
-
-        $json = file_get_contents("php://input");
-        $postData = json_decode($json, true);
-        
-        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
-            echo "fail";
-            exit;
-        }
-
-        $addressID = $postData["address_id"];
-
-        $addresses = $this->userManager->getNonDefaultAddresses($userID);
-        $addressIDFound = false;
-        foreach($addresses as $address){
-            if($address["id"] === $addressID){
-                $addressIDFound = true;
-            }
-        }
-        if(!$addressIDFound){
-            echo "fail";
-            exit;
-        }
-        
-        $this->orderManager->setDeliveryAddressID($orderID, $addressID);
-    }
 
     public function getItemDetails_post() : void {
         $json = file_get_contents("php://input");
@@ -206,8 +189,81 @@ class OrderController extends Controller{
         echo json_encode($item);
     }
 
+    // TODO(Trystan): We now have two entry points into creating an order.
+    // We should absolutely only have one. How best to go about doing that, not sure.
+    // Perhaps we disable adding things to the cart until an order type is selected.
+
+
+    // Another more sensible solution would be to just create a user when they first open the order page.
+    // This also makes sense regarding tracking funneling customers into a purchase.
+    public function setOrderType_post() : void {
+        $userUUID = $this->getUserUUID();
+
+        $json = file_get_contents("php://input");
+        $postData = json_decode($json, true);
+        
+        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
+            echo "fail";
+            exit;
+        }
+
+        if(is_null($userUUID)){
+            $userUUID = $this->userManager->createUnregisteredCredentials();
+        }
+
+        $cartUUID = $this->orderManager->getCartUUID($userUUID);
+        
+        if(is_null($cartUUID)){
+            $cartUUID = $this->orderManager->createCart($userUUID);
+        }
+
+        $orderType = (int)$postData["order_type"];
+
+        switch ($orderType) {
+        case DELIVERY:
+            $day = DAY_TO_INT[date('D')];
+            $deliveryOn = $this->orderManager->isDeliveryOn();
+            $validTime = $this->orderManager->isValidDeliveryTime($day);
+            if(!$deliveryOn || !$validTime){
+                echo "fail";
+                exit;
+            }
+            $this->orderManager->setOrderType($cartUUID, DELIVERY);
+            $this->orderManager->updateFee($cartUUID, 500);
+            $this->updateStripeOrderCost($cartUUID);
+            break;
+        case PICKUP:
+            $day = DAY_TO_INT[date('D')];
+            $validTime = $this->orderManager->isValidPickupTime($day);
+            if(!$validTime){
+                echo "fail";
+                exit;
+            }
+            $this->orderManager->setOrderType($cartUUID, PICKUP);
+            $this->orderManager->updateFee($cartUUID, 0);
+            $this->updateStripeOrderCost($cartUUID);
+            $this->orderManager->setDeliveryAddress($cartUUID, NULL);
+            break;
+        case IN_RESTAURANT:
+            $authorityLevel = $this->userManager->getUserAuthorityLevel($userUUID);
+            if($authorityLevel < EMPLOYEE){
+                echo "fail";
+                exit;
+            }
+            $this->orderManager->setOrderType($cartUUID, IN_RESTAURANT);
+            $this->orderManager->updateFee($cartUUID, 0);
+            $this->updateStripeOrderCost($cartUUID);
+            $this->orderManager->setDeliveryAddress($cartUUID, NULL);
+            break;
+        default:
+            echo "fail";
+            exit;
+        }
+        
+    }
+
     public function addItemToCart_post() : void {
-        $userID = $this->getUserID();
+        $userUUID = $this->getUserUUID();
 
         $json = file_get_contents("php://input");
         $postData = json_decode($json, true);
@@ -217,14 +273,14 @@ class OrderController extends Controller{
             exit;
         }
 
-        if(is_null($userID)){
-            $userID = $this->userManager->createUnregisteredCredentials();
+        if(is_null($userUUID)){
+            $userUUID = $this->userManager->createUnregisteredCredentials();
         }
 
-        $cartID = $this->orderManager->getCartID($userID);
+        $cartUUID = $this->orderManager->getCartUUID($userUUID);
         
-        if(is_null($cartID)){
-            $cartID = $this->orderManager->createCart($userID);
+        if(is_null($cartUUID)){
+            $cartUUID = $this->orderManager->createCart($userUUID);
         }
 
         $userItemData = $postData;
@@ -235,8 +291,12 @@ class OrderController extends Controller{
         $comment = $userItemData["comment"];
 
         $item = $this->menuManager->getItemInfo($itemID);
+        if($item["active"] != 1){
+            echo json_encode(NULL);
+            exit;
+        }
 
-        $totalPrice = (float)$item["price"];
+        $totalPrice = $item["price"];
 
         foreach($userItemData["choices"] as $choiceID => $optionIDs){
             $choiceID = explode("-", $choiceID)[0];
@@ -268,29 +328,31 @@ class OrderController extends Controller{
             exit;
         }
 
-        $lineItemID = $this->orderManager->addLineItemToCart($cartID, $itemID,
-                                                             $quantity, $totalPrice, $comment);
+        $lineItemUUID = $this->orderManager->addLineItemToCart($cartUUID, $itemID,
+                                                               $quantity, $totalPrice, $comment);
         
         foreach($userItemData["choices"] as $choiceID => $optionIDs){
             $choiceID = explode("-", $choiceID)[0];
             foreach($optionIDs as $optionID){
-                $this->orderManager->addOptionToLineItem($lineItemID, $choiceID, $optionID);
+                $this->orderManager->addOptionToLineItem($lineItemUUID, $choiceID, $optionID);
             }
         }
 
         foreach($userItemData["additions"] as $additionID){
-            $this->orderManager->addAdditionToLineItem($lineItemID, $additionID);
+            $this->orderManager->addAdditionToLineItem($lineItemUUID, $additionID);
         }
 
-        $this->updateStripeOrderCost($cartID);
+        $this->updateStripeOrderCost($cartUUID);
 
-        $order = $this->orderManager->getOrderByID($cartID);
-        $lineItem = $order["line_items"][$lineItemID];
+        $order = $this->orderManager->getOrderByUUID($cartUUID);
+        $lineItem = $this->orderManager->getLineItem($lineItemUUID);
+        $lineItem["uuid"] = UUID::orderedBytesToArrangedString($lineItemUUID);
+
         echo json_encode($lineItem);
     }
 
     public function removeItemFromCart_post() : void {
-        $userID = $this->getUserID();
+        $userUUID = $this->getUserUUID();
 
         $json = file_get_contents("php://input");
         $postData = json_decode($json, true);
@@ -300,26 +362,63 @@ class OrderController extends Controller{
             exit;
         }
 
-        $cartID = $this->orderManager->getCartID($userID);
-        $lineItem = $postData["line_item_id"];
-        if(!$this->orderManager->isLineItemInOrder($cartID, $lineItem)){
+        $cartUUID = $this->orderManager->getCartUUID($userUUID);
+        $lineItemUUIDString = $postData["line_item_uuid"];
+        $lineItemUUID = UUID::arrangedStringToOrderedBytes($lineItemUUIDString);
+        if(!$this->orderManager->isLineItemInOrder($cartUUID, $lineItemUUID)){
             echo "fail";
             exit;
         }
 
-        $this->orderManager->deleteLineItem($cartID, $lineItem);
+        $this->orderManager->deleteLineItem($cartUUID, $lineItemUUID);
+    }
+
+    public function submit_setDeliveryAddress_post() : void {
+        $userUUID = $this->getUserUUID();
+
+        $json = file_get_contents("php://input");
+        $postData = json_decode($json, true);
+        
+        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
+            echo "fail";
+            exit;
+        }
+
+        $cartUUID = $this->orderManager->getCartUUID($userUUID);
+        if(is_null($cartUUID)){
+            echo "fail";
+            exit;
+        }
+
+        $addressUUID = UUID::arrangedStringToOrderedBytes($postData["address_uuid"]);
+
+        $addresses = $this->userManager->getNonDefaultAddresses($userUUID);
+        $addressUUIDFound = false;
+        foreach($addresses as $address){
+            if($address["uuid"] === $addressUUID && $this->isAddressDeliverable($address)){
+                $addressUUIDFound = true;
+            }
+        }
+        if(!$addressUUIDFound){
+            echo "fail";
+            exit;
+        }
+        
+        $this->orderManager->setDeliveryAddress($cartUUID, $addressUUID);
+        echo "success";
+        exit;
     }
 
     // This function exists because the redirect from submit to confirmed
     // would finish before the stripe webhook completed.
-    public function checkOrderConfirmation_post() : void {
+    public function submit_checkOrderConfirmation_post() : void {
         // We want to wait a little bit to give time for the webhook to process.
         // TODO(Trystan): localhost testing shows this occurs within 2 seconds.
         // Real numbers may need tweaked when we go live.
         // The longer a client takes to load this request, the more likely it is to succeed the first time.
         sleep(2);
         
-        $userID = $this->getUserID();
+        $userUUID = $this->getUserUUID();
 
         $json = file_get_contents("php://input");
         $postData = json_decode($json, true);
@@ -329,10 +428,10 @@ class OrderController extends Controller{
             exit;
         }
 
-        $orderID = $postData["order_id"];
-        $orderInfo = $this->orderManager->getBasicOrderInfo($orderID);
+        $orderUUID = UUID::arrangedStringToOrderedBytes($postData["order_uuid"]);
+        $orderInfo = $this->orderManager->getBasicOrderInfo($orderUUID);
 
-        if($userID != $orderInfo["user_id"]){
+        if(empty($orderInfo) || ($userUUID != $orderInfo["user_uuid"])){
             echo "fail";
             exit;
         }
@@ -369,10 +468,10 @@ class OrderController extends Controller{
         switch ($event->type) {
         case "payment_intent.succeeded":
             $paymentIntent = $event->data->object; // contains a \Stripe\PaymentIntent
-            $orderID = $paymentIntent["metadata"]["order_id"];
-            $userID = $paymentIntent["metadata"]["user_id"];
+            $orderUUID = UUID::arrangedStringToOrderedBytes($paymentIntent["metadata"]["order_uuid"]);
+            $userUUID = UUID::arrangedStringToOrderedBytes($paymentIntent["metadata"]["user_uuid"]);
 
-            $this->submitOrder($userID, $orderID, $paymentIntent->amount, PAYMENT_STRIPE);
+            $this->submitOrder($userUUID, $orderUUID, $paymentIntent->amount, PAYMENT_STRIPE);
 
             // TODO(Trystan): Get the user and send them an email here.
             // TODO: Setup an SMTP Server in order for email to go out.
@@ -393,13 +492,13 @@ class OrderController extends Controller{
     public function paypalCreateOrder_post() : void {
         // In order to fill out the information in the body,
         // we must get the info from the order.
-        $userID = $this->getUserID();
+        $userUUID = $this->getUserUUID();
 
-        $cartID = $this->orderManager->getCartID($userID);
-        if(is_null($cartID)){
+        $cartUUID = $this->orderManager->getCartUUID($userUUID);
+        if(is_null($cartUUID)){
             http_response_code(400);
         }
-        $cost = $this->orderManager->getCost($cartID);
+        $cost = $this->orderManager->getCost($cartUUID);
 
         $paymentTotal = $cost["subtotal"] + $cost["tax"] + $cost["fee"];
         $paymentTotal = $paymentTotal * 0.01; // NOTE(Trystan): Paypal expects 0.00 format
@@ -432,13 +531,13 @@ class OrderController extends Controller{
     }
 
     public function paypalCaptureOrder_post() : void {
-        $userID = $this->getUserID();
+        $userUUID = $this->getUserUUID();
 
         $json = file_get_contents("php://input");
         $postData = json_decode($json, true);
 
-        $cartID = $this->orderManager->getCartID($userID);
-        if(is_null($cartID)){
+        $cartUUID = $this->orderManager->getCartUUID($userUUID);
+        if(is_null($cartUUID)){
             http_response_code(400);
         }
 
@@ -466,21 +565,21 @@ class OrderController extends Controller{
             }
         }
 
-        $this->orderManager->setPaypalToken($cartID, $paypalToken);
-        $this->submitOrder($userID, $cartID, $paymentTotal, PAYMENT_PAYPAL);
+        $this->orderManager->setPaypalToken($cartUUID, $paypalToken);
+        $this->submitOrder($userUUID, $cartUUID, $paymentTotal, PAYMENT_PAYPAL);
         
         echo json_encode($response);
     }
 
     // HELPER FUNCTIONS
 
-    private function updateStripeOrderCost(int $cartID) : void {
+    private function updateStripeOrderCost(string $cartUUID) : void {
         \Stripe\Stripe::setApiKey(STRIPE_PRIVATE_KEY);
 
-        $cost = $this->orderManager->getCost($cartID);
+        $cost = $this->orderManager->getCost($cartUUID);
         $paymentTotal = $cost["subtotal"] + $cost["fee"] + $cost["tax"];
 
-        $stripeToken = $this->orderManager->getStripeToken($cartID);
+        $stripeToken = $this->orderManager->getStripeToken($cartUUID);
         
         \Stripe\PaymentIntent::update($stripeToken, [
             // Stripe will throw an exception if given a value less than 50 cents
@@ -488,58 +587,9 @@ class OrderController extends Controller{
         ]);
     }
 
-    private function submitOrder($userID, $orderID, $amount, $paymentMethod) : void {
-        $this->orderManager->submitPayment($orderID, $amount, $paymentMethod);
-        $this->orderManager->submitOrder($orderID);
-
-        $orderType = $this->orderManager->getOrderType($orderID);
-        if($orderType === DELIVERY){
-            // TODO(Trystan): This may become a little more complex when
-            // a user has more than one address tied to their account.
-            // We may want to submit some address ID info with the order when the user selects it.
-            $addressID = $this->userManager->getAddressID($userID);
-            $this->orderManager->setDeliveryAddressID($orderID, $addressID);
-        }
-    }
-
-    // Depricated: orders no longer work this way.
-    // TODO: check for things like number of rows in order_line_items in the cart.
-    private function validateOrder(array $order) : bool {
-        $valid = true;
-
-        $totalQuantity = 0;
-        $negativityFound = false;
-        $nonIntFound = false;
-        foreach($order as $item => $quantity){
-            if($quantity > 0){
-                $totalQuantity += $quantity;
-            } else if($quantity < 0){
-                $negativityFound = true;
-            }
-            else if(!is_numeric($quantity) && $quantity !== ""){
-                $nonIntFound = true;
-            }
-        }
-
-        if($nonIntFound){
-            $message = "Non-numerical input supplied.";
-            $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
-            $valid = false;
-        }
-
-        if($negativityFound){
-            $message = "A negative quantity cannot be accepted.";
-            $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
-            $valid = false;
-        }
-
-        if($totalQuantity > MAX_ORDER_QUANTITY){
-            $message = MESSAGE_INVALID_ORDER_QUANTITY;
-            $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
-            $valid = false;
-        }
-        
-        return $valid;
+    private function submitOrder($userUUID, $orderUUID, $amount, $paymentMethod) : void {
+        $this->orderManager->submitPayment($orderUUID, $amount, $paymentMethod);
+        $this->orderManager->submitOrder($orderUUID);
     }
 }
 

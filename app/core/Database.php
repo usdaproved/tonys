@@ -21,11 +21,24 @@ class Database{
         }
     }
 
-    public function beginStatement($sql){
+    // Note(Trystan): There's no way to insert this id in a table and return it at the same time.
+    // postgreSQL has a returning statement that would do it.
+    // I could generate my own first, but I would prefer the database do it
+    // for important things, users, orders, line items.
+    public function generateUUID() : string {
+        $sql = "SELECT uuid_to_bin(uuid(), TRUE) as uuid;";
+
+        $this->beginStatement($sql);
+        $this->executeStatement();
+        
+        return  $this->getResult()["uuid"];
+    }
+
+    public function beginStatement($sql) : void {
         $this->statement = $this->handler->prepare($sql);
     }
 
-    public function bindValueToStatement($parameter, $value){
+    public function bindValueToStatement($parameter, $value) : void {
         $type = PDO::PARAM_STR; // default type.
         switch(true){
         case is_int($value):
@@ -42,7 +55,7 @@ class Database{
         $this->statement->bindValue($parameter, $value, $type);
     }
 
-    public function executeStatement(){
+    public function executeStatement() {
         try {
             return $this->statement->execute();
         } catch (PDOException $e) {
@@ -51,12 +64,12 @@ class Database{
     }
 
     // Gets a single row.
-    public function getResult(){
+    public function getResult() {
         return $this->statement->fetch(PDO::FETCH_ASSOC);
     }
 
     // Gets all rows.
-    public function getResultSet(){
+    public function getResultSet() {
         return $this->statement->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -64,7 +77,10 @@ class Database{
         return $this->statement->rowCount();
     }
 
-    public function lastInsertID(){
+
+    // NOTE(Trystan): php defines this as returning a string.
+    // Though I only use it with index numbers.
+    public function lastInsertID() : string {
         return $this->handler->lastInsertId();
     }
 

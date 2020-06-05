@@ -7,22 +7,23 @@
 <?php $this->printOneTimeMessages(USER_ALERT); ?>
 <?php $this->printOneTimeMessages(USER_SUCCESS); ?>
 
-<?php if(isset($this->user["address"])): ?>
+<?php if(isset($this->user["default_address"])): ?>
     <h3>Default Address:</h3>
     <div class="address-container">
-	<?=$this->formatAddressForHTML($this->user["address"])?>
+	<?=$this->formatAddressForHTML($this->user["default_address"])?>
     </div>
 <?php endif; ?>
 <?php if(isset($this->user["other_addresses"])): ?>
     <h3>Other Addresses:</h3>
     <div class="orders-container">
 	<?php foreach($this->user["other_addresses"] as $address):?>
-	    <div class="order-container" id="address-<?=$address['id']?>">
+	    <div class="order-container" id="<?=UUID::orderedBytesToArrangedString($address['uuid'])?>">
 		<?=$this->formatAddressForHTML($address)?>
 	    </div>
 	<?php endforeach; ?>
     </div>
     <input type="button" id="set-default-button" value="Set Default" hidden>
+    <input type="button" id="delete-button" value="Delete" hidden>
 <?php endif; ?>
 
 <h3>Add New Address:</h3>

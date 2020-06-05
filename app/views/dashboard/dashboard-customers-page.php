@@ -9,13 +9,12 @@
     <p><?=$this->escapeForHTML($this->userStorage["name_first"] . " " . $this->userStorage["name_last"])?></p>
     <p><?=$this->escapeForHTML($this->userStorage["email"])?></p>
     <p><?=$this->escapeForHTML($this->userStorage["phone_number"])?></p>
-    <p><?=$this->FormatAddressForHTML($this->userStorage["address"]);?></p>
 </div>
 
 <h3>Orders:</h3>
 <div id="order-table" class="orders-container">
     <?php foreach($this->orderStorage as $order): ?>
-	<a href="/Dashboard/orders?id=<?=$order["id"]?>" class="ignore-link-styling">
+	<a href="/Dashboard/orders?uuid=<?=UUID::orderedBytesToArrangedString($order["uuid"])?>" class="ignore-link-styling">
 	    <div class="order-container">
 		<?=$this->formatOrderForHTML($order)?>
 		<div><?=$order["date"]?></div>

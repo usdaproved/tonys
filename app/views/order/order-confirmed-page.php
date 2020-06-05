@@ -7,7 +7,7 @@
 <?php if($this->orderStorage['order_type'] == DELIVERY): ?>
 <strong>Delivery address</strong>:
 <br>
-<?= $this->formatAddressForHTML($this->user['address']); ?>
+<?= $this->formatAddressForHTML($this->orderStorage['delivery_address']); ?>
 <br>
 <?php endif; ?>
 <strong>Order</strong>:
