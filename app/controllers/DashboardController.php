@@ -8,8 +8,8 @@ class DashboardController extends Controller{
 
     public $menuStorage;
     public $orderStorage;
-    public $employeeStorage;
-    public $userStorage;
+    public $userStorage; // This is for other user data. customers/employees
+    public $user; // This is the user currently accessing the page.
 
     public function __construct(){
         parent::__construct();
@@ -18,21 +18,28 @@ class DashboardController extends Controller{
         $this->menuManager = new Menu();
         $this->settingsManager = new RestaurantSettings();
     }
-    
+
+    // NOTE(Trystan): Now that we have a navigation header, this isn't necessary.
+    // Under the previous setup it was just an aggregation of links to dashboard pages.
+    /*
     public function get() : void {
         $userUUID = $this->getUserUUID();
         if(!$this->validateAuthority(EMPLOYEE, $userUUID)){
             $this->redirect("/");
         }
+
+        $this->user = $this->userManager->getUserInfo($userUUID);
         
         require_once APP_ROOT . "/views/dashboard/dashboard-page.php";
     }
+    */
 
     // Tentative, not sure if we need this.
     // But it would be a way to go to a specific customer and view all their actvity.
     // It would show total spent and list all orders made by customer.
     // Maybe even something like amount spent in the last 30 days.
     public function customers_get() : void {
+        $this->pageTitle = "Dashboard - Customer";
         $userUUID = $this->getUserUUID();
         if(!$this->validateAuthority(EMPLOYEE, $userUUID)){
             $this->redirect("/");
@@ -47,21 +54,29 @@ class DashboardController extends Controller{
         if(empty($this->userStorage)){
             $this->redirect("/Dashboard/customers/search");
         }
+
+        $this->user = $this->userManager->getUserInfo($userUUID);
+
         $this->orderStorage = $this->orderManager->getAllOrdersByUserUUID($userUUIDBytes);
 
         require_once APP_ROOT . "/views/dashboard/dashboard-customers-page.php";
     }
 
     public function customers_search_get() : void {
+        $this->pageTitle = "Dashboard - Search Customers";
         $userUUID = $this->getUserUUID();
         if(!$this->validateAuthority(EMPLOYEE, $userUUID)){
             $this->redirect("/");
         }
 
+        $this->user = $this->userManager->getUserInfo($userUUID);
+
+
         require_once APP_ROOT . "/views/dashboard/dashboard-customers-search-page.php";
     }
 
     public function orders_get() : void {
+        $this->pageTitle = "Dashboard - Order";
         $userUUID = $this->getUserUUID();
         if(!$this->validateAuthority(EMPLOYEE, $userUUID)){
             $this->redirect("/");
@@ -70,6 +85,8 @@ class DashboardController extends Controller{
         if(!isset($_GET["uuid"])){
             $this->redirect("/Dashboard/orders/search");
         }
+
+        $this->user = $this->userManager->getUserInfo($userUUID);
 
         $orderUUIDBytes = UUID::arrangedStringToOrderedBytes($_GET["uuid"]);
         $this->orderStorage = $this->orderManager->getOrderByUUID($orderUUIDBytes);
@@ -131,24 +148,31 @@ class DashboardController extends Controller{
     }
 
     public function orders_active_get() : void {
+        $this->pageTitle = "Dashboard - Active Orders";
         $userUUID = $this->getUserUUID();
         if(!$this->validateAuthority(EMPLOYEE, $userUUID)){
             $this->redirect("/");
         }
+
+        $this->user = $this->userManager->getUserInfo($userUUID);
 
         require_once APP_ROOT . "/views/dashboard/dashboard-orders-active-page.php";
     }
 
     public function orders_search_get() : void {
+        $this->pageTitle = "Dashboard - Search Orders";
         $userUUID = $this->getUserUUID();
         if(!$this->validateAuthority(EMPLOYEE, $userUUID)){
             $this->redirect("/");
-        }
+        }        
+
+        $this->user = $this->userManager->getUserInfo($userUUID);
 
         require_once APP_ROOT . "/views/dashboard/dashboard-orders-search-page.php";
     }
     
     public function orders_submit_get() : void {
+        $this->pageTitle = "Dashboard - Submit Order";
         $userUUID = $this->getUserUUID();
         if(!$this->validateAuthority(EMPLOYEE, $userUUID)){
             $this->redirect("/");
@@ -162,6 +186,8 @@ class DashboardController extends Controller{
         if(count($this->orderStorage["line_items"]) === 0){
             $this->redirect("/Order");
         }
+
+        $this->user = $this->userManager->getUserInfo($userUUID);
 
         require_once APP_ROOT . "/views/dashboard/dashboard-orders-submit-page.php";
     }
@@ -199,23 +225,27 @@ class DashboardController extends Controller{
     }
 
     public function menu_get() : void {
+        $this->pageTitle = "Dashboard - Menu";
         $userUUID = $this->getUserUUID();
         if(!$this->validateAuthority(ADMIN, $userUUID)){
             $this->redirect("/Dashboard");
         }
         
         $this->menuStorage = $this->menuManager->getEntireMenu();
-
+        $this->user = $this->userManager->getUserInfo($userUUID);
+        
         require_once APP_ROOT . "/views/dashboard/dashboard-menu-item-select-page.php";
     }
 
     public function menu_categories_get() : void {
+        $this->pageTitle = "Dashboard - Menu Categories";
         $userUUID = $this->getUserUUID();
         if(!$this->validateAuthority(ADMIN, $userUUID)){
             $this->redirect("/Dashboard");
         }
 
         $this->menuStorage = $this->menuManager->getCategories();
+        $this->user = $this->userManager->getUserInfo($userUUID);
 
         require_once APP_ROOT . "/views/dashboard/dashboard-menu-categories-edit-page.php";
     }
@@ -250,12 +280,14 @@ class DashboardController extends Controller{
     }
 
     public function menu_additions_get() : void {
+        $this->pageTitle = "Dashboard - Menu Additions";
         $userUUID = $this->getUserUUID();
         if(!$this->validateAuthority(ADMIN, $userUUID)){
             $this->redirect("/Dashboard");
         }
 
         $this->menuStorage = $this->menuManager->getAllAdditions();
+        $this->user = $this->userManager->getUserInfo($userUUID);
 
         require_once APP_ROOT . "/views/dashboard/dashboard-menu-additions-edit-page.php";
     }
@@ -276,6 +308,7 @@ class DashboardController extends Controller{
     }
 
     public function menu_item_get() : void {
+        $this->pageTitle = "Dashboard - Menu Item";
         $userUUID = $this->getUserUUID();
         if(!$this->validateAuthority(ADMIN, $userUUID)){
             $this->redirect("/Dashboard");
@@ -294,6 +327,8 @@ class DashboardController extends Controller{
                     unset($this->menuStorage["all_additions"][$index]);
                 }
             }
+            
+            $this->user = $this->userManager->getUserInfo($userUUID);
 
             require_once APP_ROOT . "/views/dashboard/dashboard-menu-item-edit-page.php";
         } else {
@@ -333,21 +368,26 @@ class DashboardController extends Controller{
     }
 
     public function employees_get() : void {
+        $this->pageTitle = "Dashboard - Employees";
         $userUUID = $this->getUserUUID();
         if(!$this->validateAuthority(ADMIN, $userUUID)){
             $this->redirect("/Dashboard");
         }
-
-        $this->employeeStorage = $this->userManager->getAllEmployees();
+        
+        $this->user = $this->userManager->getUserInfo($userUUID);
+        $this->userStorage = $this->userManager->getAllEmployees();
 
         require_once APP_ROOT . "/views/dashboard/dashboard-employees-edit-page.php";
     }
 
     public function settings_get() : void {
+        $this->pageTitle = "Dashboard - Settings";
         $userUUID = $this->getUserUUID();
         if(!$this->validateAuthority(ADMIN, $userUUID)){
             $this->redirect("/Dashboard");
         }
+
+        $this->user = $this->userManager->getUserInfo($userUUID);
 
         $settings = [];
         $settings["delivery_schedule"] = $this->settingsManager->getDeliverySchedule();

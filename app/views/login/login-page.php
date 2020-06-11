@@ -1,6 +1,5 @@
 <?php require APP_ROOT . "/views/includes/header.php" ?>
 <link href="<?= $this->getFile("css", __FILE__); ?>" rel="stylesheet">
-<header>Tony's Taco House</header>
 
 <?php $this->printOneTimeMessages(USER_ALERT); ?>
 

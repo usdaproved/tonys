@@ -1,8 +1,17 @@
-<?php require APP_ROOT . "/views/includes/header.php" ?>
-<link href="<?=Controller::getFile('css', __FILE__);?>" rel="stylesheet">
-<header>Tony's Taco House</header>
-<a href="/">Home</a>
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>404 - No tacos</title>
+    </head>
 
-<h3>Page not found.</h3>
+    <body>
+	<link href="<?=Controller::getFile('css', __FILE__);?>" rel="stylesheet">
+	<header class="logo big">Tony's Taco House</header>
+	<a href="/">Home</a>
 
-<?php require APP_ROOT . "/views/includes/footer.php" ?>
+	<h3>Page not found.</h3>
+
+    </body>
+</html>

@@ -1,8 +1,5 @@
 <?php require APP_ROOT . "/views/includes/header.php" ?>
 <link href="<?=$this->getFile('css', __FILE__);?>" rel="stylesheet">
-<header>Tony's Taco House</header>
-<a href="/Dashboard">Dashboard</a>
-<a href="/Dashboard/menu">Menu</a>
 <?php $this->printOneTimeMessages(USER_SUCCESS); ?>
 <form method="post">
     <label for="new-addition-name">New addition name:</label>

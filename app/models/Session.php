@@ -9,7 +9,9 @@ class Session{
             session_id($_COOKIE['PHPSESSID']);
         }
 
-        session_start();
+        session_start([
+            "cookie_samesite" => "strict"
+        ]);
 
         if (empty($_SESSION["CSRFToken"])) {
             if (function_exists("random_bytes")) {
@@ -44,11 +46,8 @@ class Session{
     }
 
     public function logout() : void {
-        unset($_SESSION["user_uuid"]);
-        unset($_SESSION["reauth_required"]);
-
-        // TODO(Trystan): php.net says this shouldn't be called from usual code.
-        // Instead we could setcookie the session cookie as we did above.
+        $_SESSION = array();
+        setcookie(session_name(), '', time() - 3600);
         session_destroy();
     }
 

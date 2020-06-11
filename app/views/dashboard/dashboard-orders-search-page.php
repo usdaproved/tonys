@@ -1,10 +1,6 @@
 <?php require APP_ROOT . "/views/includes/header.php" ?>
 <link href="<?=$this->getFile('css', 'components');?>" rel="stylesheet">
 <link href="<?=$this->getFile('css', __FILE__);?>" rel="stylesheet">
-<header>Tony's Taco House</header>
-<a href="/Dashboard">Dashboard</a>
-<br>
-
 <p>Use as many filters as necessary.</p>
 <div id="search-filters">
     <!-- Perhaps make some toggle to search ON date and BETWEEN dates -->

@@ -1,8 +1,5 @@
 <?php require APP_ROOT . "/views/includes/header.php" ?>
 <link href="<?=$this->getFile('css', __FILE__);?>" rel="stylesheet">
-<header>Tony's Taco House</header>
-<a href="/Dashboard">Dashboard</a>
-<a href="/Dashboard/menu">Menu</a>
 <form method="post">
     <label for="active">Active</label>
     <input type="checkbox" id="active" name="active" <?php if((int)($this->menuStorage['active'] ?? 0) === 1) echo 'checked'; ?>>

@@ -37,13 +37,7 @@
 	</div>
     <?php endif; ?>
     <h3>Cart</h3>
-    <p>
-	<ul>
-	    <?php foreach($this->orderStorage['line_items'] as $lineItem): ?>
-		<li><?= $this->escapeForHTML($lineItem['name']) . ' ' . $lineItem['quantity']; ?></li>
-	    <?php endforeach; ?>
-	</ul>
-    </p>
+    <?=$this->formatOrderForHTML($this->orderStorage)?>
     <p><strong>Subtotal:</strong> $<?=$this->intToCurrency($this->orderStorage['cost']['subtotal'])?></p>
     <?php if($this->orderStorage['cost']['fee'] > 0): ?>
 	<p><strong>Fees:</strong> $<?=$this->intToCurrency($this->orderStorage['cost']['fee'])?></p>

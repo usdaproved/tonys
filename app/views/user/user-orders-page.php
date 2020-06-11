@@ -1,12 +1,10 @@
 <?php require APP_ROOT . "/views/includes/header.php" ?>
+<link href="<?=$this->getFile('css', 'components');?>" rel="stylesheet">
 <link href="<?=$this->getFile('css', __FILE__);?>" rel="stylesheet">
-<header>Tony's Taco House</header>
-<a href="/">Home</a>
-
 <?php if(!empty($orders)): ?>
     <div class="orders-container">
 	<?php foreach($orders as $order): ?>
-	    <div class="order-container">
+	    <div class="order-container no-pointer">
 		<?=$order["date"]?>
 		<?='$' . $this->intToCurrency($order["cost"]["total"])?>
 		<?=$this->formatOrderForHTML($order)?>

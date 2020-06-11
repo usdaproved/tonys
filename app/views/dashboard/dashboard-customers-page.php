@@ -1,10 +1,6 @@
 <?php require APP_ROOT . "/views/includes/header.php" ?>
 <link href="<?=$this->getFile('css', 'components');?>" rel="stylesheet">
 <link href="<?=$this->getFile('css', __FILE__);?>" rel="stylesheet">
-<header>Tony's Taco House</header>
-<a href="/Dashboard">Dashboard</a>
-<br>
-
 <div class="user-info">
     <p><?=$this->escapeForHTML($this->userStorage["name_first"] . " " . $this->userStorage["name_last"])?></p>
     <p><?=$this->escapeForHTML($this->userStorage["email"])?></p>

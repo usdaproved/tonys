@@ -7,6 +7,8 @@ class Controller{
     protected $sessionManager;
     protected $userManager;
 
+    public $pageTitle;
+
     private $messages;
 
     public function __construct(){
@@ -368,7 +370,8 @@ class Controller{
         return $string;
     }
 
-    public function intToCurrency(int $price) : string {
+    public function intToCurrency(int $price = NULL) : string {
+	if(empty($price)) return "";
         return number_format((float)($price / 100.0), 2);
     }
 

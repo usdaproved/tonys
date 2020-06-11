@@ -1,7 +1,5 @@
 <?php require APP_ROOT . "/views/includes/header.php" ?>
 <link href="<?=$this->getFile('css', __FILE__);?>" rel="stylesheet">
-<header>Tony's Taco House</header>
-<a href="/Dashboard">Dashboard</a>
 <?php $this->printOneTimeMessages(USER_SUCCESS); ?>
 <div>
     Edit categories <a href="/Dashboard/menu/categories">here</a>.

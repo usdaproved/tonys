@@ -18,8 +18,11 @@ class OrderController extends Controller{
     }
 
     public function get() : void {
+        $this->pageTitle = "Tony's - Order";
+        
         $userUUID = $this->getUserUUID();
-        $this->user = ["user_type" => $this->userManager->getUserAuthorityLevel($userUUID)];
+        $this->user = $this->userManager->getUserInfo($userUUID);
+        $this->user["user_type"] = $this->userManager->getUserAuthorityLevel($userUUID);
 
         $cartUUID = $this->orderManager->getCartUUID($userUUID);
 
@@ -40,11 +43,14 @@ class OrderController extends Controller{
         $this->orderStorage["is_pickup_off"] = !$pickupOn || !$validPickupTime;
 
         $this->orderStorage["is_closed"] = (!$deliveryOn || !$validDeliveryTime) && (!$pickupOn || !$validPickupTime);
+        if($this->orderStorage["is_closed"]) $this->pageTitle = "Tony's - Closed";
         
         require_once APP_ROOT . "/views/order/order-select-page.php";
     }
 
     public function submit_get() : void {
+        $this->pageTitle = "Tony's - Submit Order";
+
         $userUUID = $this->getUserUUID();
         
         $cartUUID = $this->orderManager->getCartUUID($userUUID);
@@ -140,9 +146,9 @@ class OrderController extends Controller{
     /**
      * Gets passed the orderUUID of the confirmed order.
      */
-    // TODO(Trystan): The submit page is getting bounced back as the stripe webhook isn't called
-    // until after the redirect happens. We need to think of a solution.
     public function confirmed_get() : void {
+        $this->pageTitle = "Tony's - Order Confirmed";
+        
         if(!isset($_GET["order"])){
             $this->redirect("/Order");
         }
@@ -160,6 +166,8 @@ class OrderController extends Controller{
         if((strcmp($this->orderStorage["user_uuid"], $userUUID) !== 0) || $this->orderStorage["status"] == CART){
             $this->redirect("/Order/submit");
         }
+
+        $this->user = $this->userManager->getUserInfo($userUUID);
 
         $this->orderStorage["delivery_address"] = $this->orderManager->getDeliveryAddress($orderUUID);
 

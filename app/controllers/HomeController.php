@@ -20,6 +20,8 @@ class HomeController extends Controller{
     }
 
     public function get() : void {
+        $this->pageTitle = "Tony's | Taco House";
+                
         $userUUID = $this->getUserUUID();
         $this->user = $this->userManager->getUserInfo($userUUID);
 
@@ -31,6 +33,8 @@ class HomeController extends Controller{
     }
 
     public function register_get() : void {
+        $this->pageTitle = "Register";
+
         if($this->sessionManager->isUserLoggedIn()){
             $this->redirect("/");
         }
@@ -136,11 +140,15 @@ class HomeController extends Controller{
     }
 
     public function login_get() : void {
+        $this->pageTitle = "Login";
+        
         if($this->sessionManager->isUserLoggedIn()){
             $this->redirect("/");
         }
 
+        $userUUID = $this->getUserUUID();
         $this->sessionManager->setRedirect();
+        $this->user = $this->userManager->getUserInfo($userUUID);
         
         require_once APP_ROOT . "/views/login/login-page.php";
     }
@@ -183,8 +191,7 @@ class HomeController extends Controller{
         $this->redirect($this->sessionManager->getRedirect() ?? "/");
     }
 
-    public function logout_get() : void 
-    {
+    public function logout_get() : void {
         if(!$this->sessionManager->isUserLoggedIn()){
             $this->redirect("/");
         }

@@ -1,6 +1,5 @@
 <?php require APP_ROOT . "/views/includes/header.php" ?>
 <link rel="stylesheet" type="text/css" href="<?= $this->getFile("css", __FILE__); ?>">
-<header>Tony's Taco House</header>
 <?php $this->printOneTimeMessages(USER_ALERT); ?>
 <?php $submitLinkHidden = NULL; ?>
 <?php if(empty($this->orderStorage['line_items']) || (($this->orderStorage['order_type'] ?? NULL) === NULL)): ?>

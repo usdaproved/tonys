@@ -16,6 +16,7 @@ class UserController extends Controller{
     }
 
     public function new_get() : void {
+        $this->pageTitle = "Tony's - New User";
         if($this->sessionManager->isUserLoggedIn()){
             $this->redirect("/Order/submit");
         }
@@ -80,6 +81,7 @@ class UserController extends Controller{
     }
 
     public function info_get() : void {
+        $this->pageTitle = "Tony's - User Info";
         // TODO(Trystan): Add a resend verification email button here.
         $userUUID = $this->getUserUUID();
         if(is_null($userUUID)){
@@ -133,6 +135,7 @@ class UserController extends Controller{
     }
 
     public function address_get() : void {
+        $this->pageTitle = "Tony's - User Address";
         // If no addresses exist we can add one here.
         // Multiple addresses, select default address.
         $userUUID = $this->getUserUUID();
@@ -197,6 +200,7 @@ class UserController extends Controller{
     }
 
     public function orders_get() : void {
+        $this->pageTitle = "Tony's - Order History";
         // TODO(Trystan): This is where customers can view order history.
         $userUUID = $this->getUserUUID();
         if(is_null($userUUID)){
@@ -211,6 +215,8 @@ class UserController extends Controller{
             $order["cost"] = $cost;
         }
         unset($order);
+
+        $this->user = $this->userManager->getUserInfo($userUUID);
         
         require_once APP_ROOT . "/views/user/user-orders-page.php";
     }
@@ -257,8 +263,10 @@ class UserController extends Controller{
         }
 
         if($verified){
+            $this->pageTitle = "Tony's - Email Verified";
             require_once APP_ROOT . "/views/user/user-verify-success-page.php";
         } else {
+            $this->pageTitle = "Tony's - Verification Failed";
             require_once APP_ROOT . "/views/user/user-verify-fail-page.php";
         }
     }

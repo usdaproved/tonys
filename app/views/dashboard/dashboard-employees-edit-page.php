@@ -1,8 +1,6 @@
 <?php require APP_ROOT . "/views/includes/header.php" ?>
 <link href="<?=$this->getFile('css', 'components');?>" rel="stylesheet">
 <link href="<?=$this->getFile('css', __FILE__);?>" rel="stylesheet">
-<header>Tony's Taco House</header>
-<a href="/Dashboard">Dashboard</a>
 <?php $this->printOneTimeMessages(USER_SUCCESS); ?>
 <?php $this->printOneTimeMessages(USER_ALERT); ?>
 
@@ -10,7 +8,7 @@
 <input type="submit" id="delete-employee" name="delete" value="Delete" hidden>
 <input type="submit" id="toggle-admin" name="admin" value="Toggle Admin Status" hidden>
 <div class="orders-container" id="current-employees">
-    <?php foreach($this->employeeStorage as $employee): ?>
+    <?php foreach($this->userStorage as $employee): ?>
 	<div class="order-container" id="<?=UUID::orderedBytesToArrangedString($employee['uuid']);?>">
 	    <?=$employee['name_first'];?> - <?=USER_TYPE_ARRAY[$employee['user_type']];?>
 	</div>

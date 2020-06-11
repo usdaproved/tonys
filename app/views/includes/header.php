@@ -3,7 +3,9 @@
     <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Tony's | Taco House</title>
+	<title><?=$this->pageTitle ?? "Tony's | Taco House"?></title>
     </head>
 
     <body>
+	<link href="<?= $this->getFile('css', 'reset'); ?>" rel="stylesheet">
+	<?php require APP_ROOT . "/views/includes/navigation.php" ?>

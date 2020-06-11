@@ -1,0 +1,17 @@
+ul {
+	list-style: none;
+}
+
+ul, li {
+    margin:0;
+    padding: 0;
+    text-indent: 0;
+    list-style-type: none;
+ }
+
+/* I know important is sometimes a sign of bad design.
+However I feel that certain html/css components ignoring hidden
+is itself bad design. They forced my hand. */
+[hidden] {
+    display:none !important;
+}

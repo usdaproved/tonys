@@ -1,8 +1,6 @@
 <?php require APP_ROOT . "/views/includes/header.php" ?>
 <link href="<?=$this->getFile('css', 'components');?>" rel="stylesheet">
 <link href="<?=$this->getFile('css', __FILE__);?>" rel="stylesheet">
-<header>Tony's Taco House</header>
-<a href="/Dashboard">Dashboard</a>
 <label for="delivery-on">Delivery Status: </label>
 <input type="checkbox" id="delivery-on" <?=($settings['delivery_on'] == 1) ? 'checked' : NULL?>>
 <label for="pickup-on">Pickup Status: </label>

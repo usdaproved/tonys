@@ -1,10 +1,7 @@
 <?php require APP_ROOT . "/views/includes/header.php" ?>
 <link href="<?=$this->getFile('css', __FILE__);?>" rel="stylesheet">
-<header>Tony's Taco House</header>
-<a href="/Dashboard">Dashboard</a>
-<br>
 <div id="user_info">
-    <a href="/Dashboard/customers?uuid=<?=$this->orderStorage["user_uuid"] ?? NULL?>">
+    <a href="/Dashboard/customers?uuid=<?=UUID::orderedBytesToArrangedString($this->orderStorage["user_uuid"] ?? NULL)?>">
 	<?=$this->escapeForHTML($this->orderStorage["user_info"]["name_first"] ?? NULL)
 	 . ' ' .
 	   $this->escapeForHTML($this->orderStorage["user_info"]["name_last"] ?? NULL);?>

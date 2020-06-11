@@ -12,6 +12,10 @@
     cursor: pointer;
 }
 
+.order-container.no-pointer{
+    cursor: default;
+}
+
 .order-container.selected{
     border: thin solid rgb(32, 200, 80);
 }
@@ -43,21 +47,6 @@
 
 .dialog-info-container{
     margin: 20px;
-}
-
-ul {
-	list-style: none;
-}
-
-ul, li {
-    margin:0;
-    padding: 0;
-    text-indent: 0;
-    list-style-type: none;
- }
-
-[hidden] {
-    display:none;
 }
 
 .ignore-link-styling{

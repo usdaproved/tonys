@@ -44,7 +44,6 @@ const PREPARED   = 3;
 const DELIVERING = 4;
 // NOTE(Trystan): The order is 'complete' when the order has ended. Delivered, picked up, paid.
 const COMPLETE   = 5;
-const REFUNDED   = 6;
 
 const STATUS_ARRAY = ['cart','submitted','preparing','prepared','delivering','complete'];
 

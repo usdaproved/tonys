@@ -38,7 +38,8 @@ class UUID{
         return $uuidBytes;
     }
 
-    public static function orderedBytesToArrangedString(string $bytes) : string {
+    public static function orderedBytesToArrangedString(string $bytes = NULL) : string {
+        if(empty($bytes)) return "";
         // NOTE(Trystan): There might be some optimizations to do on this string arrangements and insertions.
         $arrangedBytes = $bytes[4]  . $bytes[5]  . $bytes[6] . $bytes[7]
                        . $bytes[2]  . $bytes[3]
