@@ -13,6 +13,7 @@ header{
     flex-direction: row;
     position: absolute;
     top: 50%;
+    font-size: 1.1em;
 }
 
 .menu ul li, .user-actions ul li{
