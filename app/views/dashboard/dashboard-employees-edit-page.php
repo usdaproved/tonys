@@ -10,8 +10,7 @@
 <div class="orders-container" id="current-employees">
     <?php foreach($this->userStorage as $employee): ?>
 	<div class="order-container" id="<?=UUID::orderedBytesToArrangedString($employee['uuid']);?>">
-	    <?=$this->escapeForHTML($employee['name_first']) . ' ' . $this->escapeForHTML($employee['name_last'])?>
-	    <?=' - ' . USER_TYPE_ARRAY[$employee['user_type']];?>
+	    <?=$employee['name_first'];?> - <?=USER_TYPE_ARRAY[$employee['user_type']];?>
 	</div>
     <?php endforeach; ?>
 </div>

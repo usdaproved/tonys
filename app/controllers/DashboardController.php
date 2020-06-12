@@ -228,7 +228,7 @@ class DashboardController extends Controller{
         $this->pageTitle = "Dashboard - Menu";
         $userUUID = $this->getUserUUID();
         if(!$this->validateAuthority(ADMIN, $userUUID)){
-            $this->redirect("/");
+            $this->redirect("/Dashboard");
         }
         
         $this->menuStorage = $this->menuManager->getEntireMenu();
@@ -241,7 +241,7 @@ class DashboardController extends Controller{
         $this->pageTitle = "Dashboard - Menu Categories";
         $userUUID = $this->getUserUUID();
         if(!$this->validateAuthority(ADMIN, $userUUID)){
-            $this->redirect("/");
+            $this->redirect("/Dashboard");
         }
 
         $this->menuStorage = $this->menuManager->getCategories();
@@ -253,7 +253,7 @@ class DashboardController extends Controller{
     public function menu_categories_post() : void {
         $userUUID = $this->getUserUUID();
         if(!$this->validateAuthority(ADMIN, $userUUID)){
-            $this->redirect("/");
+            $this->redirect("/Dashboard");
         }
         if(!$this->sessionManager->validateCSRFToken($_POST["CSRFToken"])){
             $this->redirect("/");
@@ -283,7 +283,7 @@ class DashboardController extends Controller{
         $this->pageTitle = "Dashboard - Menu Additions";
         $userUUID = $this->getUserUUID();
         if(!$this->validateAuthority(ADMIN, $userUUID)){
-            $this->redirect("/");
+            $this->redirect("/Dashboard");
         }
 
         $this->menuStorage = $this->menuManager->getAllAdditions();
@@ -295,7 +295,7 @@ class DashboardController extends Controller{
     public function menu_additions_post() : void {
         $userUUID = $this->getUserUUID();
         if(!$this->validateAuthority(ADMIN, $userUUID)){
-            $this->redirect("/");
+            $this->redirect("/Dashboard");
         }
         if(!$this->sessionManager->validateCSRFToken($_POST["CSRFToken"])){
             $this->redirect("/");
@@ -311,7 +311,7 @@ class DashboardController extends Controller{
         $this->pageTitle = "Dashboard - Menu Item";
         $userUUID = $this->getUserUUID();
         if(!$this->validateAuthority(ADMIN, $userUUID)){
-            $this->redirect("/");
+            $this->redirect("/Dashboard");
         }
 
         if(isset($_GET["id"])){
@@ -340,7 +340,7 @@ class DashboardController extends Controller{
     public function menu_item_post() : void {
         $userUUID = $this->getUserUUID();
         if(!$this->validateAuthority(ADMIN, $userUUID)){
-            $this->redirect("/");
+            $this->redirect("/Dashboard");
         }
         if(!$this->sessionManager->validateCSRFToken($_POST["CSRFToken"])){
             $this->redirect("/");
@@ -371,7 +371,7 @@ class DashboardController extends Controller{
         $this->pageTitle = "Dashboard - Employees";
         $userUUID = $this->getUserUUID();
         if(!$this->validateAuthority(ADMIN, $userUUID)){
-            $this->redirect("/");
+            $this->redirect("/Dashboard");
         }
         
         $this->user = $this->userManager->getUserInfo($userUUID);
@@ -384,7 +384,7 @@ class DashboardController extends Controller{
         $this->pageTitle = "Dashboard - Settings";
         $userUUID = $this->getUserUUID();
         if(!$this->validateAuthority(ADMIN, $userUUID)){
-            $this->redirect("/");
+            $this->redirect("/Dashboard");
         }
 
         $this->user = $this->userManager->getUserInfo($userUUID);

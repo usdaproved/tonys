@@ -23,7 +23,6 @@ class UserController extends Controller{
 
         $userUUID = $this->getUserUUID();
         $this->user = $this->userManager->getUserInfo($userUUID);
-        $this->user["address"] = $this->userManager->getDefaultAddress($userUUID);
 
         $cartUUID = $this->orderManager->getCartUUID($userUUID);
         $order = $this->orderManager->getOrderByUUID($cartUUID);
