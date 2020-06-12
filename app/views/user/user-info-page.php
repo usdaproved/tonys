@@ -3,7 +3,7 @@
 <?php $this->printOneTimeMessages(USER_ALERT); ?>
 <?php $this->printOneTimeMessages(USER_SUCCESS); ?>
 
-<h3><?=$this->user["name_first"] . ' ' . $this->user["name_last"]?></h3>
+<h3><?=$this->escapeForHTML($this->user["name_first"] ?? NULL) . ' ' . $this->escapeForHTML($this->user["name_last"] ?? NULL)?></h3>
 <p>Email: <?=$this->escapeForHTML($this->user["email"]);?></p>
 <p>Phone Number: <?=$this->user["phone_number"]?></p>
 <form id="update-info" method="post">

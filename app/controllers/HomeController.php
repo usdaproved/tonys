@@ -42,6 +42,7 @@ class HomeController extends Controller{
         $userUUID = $this->getUserUUID();
 
         $this->user = $this->userManager->getUserInfo($userUUID);
+        $this->user["address"] = $this->userManager->getDefaultAddress($userUUID);
 
         $this->sessionManager->setRedirect();
         
