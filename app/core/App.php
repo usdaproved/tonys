@@ -26,17 +26,19 @@ class App {
     }
 
     private function parseUrl() : array {
-        if(!isset($_GET["url"])) {
-            return array();
-        }
+        $url = $_SERVER["REQUEST_URI"];
 
-        $url = $_GET["url"];
-        $trimmedUrl = rtrim($url, "/");
+        $paramStartIndex = strpos($url, "?");
+        if($paramStartIndex !== false) $url = substr($url, 0, $paramStartIndex);
+        
+        $url = rtrim($url, "/");
+        $url = ltrim($url, "/");
+        if(empty($url)) return array();
         // TODO(Trystan): ensure that this truly leaves no security vulnerabilities.
-        $sanitizedUrl = filter_var($trimmedUrl, FILTER_SANITIZE_URL);
-        $splitUrl = explode("/", $sanitizedUrl);
+        $url = filter_var($url, FILTER_SANITIZE_URL);
+        $urlArray = explode("/", $url);
 
-        return $splitUrl;
+        return $urlArray;
     }
 
     private function getController(array &$url = NULL) : Controller {
