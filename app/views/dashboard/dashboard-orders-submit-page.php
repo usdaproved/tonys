@@ -2,9 +2,6 @@
 <link href="<?=$this->getFile('css', 'components');?>" rel="stylesheet">
 <link href="<?=$this->getFile('css', __FILE__);?>" rel="stylesheet">
 <header>Tony's Taco House</header>
-<a href="/Dashboard">Dashboard</a>
-<br>
-
 <input type="submit" id="submit-order-button" value="Submit Order">
 
 <p><strong>Optional</strong>: associate this order with a customer.</p>
