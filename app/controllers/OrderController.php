@@ -242,8 +242,9 @@ class OrderController extends Controller{
             break;
         case PICKUP:
             $day = DAY_TO_INT[date('D')];
+            $pickupOn = $this->orderManager->isPickupOn();
             $validTime = $this->orderManager->isValidPickupTime($day);
-            if(!$validTime){
+            if(!$pickupOn || !$validTime){
                 echo "fail";
                 exit;
             }

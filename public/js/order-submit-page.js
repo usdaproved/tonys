@@ -119,33 +119,34 @@ submitButton.addEventListener('click', function(e) {
   });
 });
 
+// COMMENTED OUT FOR VIEWING PURPOSES
 // PAYPAL
-paypal.Buttons({
-  createOrder: function() {
-    return fetch('/Order/paypalCreateOrder', {
-      method: 'post',
-      headers: {
-        'content-type': 'application/json'
-      }
-    }).then(function(res) {
-      return res.json();
-    }).then(function(myServerResponse) {
-      return myServerResponse.paypalID;
-    });
-  },
-  onApprove: function(paypalData) {
-    return fetch('/Order/paypalCaptureOrder', {
-      method: 'post',
-      headers: {
-        'content-type': 'application/json'
-      },
-      body: JSON.stringify({
-        paypalID: paypalData.orderID
-      })
-    }).then(function(res) {
-      return res.json();
-    }).then(function(details) {
-      window.location.replace(`/Order/confirmed?order=${orderID}`);
-    })
-  }
-}).render('#paypal-button-container');
+// paypal.Buttons({
+//   createOrder: function() {
+//     return fetch('/Order/paypalCreateOrder', {
+//       method: 'post',
+//       headers: {
+//         'content-type': 'application/json'
+//       }
+//     }).then(function(res) {
+//       return res.json();
+//     }).then(function(myServerResponse) {
+//       return myServerResponse.paypalID;
+//     });
+//   },
+//   onApprove: function(paypalData) {
+//     return fetch('/Order/paypalCaptureOrder', {
+//       method: 'post',
+//       headers: {
+//         'content-type': 'application/json'
+//       },
+//       body: JSON.stringify({
+//         paypalID: paypalData.orderID
+//       })
+//     }).then(function(res) {
+//       return res.json();
+//     }).then(function(details) {
+//       window.location.replace(`/Order/confirmed?order=${orderID}`);
+//     })
+//   }
+// }).render('#paypal-button-container');
