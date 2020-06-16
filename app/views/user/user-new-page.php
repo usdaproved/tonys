@@ -26,7 +26,7 @@
 	<label for="city">City</label>
 	<input type="text" id="city" name="city" value="<?=$this->escapeForAttributes($this->user["address"]["city"] ?? NULL);?>" autocomplete="address-level2" required>
 	<label for="state">State</label>
-	<input type="text" id="state" name="state" value="<?=$this->escapeForAttributes($this->user["address"]["state"] ?? NULL);?>" autocomplete="address-level1" required>
+	<input type="text" id="state" name="state" minlength="2" maxlength="2" value="<?=$this->escapeForAttributes($this->user["address"]["state"] ?? NULL);?>" autocomplete="address-level1" required>
 	<label for="zip_code">Zip code</label>
 	<input type="text" id="zip_code" name="zip_code" value="<?=$this->escapeForAttributes($this->user["address"]["zip_code"] ?? NULL);?>" autocomplete="postal-code" required>
 	<?php endif;?>

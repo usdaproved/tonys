@@ -80,7 +80,7 @@ class HomeController extends Controller{
 
         $USPS = $this->validateAddressUSPS();
         if(empty($USPS)){
-            $this->pushOneTimeMessage(USER_ALERT, "Address not found.");
+            $this->sessionManager->pushOneTimeMessage(USER_ALERT, "Address not found.");
             $redirect = $this->sessionManager->getRedirect();
             if(!is_null($redirect)){
                 $this->redirect("/register?redirect=" . $redirect);
