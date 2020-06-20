@@ -482,6 +482,7 @@ class OrderController extends Controller{
 
             $this->submitOrder($userUUID, $orderUUID, $paymentIntent->amount, PAYMENT_STRIPE);
 
+            $this->user = $this->userManager->getUserInfo($userUUID);
             // TODO: Construct a better email, each line in an email cannot be more than 70 chars.
 
             $headers = ["from" => "noreply@trystanbrock.dev"];
