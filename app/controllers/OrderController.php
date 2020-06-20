@@ -482,12 +482,10 @@ class OrderController extends Controller{
 
             $this->submitOrder($userUUID, $orderUUID, $paymentIntent->amount, PAYMENT_STRIPE);
 
-            // TODO(Trystan): Get the user and send them an email here.
-            // TODO: Setup an SMTP Server in order for email to go out.
             // TODO: Construct a better email, each line in an email cannot be more than 70 chars.
-            // Cox blocks communication over SMTP. Won't be able to test this for awhile.
-            //mail($this->user["email"], "Tony's Taco House Order", "Your order has been confirmed.");
-            
+
+            $headers = ["from" => "noreply@trystanbrock.dev"];
+            mail($this->user["email"], "Tony's Taco House Order", "Your order has been confirmed.", $headers);
             break;
         default:
             // Unexpected event type
