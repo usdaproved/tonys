@@ -485,7 +485,7 @@ class OrderController extends Controller{
             $this->user = $this->userManager->getUserInfo($userUUID);
             // TODO: Construct a better email, each line in an email cannot be more than 70 chars.
 
-            $headers = ["from" => "noreply@trystanbrock.dev"];
+            $headers = ["from" => "me@trystanbrock.dev"];
             mail($this->user["email"], "Tony's Taco House Order", "Your order has been confirmed.", $headers);
             break;
         default:
