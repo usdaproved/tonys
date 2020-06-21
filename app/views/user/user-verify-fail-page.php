@@ -1,7 +1,5 @@
 <?php require APP_ROOT . "/views/includes/header.php" ?>
 <link href="<?=$this->getFile('css', __FILE__);?>" rel="stylesheet">
-<header>Tony's Taco House</header>
-<a href="/">Home</a>
 
 <h3>Verification link expired.</h3>
 <p>Send new verification email?</p>
