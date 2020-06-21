@@ -129,7 +129,10 @@ class HomeController extends Controller{
             $expires = time() + (60*60); // expires in one hour.
             $this->userManager->setEmailVerificationToken($userUUID, $selectorBytes, $hashedTokenBytes);
 
-            // TODO(Trystan): send email containing token link
+            $headers = ["from" => "noreply@trystanbrock.dev"];
+            $message = "Verify your account by clicking on the link <a href=''>here</a>\r\n";
+            $message .= "or paste this link: https://tonys.trystanbrock.dev/verify?token=" . $emailToken . " \r\n";
+            mail($this->user["email"], "Verify your account at Tony's Taco House", $message, $headers);
         }
 
         $this->sessionManager->login($userUUID);
