@@ -132,7 +132,7 @@ class HomeController extends Controller{
             $headers = ["from" => "noreply@trystanbrock.dev"];
             $message = "Verify your account by clicking on the link <a href=''>here</a>\r\n";
             $message .= "or paste this link: https://tonys.trystanbrock.dev/verify?token=" . $emailToken . " \r\n";
-            mail($this->user["email"], "Verify your account at Tony's Taco House", $message, $headers);
+            mail($_POST["email"], "Verify your account at Tony's Taco House", $message, $headers);
         }
 
         $this->sessionManager->login($userUUID);
