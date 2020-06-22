@@ -5,10 +5,11 @@ class Session{
     public function __construct(){
         // TODO(Trystan): Look more into PHP Sessions.
         // We at some point want to set up "keep me logged in" type tokens.
-        if (isset($_COOKIE['PHPSESSID'])){
-            session_id($_COOKIE['PHPSESSID']);
+        if (isset($_COOKIE['tonys_session_id'])){
+            session_id($_COOKIE['tonys_session_id']);
         }
 
+        session_name("tonys_session_id");
         session_start([
             "cookie_samesite" => "strict"
         ]);

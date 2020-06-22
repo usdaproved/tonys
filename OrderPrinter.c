@@ -161,7 +161,7 @@ int main(){
     CSRFToken[i] = substring[i+7];
   }
   substring[0] = '\0';
-  substring = strstr(response, "PHPSESSID");
+  substring = strstr(response, "tonys_session_id");
   char sessionID[27];
   memset(sessionID, 0, 27);
   for(int i = 0; i < 26; i++){
@@ -169,7 +169,7 @@ int main(){
   }
   
   ClearString(commonHeaders);
-  sprintf(commonHeaders, "Host: %s\r\nConnection: keep-alive\r\nCookie: PHPSESSID=%s", HOST, sessionID);
+  sprintf(commonHeaders, "Host: %s\r\nConnection: keep-alive\r\nCookie: tonys_session_id=%s", HOST, sessionID);
 
   FILE *authFile = fopen("auth.txt", "r");
   char *line = NULL;
