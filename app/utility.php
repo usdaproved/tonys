@@ -1,5 +1,7 @@
 <?php
 
+// (C) Copyright 2020 by Trystan Brock All Rights Reserved.
+
 class UUID{
 
     private const GREGORIAN_TO_UNIX_INTERVALS = 0x01b21dd213814000;

@@ -1,3 +1,4 @@
+// (C) Copyright 2020 by Trystan Brock All Rights Reserved.
 import { postJSON, createOrderElement, initSearchUsersComponent } from './utility.js';
 
 "use strict";

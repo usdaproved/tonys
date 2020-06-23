@@ -1,3 +1,5 @@
+// (C) Copyright 2020 by Trystan Brock All Rights Reserved.
+
 #include <stdio.h>
 // TODO(trystan): Make sure we actually need this one.
 #include <stdlib.h>

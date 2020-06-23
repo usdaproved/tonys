@@ -1,5 +1,7 @@
 <?php
 
+// (C) Copyright 2020 by Trystan Brock All Rights Reserved.
+
 class Controller{
 
     // Every controller, no matter the page, will need to know

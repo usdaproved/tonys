@@ -1,5 +1,7 @@
 <?php
 
+// (C) Copyright 2020 by Trystan Brock All Rights Reserved.
+
 class RestaurantSettings extends Model{
 
     public function switchDelivery(int $status) : void {

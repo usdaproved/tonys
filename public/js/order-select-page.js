@@ -1,3 +1,4 @@
+// (C) Copyright 2020 by Trystan Brock All Rights Reserved.
 import { postJSON, createLineItemElement, intToCurrency } from './utility.js';
 
 "use strict";
