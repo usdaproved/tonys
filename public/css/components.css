@@ -1,11 +1,20 @@
 .orders-container{
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 40px 24px;
+    display: flex;
+    flex-direction: column;
+    border-color: #000;
+}
+
+@media (min-width: 768px){
+    .orders-container{
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 40px 24px;
+    }   
 }
 
 .order-container{
     padding: 10px;
+    margin-bottom: 1rem;
     border: thin solid rgb(226, 226, 226);
     position: relative;
 
@@ -18,6 +27,11 @@
 
 .order-container.selected{
     border: thin solid rgb(32, 200, 80);
+}
+
+.order-container.inactive{
+    cursor: default;
+    background-color: rgba(33,33,33, 0.3);
 }
 
 .dialog-container{

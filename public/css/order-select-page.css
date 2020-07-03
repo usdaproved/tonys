@@ -2,24 +2,6 @@
     cursor: pointer;
 }
 
-.category-container{
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 40px 24px;
-}
-
-.item-container{
-    display: flex;
-    border: 1px solid rgb(226, 226, 226);
-    cursor: pointer;
-    position: relative;
-}
-
-.item-container.inactive{
-    cursor: default;
-    background-color: rgba(33,33,33, 0.3);
-}
-
 .item-link{
     text-decoration: none;
     color: inherit;

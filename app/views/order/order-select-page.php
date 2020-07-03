@@ -1,4 +1,5 @@
 <?php require APP_ROOT . "/views/includes/header.php" ?>
+<link href="<?=$this->getFile('css', 'components');?>" rel="stylesheet">
 <link rel="stylesheet" type="text/css" href="<?= $this->getFile("css", __FILE__); ?>">
 <?php $this->printOneTimeMessages(USER_ALERT); ?>
 <?php $submitLinkHidden = NULL; ?>
@@ -55,10 +56,10 @@
     <h3 class="category-name">
 	<?=$this->escapeForHTML($category['name']);?>
     </h3>
-    <div class="category-container">
+    <div class="orders-container">
 	<?php foreach($category['items'] as $item): ?>
 	    <?php $inactive = (($item['active'] != 1) || $this->orderStorage['is_closed']) ? 'inactive' : NULL; ?>
-	    <div class="item-container <?=$inactive?>" id="<?=$item['id']?>-item-container">
+	    <div class="order-container <?=$inactive?>" id="<?=$item['id']?>-order-container">
 		<?php if(!$inactive): ?>
 		    <a href="/Order?id=<?=$item['id']?>" rel="nofollow" class="item-link">
 		<?php endif; ?>
