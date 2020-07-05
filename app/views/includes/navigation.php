@@ -172,6 +172,14 @@
 			}
 		}
 	});
+
+	window.addEventListener('click', (e) => {
+		if(!e.target.closest('#mobile-menu-container') && !e.target.closest('#mobile-hamburger-button')
+		   && mobileMenuElement.style.display === 'block'){
+			mobileMenuElement.style.display = 'none';
+			mobileMenuActive = false;
+		}
+	});
 </script>
 
     
