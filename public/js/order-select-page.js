@@ -3,7 +3,7 @@ import { postJSON, createLineItemElement, intToCurrency } from './utility.js';
 
 "use strict";
 
-let itemElements = document.querySelectorAll('.item-container');
+let itemElements = document.querySelectorAll('.order-container');
 let cartContainer = document.querySelector('#cart-container');
 let cartButtonElement = document.querySelector('#cart-button');
 let cartItemCountElement = document.querySelector('#cart-item-count');
@@ -331,7 +331,7 @@ itemElements.forEach(element => {
     element.addEventListener('click', e => {
         e.preventDefault();
 
-        let itemContainer = e.target.closest('.item-container');
+        let itemContainer = e.target.closest('.order-container');
 
         let itemID = itemContainer.id.split('-')[0];
 
