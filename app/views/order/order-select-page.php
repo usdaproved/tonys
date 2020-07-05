@@ -59,7 +59,7 @@
     <div class="orders-container">
 	<?php foreach($category['items'] as $item): ?>
 	    <?php $inactive = (($item['active'] != 1) || $this->orderStorage['is_closed']) ? 'inactive' : NULL; ?>
-	    <div class="order-container <?=$inactive?>" id="<?=$item['id']?>-order-container">
+	    <div class="order-container <?=$inactive?>" id="<?=$item['id']?>-item-container">
 		<?php if(!$inactive): ?>
 		    <a href="/Order?id=<?=$item['id']?>" rel="nofollow" class="item-link">
 		<?php endif; ?>
