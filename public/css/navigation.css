@@ -25,6 +25,9 @@ header{
     align-items: center;
     justify-content: center;
     padding: 0.5rem;
+    -webkit-appearance: button;
+    border-style: none;
+    padding: 0;
 }
 
 .navigation-svg{
@@ -53,6 +56,12 @@ header{
     display: flex;
     justify-content: right;
     width: 100%;
+}
+
+.mobile-menu-exit-button{
+    -webkit-appearance: button;
+    border-style: none;
+    padding: 0;
 }
 
 .mobile-menu-nav{
