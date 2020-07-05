@@ -53,11 +53,8 @@ header{
 }
 
 .mobile-exit-button-container{
-    display: -webkit-flex;
     display: flex;
-    justify-content: right;
-    -webkit-justify-content: right;
-    width: 100%;
+    justify-content: flex-end;
 }
 
 .mobile-menu-exit-button{
