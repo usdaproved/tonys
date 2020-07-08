@@ -13,28 +13,11 @@
 <link href="<?= $this->getFile('css', __FILE__); ?>" rel="stylesheet">
 <header>
     <nav class="desktop-menu">
-	<ul>
-	    <?php if($userType >= EMPLOYEE) : ?>
-		<li class="dropdown-container">
-		    <a href="#" id="nav-dashboard">Dashboard</a>
-		    <ul class="dropdown">
-			<li><a href="/Dashboard/orders/active">Active Orders</a></li>
-			<li><a href="/Dashboard/orders/search">Search Orders</a></li>
-			<li><a href="/Dashboard/customers/search">Search Customers</a></li>
-			<?php if($userType == ADMIN): ?>
-			    <li><a href="/Dashboard/menu">Menu</a></li>
-			    <li><a href="/Dashboard/employees">Employees</a></li>
-			    <li><a href="/Dashboard/settings">Settings</a></li>
-			<?php endif; ?>
-		    </ul>
-		</li>
-	    <?php endif; ?>
-	    <li><a href="/">Home</a></li>
-	    <li><a href="/Order">Order</a></li>
-	</ul>
+	    <a href="/">Home</a>
+	    <a href="/Order">Order</a>
     </nav>
 
-    <h3 class="restaurant-name">Tony's Taco House</h3>
+    <h3 class="restaurant-name"><a href="/">Tony's Taco House</a></h3>
 
     <div class="mobile-hamburger">
 	<button type="button" class="mobile-hamburger-button" id="mobile-hamburger-button">
@@ -46,25 +29,57 @@
     
     
     <nav class="desktop-user-actions">
-	<ul>
-	    <?php if(!$loggedIn): ?>
+	    <?php if($displayUser): ?>
+		<div class="dropdown-container">
+			<button type="button" class="dropdown-button" id="user-dropdown-button">
+				<span class="dropdown-text"><?=$this->escapeForHTML($this->user["name_first"])?></span>
+				<svg class="navigation-svg" viewBox="0 0 20 20" fill="currentColor">
+              		<path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+				</svg>
+			</button>
+		    <div class="dropdown" id="user-dropdown-container">
+				<div class="dropdown-box">
+				<div class="dropdown-link-container">
+				<a href="/User/orders" class="dropdown-link">Order History</a>
+				<a href="/User/info" class="dropdown-link">Info</a>
+				<a href="/User/address" class="dropdown-link">Address</a>
+				<?php if($loggedIn): ?>
+					<a href="/logout" class="dropdown-link">Log out</a>
+				<?php endif; ?>
+				</div>
+				</div>
+		    </div>
+		</div>
+		
+		<?php if($userType >= EMPLOYEE) : ?>
+		<div class="dropdown-container">
+			<button type="button" class="dropdown-button" id="dashboard-dropdown-button">
+				<span class="dropdown-text">Dashboard</span>
+				<svg class="navigation-svg" viewBox="0 0 20 20" fill="currentColor">
+              		<path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+				</svg>
+			</button>
+			<div class="dropdown" id="dashboard-dropdown-container">
+				<div class="dropdown-box">
+				<div class="dropdown-link-container">
+				<a href="/Dashboard/orders/active" class="dropdown-link">Active Orders</a>
+				<a href="/Dashboard/orders/search" class="dropdown-link">Search Orders</a>
+				<a href="/Dashboard/customers/search" class="dropdown-link">Search Customers</a>
+				<?php if($userType == ADMIN): ?>
+				<a href="/Dashboard/menu" class="dropdown-link">Menu</a>
+				<a href="/Dashboard/employees" class="dropdown-link">Employees</a>
+				<a href="/Dashboard/settings" class="dropdown-link">Settings</a>
+				<?php endif; ?>
+				</div>
+				</div>
+			</div>
+		</div>
+		<?php endif; ?>
+		<?php endif; ?>
+		<?php if(!$loggedIn): ?>
 		<li><a href="/register">Register</a></li>
 		<li><a href="/login">Log in</a></li>
 	    <?php endif; ?>
-	    <?php if($displayUser): ?>
-		<li class="dropdown-container">
-		    <a href="#" id="nav-user-name"><?=$this->escapeForHTML($this->user["name_first"])?></a>
-		    <ul class="dropdown">
-			<li><a href="/User/orders">Order History</a></li>
-			<li><a href="/User/info">Info</a></li>
-			<li><a href="/User/address">Address</a></li>
-			<?php if($loggedIn): ?>
-			    <li><a href="/logout">Log out</a></li>
-			<?php endif; ?>
-		    </ul>
-		</li>
-	    <?php endif; ?>
-	</ul>
 	</nav>	
 </header>
 <div class="mobile-menu-container" id="mobile-menu-container">
@@ -139,11 +154,17 @@
 <script>
 	"use strict";
 
-	const mobileHamburgerButton = document.querySelector('#mobile-hamburger-button');
-	const mobileMenuExitButton = document.querySelector('#mobile-menu-exit-button');
-	const mobileMenuElement = document.querySelector('#mobile-menu-container');
+	const mobileHamburgerButton      = document.querySelector('#mobile-hamburger-button');
+	const mobileMenuExitButton       = document.querySelector('#mobile-menu-exit-button');
+	const mobileMenuElement          = document.querySelector('#mobile-menu-container');
+	const dashboardDropdownButton    = document.querySelector('#dashboard-dropdown-button');
+	const dashboardDropdownContainer = document.querySelector('#dashboard-dropdown-container');
+	const userDropdownButton         = document.querySelector('#user-dropdown-button');
+	const userDropdownContainer      = document.querySelector('#user-dropdown-container');
 
-	let mobileMenuActive = false;
+	let mobileMenuActive        = false;
+	let dashboardDropdownActive = false;
+	let userDropdownActive      = false;
 
 	const toggleMobileMenu = () => {
 		if(mobileMenuElement.style.display === 'block'){
@@ -156,28 +177,86 @@
 	};
 
 	mobileHamburgerButton.addEventListener('click', (e) => {
+		e.stopPropagation();
 		toggleMobileMenu();
 	});
 
 	mobileMenuExitButton.addEventListener('click', (e) => {
+		e.stopPropagation();
 		toggleMobileMenu();
 	});
 
 	window.addEventListener('resize', (e) => {
 		if(window.innerWidth > 768){
 			mobileMenuElement.style.display = 'none';
+			if(dashboardDropdownActive){
+				dashboardDropdownContainer.style.display = 'block';
+			}
+			if(userDropdownActive){
+				userDropdownContainer.style.display = 'block';
+			}
 		} else if (window.innerWidth < 768) {
 			if(mobileMenuActive){
 				mobileMenuElement.style.display = 'block';
 			}
+			dashboardDropdownContainer.style.display = 'none';
+			userDropdownContainer.style.display = 'none';
 		}
 	});
 
+	if(dashboardDropdownButton){
+		dashboardDropdownButton.addEventListener('click', (e) => {
+			e.stopPropagation();
+			
+			if(userDropdownActive){
+				userDropdownActive = false;
+				userDropdownContainer.style.display = 'none';
+			}
+			
+			if(dashboardDropdownActive){
+				dashboardDropdownContainer.style.display = 'none';
+			} else {
+				dashboardDropdownContainer.style.display = 'block';
+			}
+			dashboardDropdownActive = !dashboardDropdownActive;
+		});
+	}
+	if(userDropdownButton){
+		userDropdownButton.addEventListener('click', (e) => {
+			e.stopPropagation();
+
+			if(dashboardDropdownActive){
+				dashboardDropdownContainer.style.display = 'none';
+				dashboardDropdownActive = false;
+			}
+
+			if(userDropdownActive){
+				userDropdownContainer.style.display = 'none';
+			} else {
+				userDropdownContainer.style.display = 'block';
+			}
+			userDropdownActive = !userDropdownActive;
+		});
+	}
+
 	window.addEventListener('click', (e) => {
-		if(!e.target.closest('#mobile-menu-container') && !e.target.closest('#mobile-hamburger-button')
-		   && mobileMenuElement.style.display === 'block'){
-			mobileMenuElement.style.display = 'none';
-			mobileMenuActive = false;
+		if(mobileMenuActive){
+			if(!e.target.closest('#mobile-menu-container')){
+				mobileMenuElement.style.display = 'none';
+				mobileMenuActive = false;
+			}
+		}
+		if(dashboardDropdownActive){
+			if(!e.target.closest('#dashboard-dropdown-container')){
+				dashboardDropdownContainer.style.display = 'none';
+				dashboardDropdownActive = false;
+			}
+		}
+		if(userDropdownActive){
+			if(!e.target.closest('#user-dropdown-container')){
+				userDropdownContainer.style.display = 'none';
+				userDropdownActive = false;
+			}
 		}
 	});
 </script>

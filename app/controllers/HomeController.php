@@ -21,10 +21,6 @@ class HomeController extends Controller{
         $userUUID = $this->getUserUUID();
         $this->user = $this->userManager->getUserInfo($userUUID);
 
-        $this->user["logged_in"] = $this->sessionManager->isUserLoggedIn();
-
-        $this->activeOrderStatus = $this->orderManager->getUserActiveOrderStatus($userUUID);
-
         require_once APP_ROOT . "/views/home/home-page.php";
     }
 
