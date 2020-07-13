@@ -527,6 +527,35 @@ ORDER BY o.date ASC;";
         return $orders;
     }
 
+    public function printer_getNextActiveOrder(string $date = NULL) : array {
+        $uuid = NULL;
+        
+        if($date !== NULL){
+            $sql = "SELECT uuid FROM orders o 
+WHERE status NOT IN (" . CART . ","  . COMPLETE . ")
+AND date > :date 
+ORDER BY o.date ASC LIMIT 1;";
+
+            $this->db->beginStatement($sql);
+            $this->db->bindValueToStatement(":date", $date);
+            $this->db->executeStatement();
+
+            $uuid = $this->db->getResult();
+        } else {
+            $sql = "SELECT uuid FROM orders o 
+WHERE status NOT IN (" . CART . ","  . COMPLETE . ")
+ORDER BY o.date ASC LIMIT 1;";
+
+            $this->db->beginStatement($sql);
+            $this->db->executeStatement();
+
+            $uuid = $this->db->getResult();
+        }
+
+        if(is_bool($uuid)) return array();
+        return $this->getOrderByUUID($uuid["uuid"]);
+    }
+
     public function getOrderStatus(string $orderUUID) : array {
         $sql = "SELECT bin_to_uuid(uuid, true) as uuid, status FROM orders 
 WHERE uuid = :uuid";

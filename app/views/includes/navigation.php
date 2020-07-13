@@ -324,7 +324,7 @@
 				<a href="/Dashboard/orders/active" class="dropdown-link">Active Orders</a>
 				<a href="/Dashboard/orders/search" class="dropdown-link">Search Orders</a>
 				<a href="/Dashboard/customers/search" class="dropdown-link">Search Customers</a>
-				<?php if($userType == ADMIN): ?>
+				<?php if($userType >= ADMIN): ?>
 				<a href="/Dashboard/menu" class="dropdown-link">Menu</a>
 				<a href="/Dashboard/employees" class="dropdown-link">Employees</a>
 				<a href="/Dashboard/settings" class="dropdown-link">Settings</a>

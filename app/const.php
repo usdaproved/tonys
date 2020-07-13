@@ -16,13 +16,13 @@ const MESSAGE_INVALID_ORDER_PRICE = "Please contact restaurant for any order gre
 
 const MESSAGE_INVALID_CSRF_TOKEN = "Operation could not complete due to invalid session.";
 const MESSAGE_INVALID_LOGIN = "Invalid login credentials.";
-const MESSAGE_EMAIL_IN_USE = "Email already in use. <a href=\"/Login\">Log in?</a>";
+const MESSAGE_EMAIL_IN_USE = "Email already in use. <a href=\"/login\">Log in?</a>";
 
 
 const CUSTOMER = 0;
-const PRINTER  = 1;
-const EMPLOYEE = 2;
-const ADMIN    = 3;
+const EMPLOYEE = 1;
+const ADMIN    = 2;
+const OWNER    = 3; // The person who setup the restaurant page. cannot be removed or remove admin status. 
 
 const USER_TYPE_ARRAY = ['customer','printer','employee','admin'];
 

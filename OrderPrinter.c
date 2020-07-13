@@ -7,7 +7,7 @@
 #include <string.h>
 // SUGGESTION(trystan): strip out the functionality we actually need
 // from libusb and insert it here. Learn how it grabs the usb devices.
-#include <libusb-1.0/libusb.h>
+#include <libusb.h>
 
 // Network related includes.
 #include <sys/types.h>
@@ -15,19 +15,23 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <poll.h>
 
 #define VENDOR_ID 0x0416
 #define PRODUCT_ID 0x5011
 #define ENDPOINT_IN 0x81
 #define ENDPOINT_OUT 0x01
 
-#define HOST "127.0.0.1"
 #define RESPONSE_LEN 65536
 
 // TODO(trystan):
 // hotplug support
 // Bring everything that can fail the program to the top of the program
 //  - Attempt to open files at the top.
+
+// Check if(printerHandle) to see if it's connected or not.
+libusb_device_handle *printerHandle = NULL;
+int sockfd = -1;
 
 void SendDataToPrinter(libusb_device_handle *handle, unsigned char *buffer, unsigned int length){
   int bytesTransferred;
@@ -52,169 +56,17 @@ void ClearString(char *string){
   }
 }
 
-int main(){
-  libusb_device **devs;
-  int r;
-  ssize_t cnt;
+void openStream(char *token, char *commonHeaders){
+  if(sockfd == -1) return;
+  printf("Opening stream.\n");
 
-  r = libusb_init(NULL);
-  if (r < 0)
-    return r;
-
-  cnt = libusb_get_device_list(NULL, &devs);
-  if (cnt < 0){
-    libusb_exit(NULL);
-    return (int) cnt;
-  }
-
-  libusb_device *dev;
-  libusb_device *printer = NULL;
-  int i = 0;
-  while ((dev = devs[i++]) != NULL) {
-    struct libusb_device_descriptor description;
-    int result = libusb_get_device_descriptor(dev, &description);
-    if (result < 0){
-      fprintf(stderr, "failed to get device descriptor");
-      return (int) result;
-    }
-
-    if(description.idVendor == VENDOR_ID && description.idProduct == PRODUCT_ID){
-      printer = dev;
-    }
-  }
-
-  libusb_free_device_list(devs, 1);
-
-  if(!printer){
-    printf("printer not found.\n");
-  }
-
-  libusb_device_handle *printerHandle;
-  int open_error = libusb_open(printer, &printerHandle);
-
-  if(open_error){
-    printf("Unable to get a handle to the printer.\n");
-  }
-
-  // This part is never going to be true for the cheap chinese printer.
-  if(libusb_kernel_driver_active(printerHandle, 0) == 1){
-    libusb_detach_kernel_driver(printerHandle, 0);
-  }
-
-  libusb_claim_interface(printerHandle, 1);
-
-  struct addrinfo hints, *addrResults;
-  memset(&hints, 0, sizeof hints);
-  hints.ai_family = AF_INET;
-  hints.ai_socktype = SOCK_STREAM;
-
-  // TODO(trystan): At the moment while running on this computer,
-  // I assume the address is localhost
-  // Obviously at some point we will want to switch over to a live website.
-  // Point this to tonys.trystanbrock.dev when we get set up on digital ocean.
-  int result = getaddrinfo("localhost", "http", &hints, &addrResults);
-
-  char ipstr[INET6_ADDRSTRLEN];
-  
-  for(struct addrinfo *addrResult = addrResults; addrResult != NULL; addrResult = addrResult->ai_next){
-    struct sockaddr_in *ipv4 = (struct sockaddr_in *)addrResult->ai_addr;
-    void *addr = &(ipv4->sin_addr);
-
-    inet_ntop(addrResult->ai_family, addr, ipstr, sizeof ipstr);
-    //printf("   %s\n", ipstr);
-  }
-
-  // TODO(trystan): This code assumes the first result is the correct one.
-  // That might not always be true, do some checking up above and actually set the value.
-  struct addrinfo *our_address = addrResults;
-  int sockfd = socket(our_address->ai_family, our_address->ai_socktype, our_address->ai_protocol);
-
-  result = connect(sockfd, our_address->ai_addr, our_address->ai_addrlen);
-
-  if(result == -1){
-    printf("connect call has failed.");
-  }
-
-  // structure of our requests:
-  // we should authenticate the receipt user on the server
-  // request the login page
-  // TODO(trystan): Look into necessary headers to add on to here.
-  char commonHeaders[512];
-  memset(commonHeaders, 0, 512);
-  sprintf(commonHeaders, "Host: %s\r\nConnection: keep-alive", HOST);
-  
-  char getLogin[1024];
-  memset(getLogin, 0, 1024);
-  sprintf(getLogin, "GET /Login HTTP/1.1\r\n%s\r\n\r\n", commonHeaders);
-  send(sockfd, getLogin, strlen(getLogin), 0);
-  char response[RESPONSE_LEN];
-  memset(response, 0, RESPONSE_LEN);
-  recv(sockfd, response, RESPONSE_LEN, 0);
-
-  // parse the CSRFToken out of the response along with the PHP session-id
-  char *substring = strstr(response, "CSRFToken");
-  
-  substring = strstr(substring, "value");
-  char CSRFToken[65];
-  memset(CSRFToken, 0, 65);
-  for(int i = 0; i < 64; i++){
-    // 7 is the offset from the beggining of value to the first character of the token.
-    // 0|value="|7
-    CSRFToken[i] = substring[i+7];
-  }
-  substring[0] = '\0';
-  substring = strstr(response, "tonys_session_id");
-  char sessionID[27];
-  memset(sessionID, 0, 27);
-  for(int i = 0; i < 26; i++){
-    sessionID[i] = substring[i+10];
-  }
-  
-  ClearString(commonHeaders);
-  sprintf(commonHeaders, "Host: %s\r\nConnection: keep-alive\r\nCookie: tonys_session_id=%s", HOST, sessionID);
-
-  FILE *authFile = fopen("auth.txt", "r");
-  char *line = NULL;
-  size_t lineLength = 0;
-  ssize_t read;
-  char email[128];
-  memset(email, 0, 128);
-  read = getline(&line, &lineLength, authFile);
-  if(read != -1){
-    // We don't want to copy the '\n' char.
-    // We then have to terminate the string ourselves.
-    strncpy(email, line, read - 1);
-    email[read] = '\0';
-  }
-
-  char password[128];
-  memset(password, 0, 128);
-  read = getline(&line, &lineLength, authFile);
-  if(read != -1){
-    strncpy(password, line, read - 1);
-    password[read] = '\0';
-  }
-
-  char payload[512];
-  memset(payload, 0, 512);
-  sprintf(payload, "email=%s&password=%s&CSRFToken=%s", email, password, CSRFToken);
-  int payloadSize = strlen(payload);
-  char postLogin[2048];
-  memset(postLogin, 0, 2048);
-  sprintf(postLogin, "POST /Login HTTP/1.1\r\n%s\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: %d\r\n\r\n%s", commonHeaders, payloadSize, payload);
-  send(sockfd, postLogin, strlen(postLogin), 0);
-
-  ClearString(response);
-  
-  recv(sockfd, response, RESPONSE_LEN, 0);
-  // TODO(trystan): Perhaps some sort of checking if we successfully logged in.
-  // Or do that check to see if we can't get the printerStream.
-  ClearString(response);
-  // At this point we are logged in and ready to visit the api.
-  
   // Date is in YYYY-MM-DD hh:mm:ss
   // When we save to the file we have to replace the space with a %20,
   // so that way when we send the date to the server it's in url format.
+  char *line = NULL;
+  size_t lineLength = 0;
+  ssize_t read;
+  
   FILE *dateFile = fopen("orderDate.txt", "r");
   char lastOrderDate[22];
   memset(lastOrderDate, 0, 22);
@@ -229,90 +81,223 @@ int main(){
     // No date file found. This would mean we'd print every active order.
     strcpy(lastOrderDate, "NULL");
   }
+  
+  char payload[512];
+  memset(payload, 0, 512);
+  sprintf(payload, "token=%s&lastReceived=%s", token, lastOrderDate);
 
-  char getDashboard[1024];
-  memset(getDashboard, 0, 1024);
-  sprintf(getDashboard, "GET /Dashboard/orders/printerStream?lastReceived=%s HTTP/1.1\r\n%s\r\n\r\n", lastOrderDate, commonHeaders);
-  send(sockfd, getDashboard, strlen(getDashboard), 0);
+  int payloadSize = strlen(payload);
 
-  FILE *delimiterFile = fopen("delimiter.txt", "r");
-  char delimiter[128];
-  memset(delimiter, 0, 128);
-  if(delimiterFile){
-    read = getline(&line, &lineLength, delimiterFile);
-    if(read != -1){
-      strncpy(delimiter, line, read - 1);
-      delimiter[read] = '\0';
-    }
-    fclose(delimiterFile);
-  } else {
-    // FATAL ERROR
-    printf("delimiter.txt not found, please contact Trystan for help.\n");
-    return -1;
+  char requestStream[2048];
+  memset(requestStream, 0, 2048);
+  sprintf(requestStream, "POST /Dashboard/orders/printerStream HTTP/1.1\r\n%s\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: %d\r\n\r\n%s", commonHeaders, payloadSize, payload);
+  send(sockfd, requestStream, strlen(requestStream), 0);
+}
+
+void connectServer(char *host){
+  printf("Opening connection to the server.\n");
+  struct addrinfo hints, *addrResults;
+  memset(&hints, 0, sizeof hints);
+  hints.ai_family = AF_INET;
+  hints.ai_socktype = SOCK_STREAM;
+
+  int result = getaddrinfo(host, "http", &hints, &addrResults);
+
+  char ipstr[INET6_ADDRSTRLEN];
+  
+  for(struct addrinfo *addrResult = addrResults; addrResult != NULL; addrResult = addrResult->ai_next){
+    struct sockaddr_in *ipv4 = (struct sockaddr_in *)addrResult->ai_addr;
+
+    void *addr = &(ipv4->sin_addr);
+
+    inet_ntop(addrResult->ai_family, addr, ipstr, sizeof ipstr);
   }
 
-  int delimiterLength = strlen(delimiter);
-  //char *newDate;
-  ClearString(lastOrderDate);
-  // Finally the moment we've all been waiting for.
-  for(;;){
-    int received = recv(sockfd, response, RESPONSE_LEN, 0);
-    // TODO(trystan): Take the reponse and parse out the info between the delimeters.
-    char *begin = strstr(response, delimiter);
-    begin += delimiterLength;
-
-    char *end = strstr(begin, delimiter);
-    int textLength = end - begin;
+  // TODO(trystan): This code assumes the first result is the correct one.
+  // That might not always be true, do some checking up above and actually set the value.
+  struct addrinfo *our_address = addrResults;
     
-    char *printerText = (char *)malloc((textLength) + 1);
-    memcpy(printerText, begin, textLength);
-    printerText[textLength] = '\0';
 
-    if(printerText){
-      // TODO(Trystan): Not sure of the safety of sending all unfiltered data
-      // directly to the printer. But so far I can't think of any major vulnerabilities.
-      // Other than someone being able to run through a whole spool of receipt paper.
-      // If they were able to send the right command, which I was not able to do so.
-      SendDataToPrinter(printerHandle, printerText, textLength);
-    }
+  sockfd = socket(our_address->ai_family, our_address->ai_socktype, our_address->ai_protocol);
 
-    free(printerText);
+  result = connect(sockfd, our_address->ai_addr, our_address->ai_addrlen);
 
-    end += delimiterLength;
-    char *newDate = strstr(end, "TIMESTAMP");
-    if(newDate){
-      int offset = 0;
-      for(int i = 0; i < 22; i++){
-	if(newDate[i+10] != ' '){
-	  lastOrderDate[i + offset] = newDate[i+10];
-	} else {
-	  // Instead of space, write %20
-	  lastOrderDate[i] = '%';
-	  offset++;
-	  lastOrderDate[i+offset] = '2';
-	  offset++;
-	  lastOrderDate[i+offset] = '0';
-	}
-      }
-      dateFile = fopen("orderDate.txt", "w");
-      fputs(lastOrderDate, dateFile);
-      fclose(dateFile);
-      ClearString(lastOrderDate);
-    }
 
-    ClearString(response);
-    if(received == 0){
-      break;
-    }
+  freeaddrinfo(addrResults);
+
+  if(result == -1){
+    printf("connect call has failed.\n");
+    sockfd = -1;
   }
+}
+
+void disconnectServer(){
+  printf("Closing connection to the server.\n");
 
   close(sockfd);
-  
-  freeaddrinfo(addrResults);
-  
+  sockfd = -1;
+}
+
+void connectPrinter(libusb_device *device){
+  int open_error = libusb_open(device, &printerHandle);
+
+  if(open_error){
+    if(open_error == -3){
+      printf("Incorrect permissions. Unable to get a handle to the printer.\n");
+    }
+  }
+
+  if(libusb_kernel_driver_active(printerHandle, 0) == 1){
+    libusb_detach_kernel_driver(printerHandle, 0);
+  }
+
+  libusb_claim_interface(printerHandle, 1);
+}
+
+void disconnectPrinter(){
   libusb_release_interface(printerHandle, 0);
-  
   libusb_close(printerHandle);
+  printerHandle = NULL;
+}
+
+static int LIBUSB_CALL hotplug_callback(libusb_context *context, libusb_device *device,
+					libusb_hotplug_event event, void *user_data){
+  struct libusb_device_descriptor descriptor;
+
+  libusb_get_device_descriptor(device, &descriptor);
+
+  if(event == LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED){
+    printf("Printer attached.\n");
+    connectPrinter(device);
+  } else if (event == LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT){
+    printf("Printer detached. Please reconnect.\n");
+    disconnectPrinter();
+    disconnectServer();
+  }
+  
+  return 0;
+}
+
+int main(int argc, char **argv){
+  char *host = argv[1];
+  libusb_init(NULL);
+
+  libusb_hotplug_callback_handle callback_handle;
+  libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, 0, VENDOR_ID,
+				   PRODUCT_ID, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
+  
+  libusb_device **devs;
+  libusb_get_device_list(NULL, &devs);
+
+  libusb_device *dev;
+  libusb_device *printer = NULL;
+  int devsIndex = 0;
+  while ((dev = devs[devsIndex++]) != NULL) {
+    struct libusb_device_descriptor description;
+    libusb_get_device_descriptor(dev, &description);
+
+    if(description.idVendor == VENDOR_ID && description.idProduct == PRODUCT_ID){
+      printer = dev;
+    }
+  }
+
+  libusb_free_device_list(devs, 1);
+
+  if(printer){
+    connectPrinter(printer);
+  } else {
+    printf("Printer not connected.\n");
+  }
+
+  // TODO(trystan): Look into necessary headers to add on to here.
+  char commonHeaders[512];
+  memset(commonHeaders, 0, 512);
+  sprintf(commonHeaders, "Host: %s\r\nConnection: keep-alive", host);
+  
+  FILE *tokenFile = fopen("token.txt", "r");
+  char *line = NULL;
+  size_t lineLength = 0;
+  ssize_t read;
+  char token[256];
+  memset(token, 0, 256);
+  read = getline(&line, &lineLength, tokenFile);
+  if(read != -1){
+    strncpy(token, line, read);
+    token[read] = '\0';
+  }
+
+  char response[RESPONSE_LEN];
+  memset(response, 0, RESPONSE_LEN);
+
+  struct timeval zeroTimeValue;
+  zeroTimeValue.tv_usec = 0;
+  zeroTimeValue.tv_sec = 0;
+
+  // Finally the moment we've all been waiting for.
+  for(;;){
+    libusb_handle_events_timeout_completed(NULL, &zeroTimeValue, NULL);
+
+    if(printerHandle){
+      if(sockfd == -1){
+	connectServer(host);
+	openStream(token, commonHeaders);
+	if(sockfd == -1){
+	  // Try to reconnect every 10 seconds.
+	  printf("Retrying connection in 10 seconds.\n");
+	  sleep(10);
+	  continue;
+	}
+      }
+      int received = recv(sockfd, response, RESPONSE_LEN, 0);
+      printf("%s", response);
+      char *orderBegin = strstr(response, "TIMESTAMP");
+      if(orderBegin){
+	char lastOrderDate[22];
+	memset(lastOrderDate, 0, 22);
+	
+	int offset = 0;
+	for(int i = 0; i < 20; i++){
+	  if(orderBegin[i+10] != ' '){
+	    lastOrderDate[i + offset] = orderBegin[i+10];
+	  } else {
+	    // Instead of space, write %20
+	    lastOrderDate[i] = '%';
+	    offset++;
+	    lastOrderDate[i+offset] = '2';
+	    offset++;
+	    lastOrderDate[i+offset] = '0';
+	  }
+	}
+	FILE *dateFile = fopen("orderDate.txt", "w");
+	fputs(lastOrderDate, dateFile);
+	fclose(dateFile);
+
+	int textLength = strlen(orderBegin);
+	char *printerText = (char *)malloc((textLength) + 1);
+	memcpy(printerText, orderBegin, textLength);
+	printerText[textLength] = '\0';
+
+	if(printerText){
+	  // TODO(Trystan): Not sure of the safety of sending all unfiltered data
+	  // directly to the printer. But so far I can't think of any major vulnerabilities.
+	  // Other than someone being able to run through a whole spool of receipt paper.
+	  // If they were able to send the right command, which I was not able to do so.
+	  SendDataToPrinter(printerHandle, printerText, textLength);
+	}
+	free(printerText);
+      }
+
+      ClearString(response);
+      if(received == 0){
+	disconnectServer();
+      }
+    }
+  }
+
+  disconnectServer();
+  disconnectPrinter();
+
   libusb_exit(NULL);
+  
   return 0;
 }

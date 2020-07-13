@@ -65,5 +65,60 @@ WHERE day = :day;";
 
         return $this->db->getResultSet();
     }
-    
+
+    public function addOrderPrinter(string $selector, string $name, string $hashedBytes) : void {
+        $sql = "INSERT INTO order_printers (selector, name, hashed_bytes) 
+VALUES (:selector, :name, :hashed_bytes);";
+
+        $this->db->beginStatement($sql);
+
+        
+        $this->db->bindValueToStatement(":selector", $selector);
+        $this->db->bindValueToStatement(":name", $name);
+        $this->db->bindValueToStatement(":hashed_bytes", $hashedBytes);
+        
+        $this->db->executeStatement();
+    }
+
+    public function removeOrderPrinter(string $selector) : void {
+        $sql = "DELETE FROM order_printers WHERE selector = :selector;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":selector", $selector);
+        $this->db->executeStatement();
+    }
+
+    public function getPrinterInfo(string $selector) : array {
+        $sql = "SELECT * FROM order_printers WHERE selector = :selector;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":selector", $selector);
+        $this->db->executeStatement();
+
+        $result = $this->db->getResult();
+        if(is_bool($result)) return array();
+        return $result;
+    }
+
+    public function setPrinterConnection(string $selector, bool $connected) : void {
+        $sql = "UPDATE order_printers SET connected = :connected WHERE selector = :selector;";
+
+        $this->db->beginStatement($sql);
+        
+        $this->db->bindValueToStatement(":connected", $connected);
+        $this->db->bindValueToStatement(":selector", $selector);
+
+        $this->db->executeStatement();
+    }
+
+    public function getAllPrinters() : array {
+        $sql = "SELECT selector, name, connected FROM order_printers;";
+
+        $this->db->beginStatement($sql);
+        $this->db->executeStatement();
+
+        $result = $this->db->getResultSet();
+        if(is_bool($result)) return array();
+        return $result;
+    }
 }

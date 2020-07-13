@@ -6,8 +6,6 @@ class HomeController extends Controller{
     private Order $orderManager;
     
     public $user;
-    // TODO: Update this with javascript.
-    public $activeOrderStatus;
     
     public function __construct(){
         parent::__construct();

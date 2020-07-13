@@ -401,6 +401,71 @@ class DashboardController extends Controller{
         require_once APP_ROOT . "/views/dashboard/dashboard-settings-page.php";
     }
 
+    public function settings_printers_get() : void {
+        $this->pageTitle = "Dashboard - Printers";
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(ADMIN, $userUUID)){
+            $this->redirect("/");
+        }
+
+        $this->user = $this->userManager->getUserInfo($userUUID);
+
+        $printers = $this->settingsManager->getAllPrinters();
+
+        require_once APP_ROOT . "/views/dashboard/dashboard-printers-page.php";
+    }
+
+    public function settings_printers_add_post() : void {
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(ADMIN, $userUUID)){
+            echo "Bad auth";
+            exit;
+        }
+
+        $json = file_get_contents("php://input");
+        $postData = json_decode($json, true);
+        
+        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
+            echo "invalid token";
+            exit;
+        }
+
+        $name = $postData["name"];
+        $token = random_bytes(64);
+        $selector = random_bytes(16);
+        $hashedToken = hash("sha512", $token, true);
+
+        $this->settingsManager->addOrderPrinter($selector, $name, $hashedToken);
+
+        $message = "Please copy the following string onto your printer program<br>"
+                 . bin2hex($selector) . ":" . bin2hex($token);
+        $this->sessionManager->pushOneTimeMessage(USER_SUCCESS, $message);
+
+        echo "success";
+    }
+
+    public function settings_printers_remove_post() : void {
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(ADMIN, $userUUID)){
+            echo "Bad auth";
+            exit;
+        }
+
+        $json = file_get_contents("php://input");
+        $postData = json_decode($json, true);
+        
+        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
+            echo "invalid token";
+            exit;
+        }
+
+        $selector = hex2bin($postData["selector"]);
+
+        $this->settingsManager->removeOrderPrinter($selector);
+        
+        echo "success";
+    }
+
     // JS CALLS
 
     public function searchOrders_post() : void {
@@ -687,36 +752,65 @@ class DashboardController extends Controller{
     // TODO(Trystan): Update the c code to reflect the switch to orders_active
     // Leaving for now so as to not break anything.
     // TODO(Trystan): This function needs a major relook. Lots has changed.
-    public function orders_printerStream_get(){
-        $userUUID = $this->getUserUUID();
-        if($this->userManager->getUserAuthorityLevel($userUUID) != PRINTER){
-            echo "User Access Denied" . PHP_EOL;
+    public function orders_printerStream_post(){
+        $selectorBytes = NULL;
+        if(!isset($_POST["token"])){
+            echo "Missing token";
             exit;
-        }
+        } else {
+            // remove any new lines if there are any.
+            $string = str_replace(array("\n", "\r"), '', $_POST["token"]);
+            $tokenParts = explode(":", $string);
+            $selectorBytes = hex2bin($tokenParts[0]);
+            $tokenBytes = hex2bin($tokenParts[1]);
 
-        header("Content-Type: text/event-stream");
+            $printerInfo = $this->settingsManager->getPrinterInfo($selectorBytes);
+
+            if(!empty($printerInfo)){
+                $hashedToken = hash("sha512", $tokenBytes, true); // we want raw binary.
+                if(hash_equals($printerInfo["hashed_bytes"], $hashedToken)){
+                    // validated.
+                    $this->settingsManager->setPrinterConnection($selectorBytes, true);
+                } else {
+                    echo "Invalid token";
+                    exit;
+                }
+            } else {
+                echo "Invalid token";
+                exit;
+            }
+        }
 
         // The printer program sends "NULL" if no date file found.
-        $lastReceived = "NULL";
-        if(isset($_GET["lastReceived"])){
-            $lastReceived = $_GET["lastReceived"];
+        $lastReceived = NULL;
+        if(isset($_POST["lastReceived"])){
+            if($_POST["lastReceived"] !== "NULL"){
+                // TODO(Trystan): Might need to check if valid date.
+                // If the power gets cut when the program is writing the date to file.
+                // And the file gets corrupted, we could have garbage here that would mess up the nextActiveOrder call.
+                $lastReceived = $_POST["lastReceived"];
+            }
         }
 
-        $orders = array();
-        if($lastReceived === "NULL"){
-            $orders = $this->orderManager->getAllActiveOrders();
-        } else {
-            $orders = $this->orderManager->getActiveOrdersAfterDate($lastReceived);
-        }
+        $order = $this->orderManager->printer_getNextActiveOrder($lastReceived);
+
+        header("Content-Type: text/event-stream");
+        header("Cache-Control: no-cache");
+        header("X-Accel-Buffering: no");
+
+        // The connection will abort before connection_aborted()
+        // code path is executed without this setting.
+        ignore_user_abort(true);
 
         while (true) {
-            if(!empty($orders)){
-                $lastReceived = $orders[count($orders) - 1]["date"];
-            }
-            // TODO(trystan): Find out the max char length per line of the printer,
-            // ensure we don't go over that.
-            echo PRINTER_DELIMITER;
-            foreach($orders as $order){
+            if(!empty($order)){
+                $lastReceived = $order["date"];
+
+                // TODO(trystan): Find out the max char length per line of the printer,
+                // ensure we don't go over that.
+
+                echo "TIMESTAMP " . $lastReceived . PHP_EOL;
+            
                 // Maybe print some over arching order info.
                 echo "ORDER " . UUID::orderedBytesToArrangedString($order["uuid"]) . PHP_EOL;
                 $customer = $this->userManager->getUserInfo($order["user_uuid"]);
@@ -744,27 +838,24 @@ class DashboardController extends Controller{
                 }
                 // Give a little padding between orders.
                 echo PHP_EOL;
+            } else {
+                echo "Still alive" . PHP_EOL;
             }
-            echo PRINTER_DELIMITER;
-            echo "TIMESTAMP " . $lastReceived . PHP_EOL;
 
-            if ( connection_aborted() ) break;
             // flush the output buffer and send echoed messages to the browser
-            while (ob_get_level() > 0) {
+            while(ob_get_level() > 0){
                 ob_end_flush();
             }
             flush();
-            // TODO(trystan): Decide what sleep interval we want to set here.
+
+            if(connection_aborted()){
+                $this->settingsManager->setPrinterConnection($selectorBytes, false);
+                break;
+            }
+
             sleep(5);
 
-            // TODO(Trystan): Two things happen here.
-            // if we keep these two lines in this order:
-            // We will double print orders on start up.
-            // However if we get the date before we get the orders,
-            // we will never get new orders because the date will always be after
-            // an order has been submitted.
-            // So we actually need "now" to be now - sleep interval.
-            $orders = $this->orderManager->getActiveOrdersAfterDate($lastReceived);
+            $order = $this->orderManager->printer_getNextActiveOrder($lastReceived);
         }
     }
 
