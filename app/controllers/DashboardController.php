@@ -749,10 +749,9 @@ class DashboardController extends Controller{
         echo "success";
     }
 
-    // TODO(Trystan): Update the c code to reflect the switch to orders_active
-    // Leaving for now so as to not break anything.
     // TODO(Trystan): This function needs a major relook. Lots has changed.
     public function orders_printerStream_post(){
+        // TODO(Trystan): Send proper http codes for invalid token.
         $selectorBytes = NULL;
         if(!isset($_POST["token"])){
             echo "Missing token";
@@ -808,6 +807,8 @@ class DashboardController extends Controller{
 
                 // TODO(trystan): Find out the max char length per line of the printer,
                 // ensure we don't go over that.
+
+                // TODO(Trystan): Take another look at how we want to format printer.
 
                 echo "TIMESTAMP " . $lastReceived . PHP_EOL;
             
