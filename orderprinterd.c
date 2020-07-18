@@ -14,36 +14,54 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
-#define VENDOR_ID 0x0416
-#define PRODUCT_ID 0x5011
-#define ENDPOINT_IN 0x81
-#define ENDPOINT_OUT 0x01
-
 #define RESPONSE_LEN 65536
 
-// TODO(trystan):
-// hotplug support
-// Bring everything that can fail the program to the top of the program
-//  - Attempt to open files at the top.
+struct printer_data{
+  libusb_device_handle *handle;
+  uint8_t config;
+  uint8_t interface;
+  uint8_t endpoint_in;
+  uint8_t endpoint_out;
+  uint8_t max_packet_size;
+} typedef printer_data;
 
-libusb_device_handle *printerHandle = NULL;
+printer_data printerData;
 SSL_CTX *sslContext = NULL;
 BIO *bio = NULL;
 
-void SendDataToPrinter(libusb_device_handle *handle, unsigned char *buffer, unsigned int length){
+
+// returns 1 if everything sent okay, 0 otherwise.
+int SendDataToPrinter(unsigned char *buffer, unsigned int length){
+  int success = 1;
   int bytesTransferred;
-  
-  unsigned int transferError = libusb_bulk_transfer(handle, ENDPOINT_OUT,
-						    buffer, length, &bytesTransferred, 0);
-  if(transferError == 0){
-    if(length == bytesTransferred){
-      
-    } else {
-      syslog(LOG_NOTICE, "Bytes (%d) were not transferred entirely (%d).\n", length, bytesTransferred);
+  unsigned int transferError;
+  int amountLeftToTransfer = length;
+
+  // TODO(Trystan): Check for printerData.max_packet_size, and break down our transfers.
+  while(amountLeftToTransfer){
+    int amountToTransfer = printerData.max_packet_size;
+    if(amountToTransfer > amountLeftToTransfer){
+      amountToTransfer = amountLeftToTransfer;
     }
-  } else {
-    syslog(LOG_NOTICE, "Error when calling bulk transfer(%d).\n", transferError);
+
+    transferError = libusb_bulk_transfer(printerData.handle, printerData.endpoint_out,
+						      buffer, amountToTransfer, &bytesTransferred, 0);
+
+    if(transferError == 0){
+      if(amountToTransfer != bytesTransferred){
+	syslog(LOG_NOTICE, "Bytes (%d) were not transferred entirely (%d).\n", amountToTransfer, bytesTransferred);
+	success = 0;
+      }
+    } else {
+      syslog(LOG_NOTICE, "Error when calling bulk transfer(%d).\n", transferError);
+      success = 0;
+    }
+
+    amountLeftToTransfer -= amountToTransfer;
+    buffer += amountToTransfer;
   }
+
+  return success;
 }
 
 void ClearString(char *string){
@@ -55,7 +73,7 @@ void ClearString(char *string){
 
 void openStream(char *token, char *commonHeaders){
   if(bio == NULL) return;
-  syslog(LOG_NOTICE, "Opening stream.\n");
+  syslog(LOG_NOTICE,  "Opening stream.\n");
 
   // Date is in YYYY-MM-DD hh:mm:ss
   // When we save to the file we have to replace the space with a %20,
@@ -130,41 +148,120 @@ void connectServer(SSL *ssl, char *host){
   }
 }
 
-void connectPrinter(libusb_device *device){
-  int open_error = libusb_open(device, &printerHandle);
+// returns 1 if printer was found, and sets relevant value in printerData.
+// doesn't touch printerData if 0 is returned.
+int isDevicePrinter(libusb_device *device){
+  int isPrinter = 0;
 
-  if(open_error){
-    if(open_error == -3){
-      syslog(LOG_NOTICE, "Incorrect permissions. Unable to get a handle to the printer.\n");
-    } else {
-      syslog(LOG_NOTICE, "Unable to get a handle to the printer - error code: %d\n", open_error);
+  struct libusb_device_descriptor deviceDescription;
+  libusb_get_device_descriptor(device, &deviceDescription);
+
+  struct libusb_config_descriptor *configDescription;
+  libusb_get_config_descriptor(device, 0, &configDescription);
+    
+  for(int i = 0; i < configDescription->bNumInterfaces; i++){
+    const struct libusb_interface interface = configDescription->interface[i];
+
+    for(int j = 0; j < interface.num_altsetting; j++){
+      // check that the interface descriptor matches LIBUSB_CLASS_PRINTER
+      const struct libusb_interface_descriptor interfaceDescriptor = interface.altsetting[j];
+
+      if(interfaceDescriptor.bInterfaceClass == LIBUSB_CLASS_PRINTER){
+	// This is the device we want, begin gathering all necessary information.
+	// iterate over end points. Grab endpoint_out, and endpoint_in if there is one.
+	isPrinter = 1;
+	
+	printerData.max_packet_size = deviceDescription.bMaxPacketSize0;
+	printerData.config = configDescription->bConfigurationValue;
+	printerData.interface = interfaceDescriptor.bInterfaceNumber;
+
+	for(int k = 0; k < interfaceDescriptor.bNumEndpoints; k++){
+	  const struct libusb_endpoint_descriptor endpointDescriptor = interfaceDescriptor.endpoint[k];
+
+	  // check to see what type of endpoint. if 8th bit is 0 = out, 1 = in
+	  if(endpointDescriptor.bEndpointAddress & (1 << 7)){
+	    printerData.endpoint_in = endpointDescriptor.bEndpointAddress;
+	  } else {
+	    printerData.endpoint_out = endpointDescriptor.bEndpointAddress;
+	  }
+	}
+      }
     }
   }
 
-  if(libusb_kernel_driver_active(printerHandle, 0) == 1){
-    libusb_detach_kernel_driver(printerHandle, 0);
+  libusb_free_config_descriptor(configDescription);
+
+  return isPrinter;
+}
+
+void connectPrinter(libusb_device *device){
+  syslog(LOG_NOTICE, "Printer attached.\n");
+  int error = libusb_open(device, &printerData.handle);
+
+  if(error){
+    if(error == -3){
+      syslog(LOG_NOTICE, "Incorrect permissions. Unable to get a handle to the printer.\n");
+    } else {
+      syslog(LOG_NOTICE, "Unable to get a handle to the printer - error code: %d\n", error);
+    }
   }
 
-  libusb_claim_interface(printerHandle, 1);
+  error = 1;
+  while(error != LIBUSB_SUCCESS){
+    error = libusb_set_configuration(printerData.handle, printerData.config);
+    if(error){
+      syslog(LOG_NOTICE, "Could not set the configuration(%d) error(%d)\n", printerData.config, error);
+      if(error == LIBUSB_ERROR_NOT_FOUND || error == LIBUSB_ERROR_NO_DEVICE){
+	syslog(LOG_NOTICE, "Configuration set aborted, device missing.\n");
+	break;
+      } else {
+	syslog(LOG_NOTICE, "retrying to set configuration.\n");
+      }
+    } else {
+      syslog(LOG_NOTICE, "successfully set the configuration(%d)\n", printerData.config);
+    }
+  }
+
+  if(libusb_kernel_driver_active(printerData.handle, printerData.interface) == 1){
+    error = libusb_detach_kernel_driver(printerData.handle, printerData.interface);
+    if(error){
+      syslog(LOG_NOTICE, "Could not detach kernal driver error(%d)\n", error);
+    }
+  }
+
+  error = libusb_claim_interface(printerData.handle, printerData.interface);
+  if(error != 0){
+    syslog(LOG_NOTICE, "Unable to claim interface(%d) error(%d)\n", printerData.interface, error);
+  }
 }
 
 void disconnectPrinter(){
-  libusb_release_interface(printerHandle, 0);
-  libusb_close(printerHandle);
-  printerHandle = NULL;
+  syslog(LOG_NOTICE, "Printer detached. Please reconnect.\n");
+  int error;
+  // This will always be an error when called from the hotplug as the device is missing.
+  error = libusb_release_interface(printerData.handle, printerData.interface);
+  if(error){
+    syslog(LOG_NOTICE, "release interface error(%d)\n", error);
+  }
+
+  // No errors associated with closing the device.
+  libusb_close(printerData.handle);
+  
+  printerData.handle = NULL;
+  printerData.endpoint_in = 0;
+  printerData.endpoint_out = 0;
+  printerData.max_packet_size = 0;
 }
 
 static int LIBUSB_CALL hotplug_callback(libusb_context *context, libusb_device *device,
 					libusb_hotplug_event event, void *user_data){
-  struct libusb_device_descriptor descriptor;
-
-  libusb_get_device_descriptor(device, &descriptor);
+  if(!isDevicePrinter(device)){
+    return 0;
+  }
 
   if(event == LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED){
-    syslog(LOG_NOTICE, "Printer attached.\n");
     connectPrinter(device);
   } else if (event == LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT){
-    syslog(LOG_NOTICE, "Printer detached. Please reconnect.\n");
     disconnectPrinter();
     disconnectServer();
   }
@@ -193,10 +290,6 @@ void signalHandler(int signal) {
 int main(int argc, char **argv){
   char *host = argv[1];
 
-  // turn it into a daemon, then continue.
-  setlogmask(LOG_UPTO(LOG_NOTICE));
-  openlog("orderprinterd", LOG_CONS | LOG_NDELAY | LOG_PERROR | LOG_PID, LOG_USER);
-
   pid_t pid, sid;
 
   pid = fork();
@@ -221,6 +314,11 @@ int main(int argc, char **argv){
     return -1;
   }
 
+  printerData.handle = NULL;
+  printerData.endpoint_in = 0;
+  printerData.endpoint_out = 0;
+  printerData.max_packet_size = 0;
+
   SSL_load_error_strings();
   ERR_load_BIO_strings();
   OpenSSL_add_all_algorithms();
@@ -235,28 +333,26 @@ int main(int argc, char **argv){
   libusb_init(NULL);
 
   libusb_hotplug_callback_handle callback_handle;
-  libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, 0, VENDOR_ID,
-				   PRODUCT_ID, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
-  
+  libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT,
+				   0, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY,
+				   hotplug_callback, NULL, &callback_handle);
+
   libusb_device **devs;
   libusb_get_device_list(NULL, &devs);
 
   libusb_device *dev;
-  libusb_device *printer = NULL;
+  libusb_device *printerDevice = NULL;
   int devsIndex = 0;
   while ((dev = devs[devsIndex++]) != NULL) {
-    struct libusb_device_descriptor description;
-    libusb_get_device_descriptor(dev, &description);
-
-    if(description.idVendor == VENDOR_ID && description.idProduct == PRODUCT_ID){
-      printer = dev;
+    if(isDevicePrinter(dev)){
+      printerDevice = dev;
     }
   }
 
   libusb_free_device_list(devs, 1);
 
-  if(printer){
-    connectPrinter(printer);
+  if(printerDevice){
+    connectPrinter(printerDevice);
   } else {
     syslog(LOG_NOTICE, "Printer not connected.\n");
   }
@@ -289,7 +385,7 @@ int main(int argc, char **argv){
   for(;;){
     libusb_handle_events_timeout_completed(NULL, &zeroTimeValue, NULL);
 
-    if(printerHandle){
+    if(printerData.handle){
       if(bio == NULL){
 	connectServer(ssl, host);
 	openStream(token, commonHeaders);
@@ -319,9 +415,6 @@ int main(int argc, char **argv){
 	    lastOrderDate[i+offset] = '0';
 	  }
 	}
-	FILE *dateFile = fopen("orderDate.txt", "w");
-	fputs(lastOrderDate, dateFile);
-	fclose(dateFile);
 
 	int textLength = strlen(orderBegin);
 	char *printerText = (char *)malloc((textLength) + 1);
@@ -333,7 +426,11 @@ int main(int argc, char **argv){
 	  // directly to the printer. But so far I can't think of any major vulnerabilities.
 	  // Other than someone being able to run through a whole spool of receipt paper.
 	  // If they were able to send the right command, which I was not able to do so.
-	  SendDataToPrinter(printerHandle, printerText, textLength);
+	  if(SendDataToPrinter(printerText, textLength)){
+	    FILE *dateFile = fopen("orderDate.txt", "w");
+	    fputs(lastOrderDate, dateFile);
+	    fclose(dateFile);
+	  }
 	}
 	free(printerText);
       }
