@@ -3,6 +3,24 @@ import { postJSON, createLineItemElement, intToCurrency } from './utility.js';
 
 "use strict";
 
+const radioUncheckedSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="black" width="24px" height="24px">
+<path d="M0 0h24v24H0V0z" fill="none"/>
+<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"/>
+</svg>`;
+const radioCheckedSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="black" width="24px" height="24px">
+<path d="M0 0h24v24H0V0z" fill="none"/>
+<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"/>
+<circle cx="12" cy="12" r="5"/>
+</svg>`;
+const checkboxUnchekedSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="black" width="24px" height="24px">
+<path d="M0 0h24v24H0z" fill="none"/>
+<path d="M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/>
+</svg>`;
+const checkboxCheckedSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="black" width="24px" height="24px">
+<path d="M0 0h24v24H0z" fill="none"/>
+<path d="M19 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.11 0 2-.9 2-2V5c0-1.1-.89-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+</svg>`;
+
 let itemElements = document.querySelectorAll('.order-container');
 let cartContainer = document.querySelector('#cart-container');
 let cartButtonElement = document.querySelector('#cart-button');
@@ -93,18 +111,146 @@ const getChoicePickDescription = (minPicks, maxPicks) => {
     return result;
 };
 
-const onCheckboxChange = (e) => {
-    let maxPicks = itemDataStorage.choices[e.target.name].max_picks;
-    let checkboxes = document.querySelectorAll(`input.choice-option-input[name='${e.target.name}']`);
-    let checkedBoxCount = 0;
-    checkboxes.forEach(checkbox => {
-        if(checkbox.checked){
-            checkedBoxCount++;
+const onAdditionSelected = (e) => {
+    let targetButton = e.target.closest('button');
+
+    let svgToRemove = targetButton.querySelector('svg');
+    targetButton.removeChild(svgToRemove);
+    
+    if(targetButton.classList.contains('selected')){
+        targetButton.classList.remove('selected');
+        targetButton.innerHTML += checkboxUnchekedSVG;
+    } else {
+        targetButton.classList.add('selected');
+        targetButton.innerHTML += checkboxCheckedSVG;
+    }
+}
+
+const isReadyToSubmit = () => {
+    let dialog = document.querySelector('#dialog-container');
+    let choiceOptionInputs = dialog.querySelectorAll('.choice-option-input');
+
+    let selectedOptions = {};
+    selectedOptions.choices = {};
+    
+    choiceOptionInputs.forEach(input => {
+        if(typeof selectedOptions.choices[`${input.name}-choice`] === 'undefined'){
+            selectedOptions.choices[`${input.name}-choice`] = [];
+        }
+
+        let inputButton = input.closest('button');
+
+        if(inputButton.classList.contains('selected')){
+            selectedOptions.choices[`${input.name}-choice`].push(input.value);
         }
     });
 
-    if(checkedBoxCount > maxPicks){
-        e.target.checked = false;
+    let validated = true;
+    for(var choice in selectedOptions.choices){
+        let choiceID = choice.split('-')[0];
+        let numberSelected = selectedOptions.choices[choice].length;
+        if(numberSelected < itemDataStorage.choices[choiceID].min_picks
+          || numberSelected > itemDataStorage.choices[choiceID].max_picks){
+            validated = false;
+        }
+    }
+
+    return validated;
+}
+
+const onChoiceSelection = (e) => {
+    let targetButton = e.target.closest('button');
+    let targetInput = targetButton.querySelector('input');
+    let maxPicks = itemDataStorage.choices[targetInput.name].max_picks;
+    // if already checked, then we are unchecking it and no other work is necessary.
+    if(targetButton.classList.contains('selected')){
+        targetButton.classList.remove('selected');
+
+        let svgToRemove = targetButton.querySelector('svg');
+        targetButton.removeChild(svgToRemove);
+
+        if(maxPicks == 1){
+            targetButton.innerHTML += radioUncheckedSVG;
+        } else {
+            targetButton.innerHTML += checkboxUnchekedSVG;
+        }
+
+        if(!isReadyToSubmit()){
+            const submitButton = document.querySelector('.item-submit-button');
+            if(submitButton.classList.contains('valid')){
+                submitButton.classList.remove('valid');
+            }
+        }
+
+        return;
+    }
+
+    let choiceContainer = e.target.closest('.item-choice-container');
+    let optionButtons = choiceContainer.querySelectorAll('.item-option-button');
+    
+    let amountSelected = 0;
+    optionButtons.forEach(option => {
+        if(option.classList.contains('selected')){
+            amountSelected++;
+        }
+    });
+
+    if(amountSelected == maxPicks){
+        if(maxPicks == 1){
+            optionButtons.forEach(option => {
+                option.classList.remove('selected');
+
+                let svgToRemove = option.querySelector('svg');
+                option.removeChild(svgToRemove);
+                option.innerHTML += radioUncheckedSVG;
+            });
+
+            targetButton.classList.add('selected');
+
+            let svgToRemove = targetButton.querySelector('svg');
+            targetButton.removeChild(svgToRemove);
+            targetButton.innerHTML += radioCheckedSVG;
+        }
+    } else {
+        targetButton.classList.add('selected');
+
+        let svgToRemove = targetButton.querySelector('svg');
+        targetButton.removeChild(svgToRemove);
+
+        if(maxPicks == 1){
+            targetButton.innerHTML += radioCheckedSVG;
+        } else {
+            targetButton.innerHTML += checkboxCheckedSVG;
+        }
+    }
+
+    const submitButton = document.querySelector('.item-submit-button');
+    if(isReadyToSubmit()){
+        submitButton.classList.add('valid');
+    } else {
+        if(submitButton.classList.contains('valid')){
+            submitButton.classList.remove('valid');
+        }
+    }
+};
+
+const onQuantityChange = (e) => {
+    let targetButton = e.target.closest('button');
+    let quantityElement = e.target.closest('.item-quantity-container').querySelector('.item-quantity-value');
+    let quantityValue = parseInt(quantityElement.innerText);
+
+    if(targetButton.classList.contains('item-quantity-down-button')){
+        if(quantityValue === 1){
+            return;
+        }
+
+        quantityElement.innerText = quantityValue - 1;
+    } else {
+        if(quantityValue === 15){
+            return;
+        }
+
+        quantityElement.innerText = quantityValue + 1;
     }
 };
 
@@ -121,6 +267,16 @@ const newDialog = (itemData) => {
     let dialogInfoContainer = document.createElement('div');
     dialogInfoContainer.classList.add('dialog-info-container');
 
+    let exitButton = document.createElement('button');
+    exitButton.innerHTML = `<svg class="navigation-svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>`;
+    exitButton.classList.add('dialog-exit-button');
+    exitButton.classList.add('svg-button');
+    exitButton.addEventListener('click', exitDialogHandler);
+
+    dialogInfoContainer.appendChild(exitButton);
+
     let header = document.createElement('h1');
     header.innerText = itemData.name;
 
@@ -128,110 +284,171 @@ const newDialog = (itemData) => {
 
     let choices = itemData.choices;
     for(var choice in choices){
+        let choiceContainer = document.createElement('div');
+        choiceContainer.classList.add('item-choice-container');
+
         let choiceHeader = document.createElement('h3');
         choiceHeader.innerText = choices[choice].name;
 
-        dialogInfoContainer.appendChild(choiceHeader);
+        choiceContainer.appendChild(choiceHeader);
 
         let choicePicksDescription = document.createElement('p');
         choicePicksDescription.innerText = 
             getChoicePickDescription(choices[choice].min_picks, choices[choice].max_picks);
 
-        dialogInfoContainer.appendChild(choicePicksDescription);
+        choiceContainer.appendChild(choicePicksDescription);
 
         let options = choices[choice].options;
         for(var option in options){
-            let optionInput = document.createElement('input');
+            let optionContainer = document.createElement('div');
+            optionContainer.classList.add('item-option-container');
+
+            let optionInputButton = document.createElement('button');
+            optionInputButton.classList.add('svg-button');
+            optionInputButton.classList.add('item-option-button');
+            
+            optionInputButton.addEventListener('click', onChoiceSelection);
             if(parseInt(choices[choice].max_picks) === 1 
             && parseInt(choices[choice].min_picks) === 1){
-                optionInput.type = 'radio';
+                optionInputButton.innerHTML = radioUncheckedSVG;
             } else {
-                optionInput.type = 'checkbox';
-                optionInput.addEventListener('change', onCheckboxChange);
+                optionInputButton.innerHTML = checkboxUnchekedSVG;
             }
 
+            let optionInput = document.createElement('input');
+            optionInput.type = 'hidden';
             optionInput.classList.add('choice-option-input');
             optionInput.name = choices[choice].id;
             optionInput.value = options[option].id;
             optionInput.id = choices[choice].id + '-' + options[option].id;
 
-            dialogInfoContainer.appendChild(optionInput);
+            optionInputButton.appendChild(optionInput);
 
-            let optionInputLabel = document.createElement('label');
-            optionInputLabel.setAttribute('for', optionInput.id);
+            optionContainer.appendChild(optionInputButton);
+
+            let optionInputLabel = document.createElement('span');
+            optionInputLabel.classList.add('item-option-name');
             optionInputLabel.innerText = options[option].name;
             if(parseFloat(options[option].price_modifier) !== 0){
                 optionInputLabel.innerText += ` (+ $${intToCurrency(options[option].price_modifier)})`;
             }
 
-            dialogInfoContainer.appendChild(optionInputLabel);
+            optionContainer.appendChild(optionInputLabel);
+
+            choiceContainer.appendChild(optionContainer);
         }
+
+        dialogInfoContainer.appendChild(choiceContainer);
     }
 
     if(itemData.additions !== null){
+        let additionsContainer = document.createElement('div');
+        additionsContainer.classList.add('item-additions-container');
         let additionsHeader = document.createElement('h3');
         additionsHeader.innerText = 'Additions';
 
-        dialogInfoContainer.appendChild(additionsHeader);
+        additionsContainer.appendChild(additionsHeader);
 
         let additions = itemData.additions;
         for(var addition in additions){
+            let additionContainer = document.createElement('div');
+            additionContainer.classList.add('item-addition-container');
+
+            let additionsInputButton = document.createElement('button');
+            additionsInputButton.classList.add('svg-button');
+            additionsInputButton.classList.add('item-additions-button');
+            additionsInputButton.innerHTML = checkboxUnchekedSVG;
+            additionsInputButton.addEventListener('click', onAdditionSelected);
+            
             let additionInput = document.createElement('input');
-            additionInput.type = 'checkbox';
+            additionInput.type = 'hidden';
             additionInput.name = additions[addition].id;
             additionInput.id = additionInput.name + '-addition';
             additionInput.value = additionInput.name;
             additionInput.classList.add('addition-input');
 
-            dialogInfoContainer.appendChild(additionInput);
+            additionsInputButton.appendChild(additionInput);
 
-            let additionInputLabel = document.createElement('label');
-            additionInputLabel.setAttribute('for', additionInput.id);
+            additionContainer.appendChild(additionsInputButton);
+
+            let additionInputLabel = document.createElement('span');
+            additionInputLabel.classList.add('item-addition-name');
             additionInputLabel.innerText = additions[addition].name;
             if(parseFloat(additions[addition].price_modifier) !== 0){
                 additionInputLabel.innerText += ` (+ $${intToCurrency(additions[addition].price_modifier)})`;
             }
 
-            dialogInfoContainer.appendChild(additionInputLabel);
+            additionContainer.appendChild(additionInputLabel);
 
-            dialogInfoContainer.appendChild(document.createElement('br'));
+            additionsContainer.appendChild(additionContainer);
         }
+
+        dialogInfoContainer.appendChild(additionsContainer);
     }
+
+    let commentContainer = document.createElement('div');
+    commentContainer.classList.add('item-comment-container');
 
     let commentLabel = document.createElement('label');
     commentLabel.setAttribute('for', 'comment-input');
     commentLabel.innerText = 'Comment:';
 
-    dialogInfoContainer.appendChild(commentLabel);
+    commentContainer.appendChild(commentLabel);
 
     let commentInput = document.createElement('textarea');
     commentInput.id = 'comment-input';
     commentInput.maxLength = 200;
     commentInput.placeholder = 'Optional note for the kitchen. (200 characters)';
 
-    dialogInfoContainer.appendChild(commentInput);
+    commentContainer.appendChild(commentInput);
 
-    let quantityLabel = document.createElement('label');
-    quantityLabel.setAttribute('for', 'quantity-input');
-    quantityLabel.innerText = 'Quantity:';
+    dialogInfoContainer.appendChild(commentContainer);
 
-    dialogInfoContainer.appendChild(quantityLabel);
+    let quantityContainer = document.createElement('div');
+    quantityContainer.classList.add('item-quantity-container');
 
-    let quantityInput = document.createElement('input');
-    quantityInput.type = 'number';
-    quantityInput.id = 'quantity-input';
-    quantityInput.name = 'quantity';
-    quantityInput.value = 1;
-    quantityInput.setAttribute('min', '1');
+    let quantityInputDown = document.createElement('button');
+    quantityInputDown.classList.add('svg-button');
+    quantityInputDown.classList.add('item-quantity-down-button');
+    quantityInputDown.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="black" width="24px" height="24px">
+        <path d="M0 0h24v24H0V0z" fill="none"/>
+        <path d="M7 12c0 .55.45 1 1 1h8c.55 0 1-.45 1-1s-.45-1-1-1H8c-.55 0-1 .45-1 1zm5-10C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
+        </svg>`;
+    quantityInputDown.addEventListener('click', onQuantityChange);
 
-    dialogInfoContainer.appendChild(quantityInput);
+    quantityContainer.appendChild(quantityInputDown);
 
-    let submitButton = document.createElement('input');
-    submitButton.type = 'submit';
-    submitButton.value = 'submit';
+    let quantityValue = document.createElement('span');
+    quantityValue.classList.add('item-quantity-value');
+    quantityValue.innerText = '1';
+
+    quantityContainer.appendChild(quantityValue);
+
+    let quantityInputUp = document.createElement('button');
+    quantityInputUp.classList.add('svg-button');
+    quantityInputUp.classList.add('item-quantity-up-button');
+    quantityInputUp.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="black" width="24px" height="24px">
+        <path d="M0 0h24v24H0V0z" fill="none"/>
+        <path d="M12 7c-.55 0-1 .45-1 1v3H8c-.55 0-1 .45-1 1s.45 1 1 1h3v3c0 .55.45 1 1 1s1-.45 1-1v-3h3c.55 0 1-.45 1-1s-.45-1-1-1h-3V8c0-.55-.45-1-1-1zm0-5C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
+        </svg>`;
+    quantityInputUp.addEventListener('click', onQuantityChange);
+
+    quantityContainer.appendChild(quantityInputUp);
+
+    dialogInfoContainer.appendChild(quantityContainer);
+
+    let submitButtonContainer = document.createElement('div');
+    submitButtonContainer.classList.add('item-submit-button-container');
+
+    let submitButton = document.createElement('a');
+    submitButton.classList.add('item-submit-button');
+    submitButton.href = '#';
+    submitButton.innerText = 'Submit';
     submitButton.addEventListener('click', submitDialogHandler);
 
-    dialogInfoContainer.appendChild(submitButton);
+    submitButtonContainer.appendChild(submitButton);
+
+    dialogInfoContainer.appendChild(submitButtonContainer);
 
     dialog.appendChild(dialogInfoContainer);
 
@@ -255,7 +472,7 @@ const endDialogMode = () => {
 };
 
 const exitDialogHandler = e => {
-    if(e.target.id === 'dialog-container'){
+    if(e.target.id === 'dialog-container' || e.target.closest('.dialog-exit-button')){
         e.preventDefault();
 
         endDialogMode();
@@ -271,7 +488,7 @@ const submitDialogHandler = (e) => {
 
     let userItemData = {};
     userItemData.itemID = itemDataStorage.id;
-    userItemData.quantity = dialog.querySelector('#quantity-input').value;
+    userItemData.quantity = parseInt(dialog.querySelector('.item-quantity-value').innerText);
     userItemData.comment = dialog.querySelector('#comment-input').value;
     userItemData.choices = {};
     userItemData.additions = [];
@@ -281,13 +498,16 @@ const submitDialogHandler = (e) => {
             userItemData.choices[`${input.name}-choice`] = [];
         }
 
-        if(input.checked){
+        let inputButton = input.closest('button');
+
+        if(inputButton.classList.contains('selected')){
             userItemData.choices[`${input.name}-choice`].push(input.value);
         }
     });
 
     additionInputs.forEach(input => {
-        if(input.checked){
+        let inputButton = input.closest('button');
+        if(inputButton.classList.contains('selected')){
             userItemData.additions.push(input.value);
         }
     });
@@ -321,8 +541,6 @@ const submitDialogHandler = (e) => {
 
     endDialogMode();
 };
-
-
 
 itemElements.forEach(element => {
     if(element.classList.contains('inactive')){

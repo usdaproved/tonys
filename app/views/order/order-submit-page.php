@@ -45,6 +45,7 @@
     <p><strong>Tax:</strong> $<?=$this->intToCurrency($this->orderStorage['cost']['tax'])?></p>
     <p><strong>Total:</strong> $<?=$this->intToCurrency($this->orderStorage['cost']['total'])?></p>
 
+    <!-- TODO(Trystan): Remove this when we go live. -->
     <h3>For demo purposes</h3>
     <p>card number: 4242 4242 4242 4242</p>
     <p>Expiration: Any date after today</p>
@@ -56,15 +57,11 @@
     <div id="stripe-card-errors" role="alert">
     </div>
 
-    <input type="hidden" id="CSRFToken" name="CSRFToken" value="<?= $this->sessionManager->getCSRFToken(); ?>">
-    <!-- TODO(Trystan): Remove this for a live site. -->
     
     <button id="stripe-payment-submit" data-secret="<?=$this->user['stripe_client_secret']?>" data-orderuuid="<?=UUID::orderedBytesToArrangedString($this->orderStorage['uuid'])?>">Pay</button>
-    
-    <div id="paypal-button-container"></div>
+    <input type="hidden" id="CSRFToken" name="CSRFToken" value="<?= $this->sessionManager->getCSRFToken(); ?>">
 
 </article>
-<!-- <script src="https://www.paypal.com/sdk/js?client-id=<?=PAYPAL_PUBLIC_KEY?>&disable-funding=credit,card"></script> -->
 <script src="https://js.stripe.com/v3/"></script>
 <script src="<?=$this->getFile('js', __FILE__);?>" type="module"></script>
 <?php require APP_ROOT . "/views/includes/footer.php" ?>

@@ -37,12 +37,6 @@ if(addressContainer){
   });
 }
 
-// This code must be structured in such a way
-// that one of multiple payment processors will be used
-// The customer will decide which one they want to use.
-// All payment solutions are routed through the same submit button.
-// Or perhaps we will have to wait and see how using paypal changes things.
-
 // TODO: This is the test key. Gotta be sure to update with the actual information.
 const STRIPE_PUBLIC_KEY = "pk_test_olXR5p3L8x6QCOlVwe4GthK6004qkU4Loa"; 
 
@@ -120,35 +114,3 @@ submitButton.addEventListener('click', function(e) {
     }
   });
 });
-
-// COMMENTED OUT FOR VIEWING PURPOSES
-// PAYPAL
-// paypal.Buttons({
-//   createOrder: function() {
-//     return fetch('/Order/paypalCreateOrder', {
-//       method: 'post',
-//       headers: {
-//         'content-type': 'application/json'
-//       }
-//     }).then(function(res) {
-//       return res.json();
-//     }).then(function(myServerResponse) {
-//       return myServerResponse.paypalID;
-//     });
-//   },
-//   onApprove: function(paypalData) {
-//     return fetch('/Order/paypalCaptureOrder', {
-//       method: 'post',
-//       headers: {
-//         'content-type': 'application/json'
-//       },
-//       body: JSON.stringify({
-//         paypalID: paypalData.orderID
-//       })
-//     }).then(function(res) {
-//       return res.json();
-//     }).then(function(details) {
-//       window.location.replace(`/Order/confirmed?order=${orderID}`);
-//     })
-//   }
-// }).render('#paypal-button-container');

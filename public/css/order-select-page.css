@@ -28,31 +28,83 @@
     line-height: 24px;
 }
 
-.dialog-container{
-    position: fixed;
-    background: rgba(31, 31, 31, 0.8) none repeat scroll 0% 0%;
+.dialog-info-container > h3{
+    margin-top: 2rem;
+}
 
-    overflow: auto;
-    z-index: 4;
-    left: 0px;
-    top: 0px;
-    right: 0px;
-    height: 100vh;
+.item-option-container{
+    display: flex;
+    margin-bottom: 2rem;
+}
 
+.item-option-button{
+    margin-top: -0.25rem;
+}
+
+.item-option-name{
+    margin-left: 0.5rem;
+}
+
+.item-additions-button{
+    margin-top: -0.25rem;
+}
+
+.item-addition-container{
+    display: flex;
+    margin-bottom: 2rem;
+}
+
+.item-addition-name{
+    margin-left: 0.5rem;
+}
+
+.item-comment-container{
     display: flex;
     flex-direction: column;
-    align-items: center;
 }
 
-.dialog{
-    position: relative;
-    background: rgb(255, 255, 255) none repeat scroll 0% 0%;
-    
-    z-index: 1;
-    margin: 0px auto;
-    width: 676px;
+.item-quantity-container{
+    margin-top: 1rem;
+    display: flex;
+    font-size: 20px;
+    font-weight: 700;
+    justify-content: center;
 }
 
-.dialog-info-container{
-    margin: 20px;
+.item-quantity-up-button, .item-quantity-down-button{
+    margin-top: -0.25em;
+}
+
+.item-quantity-value{
+    margin-left: 0.35rem;
+    margin-right: 0.35rem;
+}
+
+.item-submit-button-container{
+    margin-top: 1rem;
+}
+
+.item-submit-button{
+    display: flex;
+    justify-items: center;
+    justify-content: center;
+    padding-right: 1rem;
+    padding-left: 1rem;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    border-width: 1px;
+    border-color: transparent;
+    font-weight: 500;
+    color: #fff;
+    background-color: #313131;
+    border-radius: 0.375rem;
+    text-decoration: none;
+}
+
+.item-submit-button.valid{
+    background-color: #12682f;
+}
+
+.item-submit-button.valid:hover, .item-submit-button.valid:focus{
+    background-color: #0f5024;
 }

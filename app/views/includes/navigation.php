@@ -32,15 +32,19 @@
      margin-bottom: -0.5rem;
  }
 
+ .svg-button{
+	 cursor: pointer;
+	-webkit-appearance: button;
+     border-style: none;
+     padding: 0;
+     background-color: transparent;
+ }
+
  .mobile-hamburger-button{
      display:inline-flex;
      align-items: center;
      justify-content: center;
      padding: 0.5rem;
-     -webkit-appearance: button;
-     border-style: none;
-     padding: 0;
-     background-color: transparent;
  }
 
  .navigation-svg{
@@ -68,13 +72,6 @@
  .mobile-exit-button-container{
      display: flex;
      justify-content: flex-end;
- }
-
- .mobile-menu-exit-button{
-     -webkit-appearance: button;
-     border-style: none;
-     padding: 0;
-     background-color: transparent;
  }
 
  .mobile-menu-nav{
@@ -279,7 +276,7 @@
     <h3 class="restaurant-name"><a href="/">Tony's Taco House</a></h3>
 
     <div class="mobile-hamburger">
-	<button type="button" class="mobile-hamburger-button" id="mobile-hamburger-button">
+	<button type="button" class="svg-button mobile-hamburger-button" id="mobile-hamburger-button">
 	    <svg class="navigation-svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 			<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
 		</svg>
@@ -345,7 +342,7 @@
 	<div class="mobile-menu">
 		<div class="space-y-6">
 			<div class="mobile-exit-button-container">
-				<button type="button" class="mobile-menu-exit-button" id="mobile-menu-exit-button">
+				<button type="button" class="svg-button mobile-menu-exit-button" id="mobile-menu-exit-button">
 					<svg class="navigation-svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
 					</svg>
