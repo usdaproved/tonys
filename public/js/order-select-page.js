@@ -341,7 +341,7 @@ const newDialog = (itemData) => {
         dialogInfoContainer.appendChild(choiceContainer);
     }
 
-    if(itemData.additions !== null){
+    if(!Array.isArray(itemData.additions)){
         let additionsContainer = document.createElement('div');
         additionsContainer.classList.add('item-additions-container');
         let additionsHeader = document.createElement('h3');
@@ -386,12 +386,16 @@ const newDialog = (itemData) => {
         dialogInfoContainer.appendChild(additionsContainer);
     }
 
+    let dialogBottomContainer = document.createElement('div');
+    dialogBottomContainer.classList.add('dialog-bottom-container');
+
     let commentContainer = document.createElement('div');
     commentContainer.classList.add('item-comment-container');
 
     let commentLabel = document.createElement('label');
+    commentLabel.classList.add('item-comment-label');
     commentLabel.setAttribute('for', 'comment-input');
-    commentLabel.innerText = 'Comment:';
+    commentLabel.innerText = 'Comment';
 
     commentContainer.appendChild(commentLabel);
 
@@ -402,7 +406,7 @@ const newDialog = (itemData) => {
 
     commentContainer.appendChild(commentInput);
 
-    dialogInfoContainer.appendChild(commentContainer);
+    dialogBottomContainer.appendChild(commentContainer);
 
     let quantityContainer = document.createElement('div');
     quantityContainer.classList.add('item-quantity-container');
@@ -435,7 +439,7 @@ const newDialog = (itemData) => {
 
     quantityContainer.appendChild(quantityInputUp);
 
-    dialogInfoContainer.appendChild(quantityContainer);
+    dialogBottomContainer.appendChild(quantityContainer);
 
     let submitButtonContainer = document.createElement('div');
     submitButtonContainer.classList.add('item-submit-button-container');
@@ -448,7 +452,9 @@ const newDialog = (itemData) => {
 
     submitButtonContainer.appendChild(submitButton);
 
-    dialogInfoContainer.appendChild(submitButtonContainer);
+    dialogBottomContainer.appendChild(submitButtonContainer);
+
+    dialogInfoContainer.appendChild(dialogBottomContainer);
 
     dialog.appendChild(dialogInfoContainer);
 
@@ -460,6 +466,17 @@ const newDialog = (itemData) => {
 const beginDialogMode = () => {
     let dialog = newDialog(itemDataStorage);
     document.body.appendChild(dialog);
+
+    // we need to check if there are no requirements.
+    // otherwise the green submit won't show until the customer interacts with something that calls. isReadyToSubmit()
+    const submitButton = document.querySelector('.item-submit-button');
+    if(isReadyToSubmit()){
+        submitButton.classList.add('valid');
+    } else {
+        if(submitButton.classList.contains('valid')){
+            submitButton.classList.remove('valid');
+        }
+    }
 
     document.body.style.overflow = 'hidden';
 };
@@ -475,7 +492,9 @@ const exitDialogHandler = e => {
     if(e.target.id === 'dialog-container' || e.target.closest('.dialog-exit-button')){
         e.preventDefault();
 
-        endDialogMode();
+        if(document.querySelector('#dialog-container')){
+            endDialogMode();
+        }
     }
 };
 

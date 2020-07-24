@@ -58,6 +58,12 @@
     margin-left: 0.5rem;
 }
 
+.dialog-bottom-container{
+    display: flex;
+    flex-direction: column;
+    align-self: flex-end;
+}
+
 .item-comment-container{
     display: flex;
     flex-direction: column;
@@ -69,6 +75,11 @@
     font-size: 20px;
     font-weight: 700;
     justify-content: center;
+}
+
+.item-comment-label{
+    font-weight: 700;
+    margin-bottom: 0.5rem; 
 }
 
 .item-quantity-up-button, .item-quantity-down-button{
