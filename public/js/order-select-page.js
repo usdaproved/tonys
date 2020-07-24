@@ -478,14 +478,14 @@ const beginDialogMode = () => {
         }
     }
 
-    document.body.style.overflow = 'hidden';
+    document.body.classList.add('dialog-active');
 };
 
 const endDialogMode = () => {
     let dialog = document.querySelector('#dialog-container');
     dialog.remove();
 
-    document.body.style.overflow = 'auto';
+    document.body.classList.remove('dialog-active');
 };
 
 const exitDialogHandler = e => {
