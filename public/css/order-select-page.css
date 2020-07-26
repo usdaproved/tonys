@@ -9,6 +9,10 @@
     cursor: pointer;
 }
 
+.category-name{
+    margin-left: 2rem;
+}
+
 .item-link{
     text-decoration: none;
     color: inherit;
@@ -103,13 +107,14 @@
 }
 
 .item-submit-button{
+    position: relative;
     display: flex;
     justify-items: center;
     justify-content: center;
     padding-right: 1rem;
     padding-left: 1rem;
-    padding-top: 0.5rem;
-    padding-bottom: 0.5rem;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
     border-width: 1px;
     border-color: transparent;
     font-weight: 500;
@@ -125,4 +130,14 @@
 
 .item-submit-button.valid:hover, .item-submit-button.valid:focus{
     background-color: #0f5024;
+}
+
+.item-price-total-container{
+    position: absolute;
+    left: 0;
+    margin-left: 2rem;
+}
+
+.item-submit-text{
+    font-weight: 700;
 }

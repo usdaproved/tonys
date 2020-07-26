@@ -92,6 +92,8 @@ const checkSubmitLink = () => {
 
 let itemDataStorage;
 
+let addedCost = 0;
+
 const getChoicePickDescription = (minPicks, maxPicks) => {
     let pluralizedMinOption = (minPicks > 1) ? 'options' : 'option';
     let pluralizedMaxOption = (maxPicks > 1) ? 'options' : 'option';
@@ -111,6 +113,28 @@ const getChoicePickDescription = (minPicks, maxPicks) => {
     return result;
 };
 
+const updateTotalPrice = (targetButton) => {
+    let input = targetButton.querySelector('input');
+
+    let added = targetButton.classList.contains('selected');
+    let isOption = targetButton.classList.contains('item-option-button');
+    let price = 0;
+
+    if(isOption){
+        price = itemDataStorage.choices[input.name].options[input.value].price_modifier;
+    } else {
+        price = itemDataStorage.additions[input.value].price_modifier;
+    }
+
+    price = parseInt(price);
+
+    addedCost = addedCost + (added ? price : -price);
+
+    const quantity = parseInt(document.querySelector('.item-quantity-value').innerText);
+    const priceTextElement = document.querySelector('.item-price-total');
+    priceTextElement.innerText = intToCurrency((parseInt(itemDataStorage.price) + addedCost) * quantity);
+};
+
 const onAdditionSelected = (e) => {
     let targetButton = e.target.closest('button');
 
@@ -124,6 +148,8 @@ const onAdditionSelected = (e) => {
         targetButton.classList.add('selected');
         targetButton.innerHTML += checkboxCheckedSVG;
     }
+
+    updateTotalPrice(targetButton);
 }
 
 const isReadyToSubmit = () => {
@@ -182,6 +208,8 @@ const onChoiceSelection = (e) => {
             }
         }
 
+        updateTotalPrice(targetButton);
+
         return;
     }
 
@@ -195,14 +223,19 @@ const onChoiceSelection = (e) => {
         }
     });
 
+    let updateRequired = false;
     if(amountSelected == maxPicks){
         if(maxPicks == 1){
+            updateRequired = true;
             optionButtons.forEach(option => {
-                option.classList.remove('selected');
+                if(option.classList.contains('selected')){
+                    option.classList.remove('selected');
 
-                let svgToRemove = option.querySelector('svg');
-                option.removeChild(svgToRemove);
-                option.innerHTML += radioUncheckedSVG;
+                    let svgToRemove = option.querySelector('svg');
+                    option.removeChild(svgToRemove);
+                    option.innerHTML += radioUncheckedSVG;
+                    updateTotalPrice(option);
+                }
             });
 
             targetButton.classList.add('selected');
@@ -212,6 +245,7 @@ const onChoiceSelection = (e) => {
             targetButton.innerHTML += radioCheckedSVG;
         }
     } else {
+        updateRequired = true;
         targetButton.classList.add('selected');
 
         let svgToRemove = targetButton.querySelector('svg');
@@ -223,6 +257,10 @@ const onChoiceSelection = (e) => {
             targetButton.innerHTML += checkboxCheckedSVG;
         }
     }
+
+    if(!updateRequired) return;
+    
+    updateTotalPrice(targetButton);
 
     const submitButton = document.querySelector('.item-submit-button');
     if(isReadyToSubmit()){
@@ -252,6 +290,10 @@ const onQuantityChange = (e) => {
 
         quantityElement.innerText = quantityValue + 1;
     }
+
+    quantityValue = parseInt(quantityElement.innerText);
+    const priceTextElement = document.querySelector('.item-price-total');
+    priceTextElement.innerText = intToCurrency((parseInt(itemDataStorage.price) + addedCost) * quantityValue);
 };
 
 const newDialog = (itemData) => {
@@ -447,8 +489,25 @@ const newDialog = (itemData) => {
     let submitButton = document.createElement('a');
     submitButton.classList.add('item-submit-button');
     submitButton.href = '#';
-    submitButton.innerText = 'Submit';
     submitButton.addEventListener('click', submitDialogHandler);
+
+    let priceTotalContainer = document.createElement('span');
+    priceTotalContainer.classList.add('item-price-total-container');
+
+    let dollarSign = document.createTextNode('$');
+    priceTotalContainer.appendChild(dollarSign);
+
+    let priceTotal = document.createElement('span');
+    priceTotal.classList.add('item-price-total');
+    priceTotal.innerText = intToCurrency(itemData.price);
+    priceTotalContainer.appendChild(priceTotal);
+
+    submitButton.appendChild(priceTotalContainer);
+
+    let submitText = document.createElement('span');
+    submitText.classList.add('item-submit-text');
+    submitText.innerText = 'Submit';
+    submitButton.appendChild(submitText);
 
     submitButtonContainer.appendChild(submitButton);
 
@@ -464,7 +523,9 @@ const newDialog = (itemData) => {
 };
 
 const beginDialogMode = () => {
+    addedCost = 0;
     let dialog = newDialog(itemDataStorage);
+    console.log(itemDataStorage);
     document.body.appendChild(dialog);
 
     // we need to check if there are no requirements.
@@ -482,6 +543,7 @@ const beginDialogMode = () => {
 };
 
 const endDialogMode = () => {
+    addedCost = 0;
     let dialog = document.querySelector('#dialog-container');
     dialog.remove();
 

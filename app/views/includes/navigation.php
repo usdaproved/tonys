@@ -181,7 +181,7 @@
  }
 
  h3.restaurant-name{
-     font-size:1.75em;
+     font-size: 1.5em;
      text-align: center;
  }
 
@@ -206,7 +206,7 @@
          justify-content: space-evenly;
      }
      h3.restaurant-name{
-         font-size: 2em;
+         font-size: 1.75em;
      }
      .desktop-menu, .desktop-user-actions{
          flex-grow: 1;
