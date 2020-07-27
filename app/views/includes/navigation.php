@@ -40,6 +40,10 @@
      background-color: transparent;
  }
 
+ .svg-button.inactive{
+	 cursor: inherit;
+ }
+
  .mobile-hamburger-button{
      display:inline-flex;
      align-items: center;
@@ -60,6 +64,11 @@
      left: 0;
      padding: 1rem;
      z-index: 1000;
+ }
+
+ .shadow{
+	border-radius: 0.5rem;
+	box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
  }
 
  .mobile-menu{
@@ -339,6 +348,7 @@
 	</nav>	
 </header>
 <div class="mobile-menu-container" id="mobile-menu-container">
+	<div class="shadow">
 	<div class="mobile-menu">
 		<div class="space-y-6">
 			<div class="mobile-exit-button-container">
@@ -406,6 +416,7 @@
 			</div>
 		</div>
 	</div>
+	</div>
 </div>
 <script>
 	"use strict";
@@ -455,8 +466,10 @@
 			if(mobileMenuActive){
 				mobileMenuElement.style.display = 'block';
 			}
-			dashboardDropdownContainer.style.display = 'none';
-			userDropdownContainer.style.display = 'none';
+			if(dashboardDropdownContainer){
+				dashboardDropdownContainer.style.display = 'none';
+				userDropdownContainer.style.display = 'none';
+			}
 		}
 	});
 

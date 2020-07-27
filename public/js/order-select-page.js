@@ -3,28 +3,49 @@ import { postJSON, createLineItemElement, intToCurrency } from './utility.js';
 
 "use strict";
 
-const radioUncheckedSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="black" width="24px" height="24px">
+// Alright. I know this is a very unelegant solution.
+// But I want the SVG's to be pre-loaded.
+const radioUncheckedSVGHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="black" width="24px" height="24px">
 <path d="M0 0h24v24H0V0z" fill="none"/>
 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"/>
 </svg>`;
-const radioCheckedSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="black" width="24px" height="24px">
+const radioCheckedSVGHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="black" width="24px" height="24px">
 <path d="M0 0h24v24H0V0z" fill="none"/>
 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"/>
 <circle cx="12" cy="12" r="5"/>
 </svg>`;
-const checkboxUnchekedSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="black" width="24px" height="24px">
+const checkboxUncheckedSVGHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="black" width="24px" height="24px">
 <path d="M0 0h24v24H0z" fill="none"/>
 <path d="M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/>
 </svg>`;
-const checkboxCheckedSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="black" width="24px" height="24px">
+const checkboxCheckedSVGHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="black" width="24px" height="24px">
 <path d="M0 0h24v24H0z" fill="none"/>
 <path d="M19 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.11 0 2-.9 2-2V5c0-1.1-.89-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
 </svg>`;
+
+const temp_radioUncheckedSVG = document.createElement('template');
+temp_radioUncheckedSVG.innerHTML = radioUncheckedSVGHTML;
+const radioUncheckedSVG = temp_radioUncheckedSVG.content.firstChild;
+const temp_radioCheckedSVG = document.createElement('template');
+temp_radioCheckedSVG.innerHTML = radioCheckedSVGHTML;
+const radioCheckedSVG = temp_radioCheckedSVG.content.firstChild;
+const temp_checkboxUncheckedSVG = document.createElement('template');
+temp_checkboxUncheckedSVG.innerHTML = checkboxUncheckedSVGHTML;
+const checkboxUncheckedSVG = temp_checkboxUncheckedSVG.content.firstChild;
+const temp_checkboxCheckedSVG = document.createElement('template');
+temp_checkboxCheckedSVG.innerHTML = checkboxCheckedSVGHTML;
+const checkboxCheckedSVG = temp_checkboxCheckedSVG.content.firstChild;
 
 let itemElements = document.querySelectorAll('.order-container');
 let cartContainer = document.querySelector('#cart-container');
 let cartButtonElement = document.querySelector('#cart-button');
 let cartItemCountElement = document.querySelector('#cart-item-count');
+const orderSubmitButton = document.querySelector('#submit-container');
+
+const svgDelete = `<svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 24 24" width="24">
+    <path d="M0 0h24v24H0z" fill="none"/>
+    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="#a11010"/>
+    </svg>`;
 
 // If the selection is hidden on page load, then there is no selection.
 let isOrderTypeSelected = !document.querySelector('#order-type-selection').hidden;
@@ -33,6 +54,12 @@ let isOrderTypeSelected = !document.querySelector('#order-type-selection').hidde
 const updateCartItemCount = (modifier) => {
     let currentCount = parseInt(cartItemCountElement.innerText);
     cartItemCountElement.innerText = currentCount + modifier;
+
+    if(parseInt(cartItemCountElement.innerText) > 0){
+        cartItemCountElement.removeAttribute('hidden');
+    } else {
+        cartItemCountElement.setAttribute('hidden', 'true');
+    }
 };
 
 const clickRemoveLineItem = (e) => {
@@ -45,19 +72,17 @@ const clickRemoveLineItem = (e) => {
     postJSON(url, data).then(response => response.text()).then(result => {
         updateCartItemCount(-quantity);
         lineItem.remove();
-        if(parseInt(cartItemCountElement.innerText) === 0){
-            cartButtonElement.setAttribute('hidden', 'true');
-        }
     });
 };
 
 const addRemoveToLineItem = (item) => {
     let removeButton = document.createElement('button');
-    removeButton.classList.add('remove-line-item');
-    removeButton.innerText = 'Remove';
+    removeButton.classList.add('svg-button');
+    removeButton.classList.add('remove-line-item-button');
+    removeButton.innerHTML = svgDelete;
     removeButton.addEventListener('click', clickRemoveLineItem);
     item.prepend(removeButton);
-}
+};
 
 const initializeCart = () => {
     let lineItems = cartContainer.querySelectorAll('.line-item');
@@ -74,13 +99,17 @@ removeLineItemButtons.forEach(button => {
     button.addEventListener('click', clickRemoveLineItem);
 });
 
+const cartExitButton = document.querySelector('#cart-exit-button');
+cartExitButton.addEventListener('click', (e) => {
+    cartContainer.style.display = 'none';
+});
 
 
 cartButtonElement.addEventListener('click', (e) => {
-    if(cartContainer.hidden){
-        cartContainer.removeAttribute('hidden');
+    if(cartContainer.style.display === 'block'){
+        cartContainer.style.display = 'none';
     } else {
-        cartContainer.setAttribute('hidden', 'true');
+        cartContainer.style.display = 'block';
     }
 });
 
@@ -143,10 +172,10 @@ const onAdditionSelected = (e) => {
     
     if(targetButton.classList.contains('selected')){
         targetButton.classList.remove('selected');
-        targetButton.innerHTML += checkboxUnchekedSVG;
+        targetButton.prepend(checkboxUncheckedSVG.cloneNode(true));
     } else {
         targetButton.classList.add('selected');
-        targetButton.innerHTML += checkboxCheckedSVG;
+        targetButton.prepend(checkboxCheckedSVG.cloneNode(true));
     }
 
     updateTotalPrice(targetButton);
@@ -196,9 +225,9 @@ const onChoiceSelection = (e) => {
         targetButton.removeChild(svgToRemove);
 
         if(maxPicks == 1){
-            targetButton.innerHTML += radioUncheckedSVG;
+            targetButton.prepend(radioUncheckedSVG.cloneNode(true));
         } else {
-            targetButton.innerHTML += checkboxUnchekedSVG;
+            targetButton.prepend(checkboxUncheckedSVG.cloneNode(true));
         }
 
         if(!isReadyToSubmit()){
@@ -233,7 +262,7 @@ const onChoiceSelection = (e) => {
 
                     let svgToRemove = option.querySelector('svg');
                     option.removeChild(svgToRemove);
-                    option.innerHTML += radioUncheckedSVG;
+                    option.prepend(radioUncheckedSVG.cloneNode(true));
                     updateTotalPrice(option);
                 }
             });
@@ -242,7 +271,7 @@ const onChoiceSelection = (e) => {
 
             let svgToRemove = targetButton.querySelector('svg');
             targetButton.removeChild(svgToRemove);
-            targetButton.innerHTML += radioCheckedSVG;
+            targetButton.prepend(radioCheckedSVG.cloneNode(true));
         }
     } else {
         updateRequired = true;
@@ -252,9 +281,9 @@ const onChoiceSelection = (e) => {
         targetButton.removeChild(svgToRemove);
 
         if(maxPicks == 1){
-            targetButton.innerHTML += radioCheckedSVG;
+            targetButton.prepend(radioCheckedSVG.cloneNode(true));
         } else {
-            targetButton.innerHTML += checkboxCheckedSVG;
+            targetButton.prepend(checkboxCheckedSVG.cloneNode(true));
         }
     }
 
@@ -352,9 +381,9 @@ const newDialog = (itemData) => {
             optionInputButton.addEventListener('click', onChoiceSelection);
             if(parseInt(choices[choice].max_picks) === 1 
             && parseInt(choices[choice].min_picks) === 1){
-                optionInputButton.innerHTML = radioUncheckedSVG;
+                optionInputButton.appendChild(radioUncheckedSVG.cloneNode(true));
             } else {
-                optionInputButton.innerHTML = checkboxUnchekedSVG;
+                optionInputButton.appendChild(checkboxUncheckedSVG.cloneNode(true));
             }
 
             let optionInput = document.createElement('input');
@@ -366,8 +395,6 @@ const newDialog = (itemData) => {
 
             optionInputButton.appendChild(optionInput);
 
-            optionContainer.appendChild(optionInputButton);
-
             let optionInputLabel = document.createElement('span');
             optionInputLabel.classList.add('item-option-name');
             optionInputLabel.innerText = options[option].name;
@@ -375,7 +402,9 @@ const newDialog = (itemData) => {
                 optionInputLabel.innerText += ` (+ $${intToCurrency(options[option].price_modifier)})`;
             }
 
-            optionContainer.appendChild(optionInputLabel);
+            optionInputButton.appendChild(optionInputLabel);
+
+            optionContainer.appendChild(optionInputButton);
 
             choiceContainer.appendChild(optionContainer);
         }
@@ -399,7 +428,7 @@ const newDialog = (itemData) => {
             let additionsInputButton = document.createElement('button');
             additionsInputButton.classList.add('svg-button');
             additionsInputButton.classList.add('item-additions-button');
-            additionsInputButton.innerHTML = checkboxUnchekedSVG;
+            additionsInputButton.appendChild(checkboxUncheckedSVG.cloneNode(true));
             additionsInputButton.addEventListener('click', onAdditionSelected);
             
             let additionInput = document.createElement('input');
@@ -411,8 +440,6 @@ const newDialog = (itemData) => {
 
             additionsInputButton.appendChild(additionInput);
 
-            additionContainer.appendChild(additionsInputButton);
-
             let additionInputLabel = document.createElement('span');
             additionInputLabel.classList.add('item-addition-name');
             additionInputLabel.innerText = additions[addition].name;
@@ -420,7 +447,9 @@ const newDialog = (itemData) => {
                 additionInputLabel.innerText += ` (+ $${intToCurrency(additions[addition].price_modifier)})`;
             }
 
-            additionContainer.appendChild(additionInputLabel);
+            additionsInputButton.appendChild(additionInputLabel);
+
+            additionContainer.appendChild(additionsInputButton);
 
             additionsContainer.appendChild(additionContainer);
         }
@@ -525,7 +554,6 @@ const newDialog = (itemData) => {
 const beginDialogMode = () => {
     addedCost = 0;
     let dialog = newDialog(itemDataStorage);
-    console.log(itemDataStorage);
     document.body.appendChild(dialog);
 
     // we need to check if there are no requirements.
@@ -614,9 +642,6 @@ const submitDialogHandler = (e) => {
         addRemoveToLineItem(element);
         cartContainer.querySelector('.line-items-container').appendChild(element);
         updateCartItemCount(parseInt(userItemData.quantity));
-        if(parseInt(cartItemCountElement.innerText) > 0) {
-            cartButtonElement.removeAttribute('hidden');
-        }
         checkSubmitLink();
     });
 
@@ -649,25 +674,26 @@ itemElements.forEach(element => {
 const orderTypeButtonContainer = document.querySelector('#order-type-buttons');
 const orderTypeSelectionContainer = document.querySelector('#order-type-selection');
 const orderTypeChangeButton = orderTypeSelectionContainer.querySelector('#order-type-change-button');
-const orderTypeText = orderTypeSelectionContainer.querySelector('#order-type-text');
 
-const orderTypeSelected = (displayText) => {
+const orderTypeSelected = (svg) => {
     orderTypeButtonContainer.setAttribute("hidden", true);
     orderTypeSelectionContainer.removeAttribute('hidden');
 
-    orderTypeText.innerText = displayText;
+    svg.removeAttribute('hidden');
     
     isOrderTypeSelected = true;
     checkSubmitLink();
 };
 
-const orderTypeChange = () => {
-    orderTypeButtonContainer.removeAttribute('hidden');
-    orderTypeSelectionContainer.setAttribute('hidden', true);
-};
-
 orderTypeChangeButton.addEventListener('click', (e) => {
-    orderTypeChange();
+    orderTypeButtonContainer.removeAttribute('hidden');
+    orderTypeSelectionContainer.setAttribute('hidden', 'true');
+    orderSubmitButton.setAttribute('hidden', 'true');
+
+    const svgs = orderTypeChangeButton.querySelectorAll('svg');
+    svgs.forEach(svg => {
+        svg.setAttribute('hidden', 'true');
+    });
 });
 
 const deliveryButton = orderTypeButtonContainer.querySelector('#order-type-delivery-button');
@@ -684,7 +710,9 @@ deliveryButton.addEventListener('click', (e) => {
 
     postJSON(orderTypeUpdateURL, data);
     submitLink.href = "/Order/submit";
-    orderTypeSelected("Delivery");
+
+    const svg = document.querySelector('#delivery-selected-svg');
+    orderTypeSelected(svg);
 });
 
 pickupButton.addEventListener('click', (e) => {
@@ -694,8 +722,11 @@ pickupButton.addEventListener('click', (e) => {
 
     postJSON(orderTypeUpdateURL, data);
     submitLink.href = "/Order/submit";
-    orderTypeSelected("Pickup");
+    
+    const svg = document.querySelector('#pickup-selected-svg');
+    orderTypeSelected(svg);
 });
+
 
 if(restaurantButton){
     restaurantButton.addEventListener('click', (e) => {
@@ -705,7 +736,9 @@ if(restaurantButton){
 
         postJSON(orderTypeUpdateURL, data);
         submitLink.href = "/Dashboard/orders/submit";
-        orderTypeSelected("Restaurant");
+        
+        const svg = document.querySelector('#restaurant-selected-svg');
+        orderTypeSelected(svg);
     });
 
     // If not set, automatically set the order type to restaurant.

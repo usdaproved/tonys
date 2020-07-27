@@ -1,3 +1,157 @@
+.scrolling-container{
+    position: sticky;
+    top: 0rem;
+    margin-top: -2rem;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+    background-color: white;
+    border-bottom-style: solid;
+    border-color: #f7fafc;
+    border-bottom-width: 2px;
+    z-index: 1;
+}
+
+#order-action-bar{
+    position: relative;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    margin-right: 2rem;
+    margin-left: 2rem;
+    max-width: 72rem;
+}
+
+/* Ensure we always have at minimum 2rem margin each side. Then center as it gets larger. */
+@media (min-width: 76rem){
+    #order-action-bar{
+        margin-left: auto;
+        margin-right: auto;
+    }
+}
+
+#order-type-buttons, #order-type-selection, #cart-button-container{
+    flex: 1;
+}
+
+#submit-container{
+    text-align: center;
+}
+
+#order-submit-link{
+    position: relative;
+    display: flex;
+    justify-items: center;
+    justify-content: center;
+    padding: 1rem;
+    font-weight: 500;
+    color: #fff;
+    background-color: #12682f;
+    border-radius: 0.25rem;
+    text-decoration: none;
+}
+
+#order-submit-link:hover, #order-submit-link:focus{
+    background-color: #0f5024;
+}
+
+.order-type-buttons-container{
+    display: flex;
+    flex-direction: row;
+}
+
+.order-type-button-container{
+    margin-right: 2rem;
+}
+
+.order-type-button-container:last-child{
+    margin-right: 0;
+}
+
+.order-type-button{
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    background-color: #5a67d8;
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+}
+
+.order-type-text{
+    margin-left: 0.25rem;
+}
+
+.order-type-button:hover:not(.inactive), .order-type-button:focus:not(.inactive){
+    background-color: #667eea;
+}
+
+.order-type-button.inactive{
+    background-color: rgba(0.25, 0.25, 0.25, 0.25);
+}
+
+.cart-button{
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#cart-item-count{
+    position: absolute;
+    color: white;
+    background-color: #12682f;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 9999px;
+    margin-bottom: 75%;
+    margin-left: 75%;
+}
+
+#cart-button-container{
+    display: flex;
+    justify-content: flex-end;
+}
+
+#cart-container{
+    display: none;
+    position: absolute;
+    margin-top: 2rem;
+    margin-right: -2rem;
+    padding: 1rem;
+    z-index: 9;
+    width: 100%;
+    left: 0;
+    right: 0;
+}
+
+@media (min-width: 846px){
+    #cart-container{
+        left: inherit;
+        right: inherit;
+        margin-left: auto;
+        margin-right: auto;
+        width: 768px;
+    }
+}
+
+#cart{
+    position: relative;
+    padding: 1rem;
+    background-color: white;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05);
+    border-radius: 0.5rem;
+}
+
+.cart-exit-button-container{
+    display: flex;
+    justify-content: end;
+}
+
 .dialog-active{
     touch-action: none;
     -webkit-overflow-scrolling: none;
@@ -49,20 +203,26 @@
 }
 
 .item-option-button{
-    margin-top: -0.25rem;
+    font-size: 16px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .item-option-name{
     margin-left: 0.5rem;
 }
 
-.item-additions-button{
-    margin-top: -0.25rem;
-}
-
 .item-addition-container{
     display: flex;
     margin-bottom: 2rem;
+}
+
+.item-additions-button{
+    font-size: 16px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .item-addition-name{
