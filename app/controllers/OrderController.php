@@ -46,6 +46,12 @@ class OrderController extends Controller{
 
         $this->orderStorage["is_closed"] = (!$deliveryOn || !$validDeliveryTime) && (!$pickupOn || !$validPickupTime);
         if($this->orderStorage["is_closed"]) $this->pageTitle = "Tony's - Closed";
+
+        $this->orderStorage["subtotal"] = 0;
+        if($cartUUID != NULL){
+            $cost = $this->orderManager->getCost($cartUUID);
+            $this->orderStorage["subtotal"] = $cost["subtotal"];
+        }
         
         require_once APP_ROOT . "/views/order/order-select-page.php";
     }

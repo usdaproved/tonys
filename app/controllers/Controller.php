@@ -372,28 +372,89 @@ class Controller{
         return $string;
     }
 
+    public function formatCartForHTML(array $order = NULL) : string {
+	$string = "";
+        $string .= "<ul class='line-items-container'>";
+        foreach($order['line_items'] ?? array() as $lineItem){
+            $string .= "<li class='line-item' id='{$lineItem['uuid']}'>";
+	    $string .= "<div class='line-item-info'>";
+            $string .= "<span class='line-item-quantity'>";
+            $string .= $lineItem['quantity'];
+            $string .= "</span>";
+	    $string .= "<span class='line-item-name'>";
+            $string .= $lineItem['name'];
+	    $string .= "</span>";
+	    $string .= "<span class='line-item-price'>";
+	    $string .= "$";
+	    $string .= "<span class='line-item-price-value'>";
+	    $string .= $this->intToCurrency($lineItem['price']);
+	    $string .= "</span>";
+	    $string .= "</span>";
+	    $string .= "</div>";
+	    $string .= "<div class='line-item-choices-container'>";
+            foreach($lineItem['choices'] as $choice){
+                $string .= "<div class='line-item-choice-container'>";
+		$string .= "<span class='line-item-choice-name'>";
+                $string .= $choice['name'];
+		$string .= "</span>";
+                $string .= "<ul class='line-item-options-container'>";
+                foreach($choice['options'] as $option){
+                    $string .= "<li class='line-item-option'>";
+                    $string .= $option['name'];
+                    $string .= "</li>";
+                }
+                $string .= "</ul>";
+                $string .= "</div>";
+            }
+            if(count($lineItem['additions']) != 0){
+		$string .= "<div class='line-item-choice-container'>";
+		$string .= "<span class='line-item-choice-name'>";
+                $string .= "Additions";
+		$string .= "</span>";
+		$string .= "<ul class='line-item-options-container'>";
+                foreach($lineItem['additions'] as $addition){
+                    $string .= "<li class='line-item-options'>";
+                    $string .= $addition['name'];
+                    $string .= "</li>";
+                }
+                $string .= "</ul>";
+		$string .= "</div>";
+            }
+	    $string .= "</div>";
+            $string .= "<div class='line-item-comment'>";
+            $string .= $this->escapeForHTML($lineItem['comment']);
+            $string .= "</div>";
+            
+            $string .= "</li>";
+        }
+        $string .= "</ul>";
+	$string .= "</div>";
+
+	return $string;
+    }
+
     public function intToCurrency(int $price = NULL) : string {
-	if(empty($price)) return "";
-        return number_format((float)($price / 100.0), 2);
+	if(empty($price)) $price = 0;
+	return number_format((float)($price / 100.0), 2);
     }
 
     public function printOneTimeMessages(string $messageType) : void {
-        if(!isset($this->messages[$messageType])) return;
-        foreach($this->messages[$messageType] as $message){
-            echo $message;
-        }
+	if(!isset($this->messages[$messageType])) return;
+	foreach($this->messages[$messageType] as $message){
+	    echo $message;
+	}
     }
 
     private function handleOneTimeMessages() : void {
-        $arrays = $this->sessionManager->getOneTimeMessages();
+	$arrays = $this->sessionManager->getOneTimeMessages();
 
-        if(is_null($arrays)) return;
+	if(is_null($arrays)) return;
 
-        foreach($arrays as $messageType => $messages){
-            foreach($messages as $message){
-                $this->messages[$messageType][] =  "<div class=\"$messageType\">$message</div>";
-            }
-        }
+	foreach($arrays as $messageType => $messages){
+	    foreach($messages as $message){
+		$this->messages[$messageType][] =  "<div class=\"$messageType\">$message</div>";
+	    }
+	}
     }
 }
 

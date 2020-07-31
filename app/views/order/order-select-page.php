@@ -75,7 +75,11 @@
     <?php if(($this->orderStorage["order_type"] ?? NULL) == IN_RESTAURANT): ?>
 	<?php $submitLink = "/Dashboard/orders/submit";?>
     <?php endif; ?>
-    <a href="<?=$submitLink?>" id="order-submit-link">Checkout</a>
+    <a href="<?=$submitLink?>" id="order-submit-link">
+	Checkout <span id="order-subtotal">
+	$<span id="order-subtotal-value"><?=$this->intToCurrency($this->orderStorage["subtotal"]);?></span>
+	</span>
+    </a>
 </div>
 
 <div class="order-action" id="cart-button-container">
@@ -100,7 +104,11 @@
 						</svg>
 					</button>
 				</div>
-				<?=$this->formatOrderForHTML($this->orderStorage)?>
+				    <div id="empty-cart-notice" <?=empty($this->orderStorage["line_items"]) ? NULL : 'hidden';?>>
+					<h3>Begin your order.</h3>
+				    </div>
+				<?php // NOTE(Trystan): still call this even if empty as it sets up an empty container.?>
+				<?=$this->formatCartForHTML($this->orderStorage)?>
 			</div>
 		</div>
 	</div>

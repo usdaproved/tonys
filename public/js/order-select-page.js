@@ -1,5 +1,5 @@
 // (C) Copyright 2020 by Trystan Brock All Rights Reserved.
-import { postJSON, createLineItemElement, intToCurrency } from './utility.js';
+import { postJSON, createLineItemForCart, intToCurrency } from './utility.js';
 
 "use strict";
 
@@ -41,6 +41,9 @@ let cartContainer = document.querySelector('#cart-container');
 let cartButtonElement = document.querySelector('#cart-button');
 let cartItemCountElement = document.querySelector('#cart-item-count');
 const orderSubmitButton = document.querySelector('#submit-container');
+const orderSubtotalElement = orderSubmitButton.querySelector('#order-subtotal');
+const orderSubtotalValueElement = orderSubmitButton.querySelector('#order-subtotal-value');
+let cartDropdownActive = false;
 
 const svgDelete = `<svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 24 24" width="24">
     <path d="M0 0h24v24H0z" fill="none"/>
@@ -55,10 +58,16 @@ const updateCartItemCount = (modifier) => {
     let currentCount = parseInt(cartItemCountElement.innerText);
     cartItemCountElement.innerText = currentCount + modifier;
 
+    const emptyCartNotice = document.querySelector('#empty-cart-notice');
     if(parseInt(cartItemCountElement.innerText) > 0){
         cartItemCountElement.removeAttribute('hidden');
+        orderSubtotalElement.removeAttribute('hidden');
+        emptyCartNotice.setAttribute('hidden', 'true');
+        
     } else {
         cartItemCountElement.setAttribute('hidden', 'true');
+        orderSubtotalElement.setAttribute('hidden', 'true');
+        emptyCartNotice.removeAttribute('hidden');
     }
 };
 
@@ -70,6 +79,11 @@ const clickRemoveLineItem = (e) => {
     let data = {"line_item_uuid": lineItemUUID}
     let url = '/Order/removeItemFromCart';
     postJSON(url, data).then(response => response.text()).then(result => {
+        let cost = parseInt(parseFloat(lineItem.querySelector('.line-item-price-value').innerText) * 100);
+        let orderSubtotalValue = parseInt(parseFloat(orderSubtotalValueElement.innerText) * 100);
+
+        orderSubtotalValueElement.innerText = intToCurrency(orderSubtotalValue - cost);
+
         updateCartItemCount(-quantity);
         lineItem.remove();
     });
@@ -85,7 +99,7 @@ const addRemoveToLineItem = (item) => {
 };
 
 const initializeCart = () => {
-    let lineItems = cartContainer.querySelectorAll('.line-item');
+    let lineItems = cartContainer.querySelectorAll('.line-item-info');
     lineItems.forEach(item => {
         addRemoveToLineItem(item);
     });
@@ -101,15 +115,30 @@ removeLineItemButtons.forEach(button => {
 
 const cartExitButton = document.querySelector('#cart-exit-button');
 cartExitButton.addEventListener('click', (e) => {
+    e.stopPropagation();
+    cartDropdownActive = false;
     cartContainer.style.display = 'none';
 });
 
 
 cartButtonElement.addEventListener('click', (e) => {
+    e.stopPropagation();
     if(cartContainer.style.display === 'block'){
+        cartDropdownActive = false;
         cartContainer.style.display = 'none';
     } else {
+        cartDropdownActive = true;
         cartContainer.style.display = 'block';
+    }
+});
+
+window.addEventListener('click', (e) => {
+    console.log(cartDropdownActive);
+    if(cartDropdownActive){
+        if(!e.target.closest('#cart-container')){
+            cartContainer.style.display = 'none';
+            cartDropdownActive = false;
+        }
     }
 });
 
@@ -638,10 +667,16 @@ const submitDialogHandler = (e) => {
 
     let url = '/Order/addItemToCart';
     postJSON(url, userItemData).then(response => response.json()).then(lineItem => {
-        let element = createLineItemElement(lineItem);
-        addRemoveToLineItem(element);
+        let element = createLineItemForCart(lineItem);
+        let removePlace = element.querySelector('.line-item-info');
+        addRemoveToLineItem(removePlace);
         cartContainer.querySelector('.line-items-container').appendChild(element);
         updateCartItemCount(parseInt(userItemData.quantity));
+
+        console.log(orderSubtotalValueElement.innerText);
+        let orderSubtotalValue = parseInt(parseFloat(orderSubtotalValueElement.innerText) * 100);
+        orderSubtotalValueElement.innerText = intToCurrency(orderSubtotalValue + parseInt(lineItem.price));
+
         checkSubmitLink();
     });
 

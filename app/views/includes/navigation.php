@@ -83,6 +83,10 @@
      justify-content: flex-end;
  }
 
+ .mobile-menu-exit-button{
+	 margin-right: 0.50rem;
+ }
+
  .mobile-menu-nav{
      display: grid;
      row-gap: 2rem;
