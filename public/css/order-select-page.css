@@ -104,12 +104,15 @@
     display: flex;
     justify-content: center;
     align-items: center;
+    /* iOS safari needs something to 'bounce' off of for margins. */
+    padding-top: 1px;
+    padding-bottom: 1px;
 }
 
 #cart-item-count{
     position: absolute;
     color: white;
-    background-color: #12682f;
+    background-color: black;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -118,14 +121,6 @@
     border-radius: 9999px;
     margin-bottom: 75%;
     margin-left: 75%;
-}
-
-@media screen and (min-color-index:0) and (-webkit-min-device-pixel-ratio:0){
-    #cart-item-count{
-        background-color: black;
-        margin-bottom: 50%;
-        margin-left: 50%;
-    }
 }
 
 #cart-button-container{
