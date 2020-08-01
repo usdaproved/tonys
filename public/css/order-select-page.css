@@ -120,6 +120,13 @@
     margin-left: 75%;
 }
 
+@media screen and (min-color-index:0) and (-webkit-min-device-pixel-ratio:0){
+    #cart-item-count{
+        margin-bottom: 50%;
+        margin-left: 50%;
+    }
+}
+
 #cart-button-container{
     display: flex;
     justify-content: flex-end;
