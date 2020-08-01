@@ -92,7 +92,9 @@
 		<path d="M16 10a4 4 0 0 1-8 0">
 		</path>
 		</svg>
-		<span id="cart-item-count" <?=$cartItemCount > 0 ? NULL : "hidden" ?>><?=$cartItemCount?></span>
+		<div id="cart-item-count-container">
+		    <span id="cart-item-count" <?=$cartItemCount > 0 ? NULL : "hidden" ?>><?=$cartItemCount?></span>
+		</div>
 	</button>
 	<div id="cart-container">
 		<div class="shadow">
