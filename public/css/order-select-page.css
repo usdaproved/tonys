@@ -122,6 +122,7 @@
 
 @media screen and (min-color-index:0) and (-webkit-min-device-pixel-ratio:0){
     #cart-item-count{
+        background-color: black;
         margin-bottom: 50%;
         margin-left: 50%;
     }
