@@ -133,7 +133,6 @@ cartButtonElement.addEventListener('click', (e) => {
 });
 
 window.addEventListener('click', (e) => {
-    console.log(cartDropdownActive);
     if(cartDropdownActive){
         if(!e.target.closest('#cart-container')){
             cartContainer.style.display = 'none';
