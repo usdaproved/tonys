@@ -46,28 +46,6 @@
 	</div>
     <?php endforeach; ?>
 </div>
-<h2>Additions:</h2>
-<a href="/Dashboard/menu/additions">Edit Additions</a>
-<br>
-<select name="additions" id="addition-select-list" required>
-    <?php foreach($this->menuStorage['all_additions'] as $additions): ?>
-	<option value="<?=$additions['id']?>">
-	    <?=$this->escapeForHTML($additions['name']) . ' - ' . $this->intToCurrency($additions['price_modifier'])?>
-	</option>
-    <?php endforeach; ?>
-</select>
-<input type="button" id="add-addition-button" value="Add">
-<input type="button" id="addition-toggle-order-edit" value="Edit Order">
-<div id="additions-container" class="additions-container">
-    <?php foreach($this->menuStorage['additions'] as $addition): ?>
-	<div class="addition" id="<?=$addition['id']?>-addition">
-	    <p>
-		<?=$this->escapeForHTML($addition['name']) . ' - ' . $this->intToCurrency($addition['price_modifier']);?>
-	    </p>
-	    <input type="button" class="remove-addition-button" id="<?=$addition['id']?>-remove-addition-button" value="Remove">
-	</div>
-    <?php endforeach; ?>
-</ul>
 
 <script src="<?=$this->getFile('js', __FILE__);?>" type="module"></script>
 <?php require APP_ROOT . "/views/includes/footer.php" ?>

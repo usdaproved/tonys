@@ -310,22 +310,6 @@
     margin-left: 0.5rem;
 }
 
-.item-addition-container{
-    display: flex;
-    margin-bottom: 2rem;
-}
-
-.item-additions-button{
-    font-size: 16px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.item-addition-name{
-    margin-left: 0.5rem;
-}
-
 .dialog-bottom-container{
     display: flex;
     flex-direction: column;

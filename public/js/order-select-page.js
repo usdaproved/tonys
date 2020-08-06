@@ -174,15 +174,10 @@ const updateTotalPrice = (targetButton) => {
     let input = targetButton.querySelector('input');
 
     let added = targetButton.classList.contains('selected');
-    let isOption = targetButton.classList.contains('item-option-button');
     let price = 0;
 
-    if(isOption){
-        price = itemDataStorage.choices[input.name].options[input.value].price_modifier;
-    } else {
-        price = itemDataStorage.additions[input.value].price_modifier;
-    }
-
+    price = itemDataStorage.choices[input.name].options[input.value].price_modifier;
+    
     price = parseInt(price);
 
     addedCost = addedCost + (added ? price : -price);
@@ -191,23 +186,6 @@ const updateTotalPrice = (targetButton) => {
     const priceTextElement = document.querySelector('.item-price-total');
     priceTextElement.innerText = intToCurrency((parseInt(itemDataStorage.price) + addedCost) * quantity);
 };
-
-const onAdditionSelected = (e) => {
-    let targetButton = e.target.closest('button');
-
-    let svgToRemove = targetButton.querySelector('svg');
-    targetButton.removeChild(svgToRemove);
-    
-    if(targetButton.classList.contains('selected')){
-        targetButton.classList.remove('selected');
-        targetButton.prepend(checkboxUncheckedSVG.cloneNode(true));
-    } else {
-        targetButton.classList.add('selected');
-        targetButton.prepend(checkboxCheckedSVG.cloneNode(true));
-    }
-
-    updateTotalPrice(targetButton);
-}
 
 const isReadyToSubmit = () => {
     let dialog = document.querySelector('#dialog-container');
@@ -440,51 +418,6 @@ const newDialog = (itemData) => {
         dialogInfoContainer.appendChild(choiceContainer);
     }
 
-    if(!Array.isArray(itemData.additions)){
-        let additionsContainer = document.createElement('div');
-        additionsContainer.classList.add('item-additions-container');
-        let additionsHeader = document.createElement('h3');
-        additionsHeader.innerText = 'Additions';
-
-        additionsContainer.appendChild(additionsHeader);
-
-        let additions = itemData.additions;
-        for(var addition in additions){
-            let additionContainer = document.createElement('div');
-            additionContainer.classList.add('item-addition-container');
-
-            let additionsInputButton = document.createElement('button');
-            additionsInputButton.classList.add('svg-button');
-            additionsInputButton.classList.add('item-additions-button');
-            additionsInputButton.appendChild(checkboxUncheckedSVG.cloneNode(true));
-            additionsInputButton.addEventListener('click', onAdditionSelected);
-            
-            let additionInput = document.createElement('input');
-            additionInput.type = 'hidden';
-            additionInput.name = additions[addition].id;
-            additionInput.id = additionInput.name + '-addition';
-            additionInput.value = additionInput.name;
-            additionInput.classList.add('addition-input');
-
-            additionsInputButton.appendChild(additionInput);
-
-            let additionInputLabel = document.createElement('span');
-            additionInputLabel.classList.add('item-addition-name');
-            additionInputLabel.innerText = additions[addition].name;
-            if(parseFloat(additions[addition].price_modifier) !== 0){
-                additionInputLabel.innerText += ` (+ $${intToCurrency(additions[addition].price_modifier)})`;
-            }
-
-            additionsInputButton.appendChild(additionInputLabel);
-
-            additionContainer.appendChild(additionsInputButton);
-
-            additionsContainer.appendChild(additionContainer);
-        }
-
-        dialogInfoContainer.appendChild(additionsContainer);
-    }
-
     let dialogBottomContainer = document.createElement('div');
     dialogBottomContainer.classList.add('dialog-bottom-container');
 
@@ -621,14 +554,12 @@ const submitDialogHandler = (e) => {
 
     let dialog = document.querySelector('#dialog-container');
     let choiceOptionInputs = dialog.querySelectorAll('.choice-option-input');
-    let additionInputs = dialog.querySelectorAll('.addition-input');
 
     let userItemData = {};
     userItemData.itemID = itemDataStorage.id;
     userItemData.quantity = parseInt(dialog.querySelector('.item-quantity-value').innerText);
     userItemData.comment = dialog.querySelector('#comment-input').value;
     userItemData.choices = {};
-    userItemData.additions = [];
     
     choiceOptionInputs.forEach(input => {
         if(typeof userItemData.choices[`${input.name}-choice`] === 'undefined'){
@@ -639,13 +570,6 @@ const submitDialogHandler = (e) => {
 
         if(inputButton.classList.contains('selected')){
             userItemData.choices[`${input.name}-choice`].push(input.value);
-        }
-    });
-
-    additionInputs.forEach(input => {
-        let inputButton = input.closest('button');
-        if(inputButton.classList.contains('selected')){
-            userItemData.additions.push(input.value);
         }
     });
 

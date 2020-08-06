@@ -58,25 +58,6 @@ const createLineItemElement = (lineItem) => {
         lineItemContainer.appendChild(choiceContainer);
     }
 
-    let additions = lineItem.additions;
-    if(additions.length != 0){
-        let additionsText = document.createTextNode('Additions');
-
-        lineItemContainer.appendChild(additionsText);
-
-        let additionsContainer = document.createElement('ul');
-        additionsContainer.classList.add('additions-container');
-
-        for(var addition in additions){
-            let additionElement = document.createElement('li');
-            additionElement.classList.add('line-item-addition');
-            additionElement.innerText = `${additions[addition].name}`;
-
-            additionsContainer.appendChild(additionElement);
-        }
-        lineItemContainer.appendChild(additionsContainer);
-    }
-
     return lineItemContainer;
 };
 
@@ -141,31 +122,6 @@ const createLineItemForCart = (lineItem) => {
         }
         choiceContainer.appendChild(optionsContainer);
         lineItemChoicesContainer.appendChild(choiceContainer);
-    }
-
-    let additions = lineItem.additions;
-    if(additions.length != 0){
-        let additionsContainer = document.createElement('div');
-        additionsContainer.classList.add('line-item-choice-container');
-
-        let additionHeader = document.createElement('span');
-        additionHeader.innerText = 'Additions';
-
-        additionsContainer.appendChild(additionHeader);
-
-        let optionsContainer = document.createElement('ul');
-        optionsContainer.classList.add('line-item-options-container');
-
-        for(var addition in additions){
-            let additionElement = document.createElement('li');
-            additionElement.classList.add('line-item-option');
-            additionElement.innerText = `${additions[addition].name}`;
-
-            optionsContainer.appendChild(additionElement);
-        }
-
-        additionsContainer.appendChild(optionsContainer);
-        lineItemChoicesContainer.appendChild(additionsContainer);
     }
 
     lineItemContainer.appendChild(lineItemChoicesContainer);

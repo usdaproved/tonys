@@ -351,16 +351,6 @@ class Controller{
                 $string .= "</ul>";
                 $string .= "</div>";
             }
-            if(count($lineItem['additions']) != 0){
-                $string .= "Additions";
-                $string .= "<ul class='additions-container'>";
-                foreach($lineItem['additions'] as $addition){
-                    $string .= "<li class='line-item-addition'>";
-                    $string .= $addition['name'];
-                    $string .= "</li>";
-                }
-                $string .= "</ul>";
-            }
             $string .= "<div class='line-item-comment'>";
             $string .= $this->escapeForHTML($lineItem['comment']);
             $string .= "</div>";
@@ -405,20 +395,6 @@ class Controller{
                 }
                 $string .= "</ul>";
                 $string .= "</div>";
-            }
-            if(count($lineItem['additions']) != 0){
-		$string .= "<div class='line-item-choice-container'>";
-		$string .= "<span class='line-item-choice-name'>";
-                $string .= "Additions";
-		$string .= "</span>";
-		$string .= "<ul class='line-item-options-container'>";
-                foreach($lineItem['additions'] as $addition){
-                    $string .= "<li class='line-item-options'>";
-                    $string .= $addition['name'];
-                    $string .= "</li>";
-                }
-                $string .= "</ul>";
-		$string .= "</div>";
             }
 	    $string .= "</div>";
             $string .= "<div class='line-item-comment'>";

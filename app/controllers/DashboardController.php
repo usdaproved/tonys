@@ -281,34 +281,6 @@ class DashboardController extends Controller{
         $this->redirect("/Dashboard/menu");
     }
 
-    public function menu_additions_get() : void {
-        $this->pageTitle = "Dashboard - Menu Additions";
-        $userUUID = $this->getUserUUID();
-        if(!$this->validateAuthority(ADMIN, $userUUID)){
-            $this->redirect("/");
-        }
-
-        $this->menuStorage = $this->menuManager->getAllAdditions();
-        $this->user = $this->userManager->getUserInfo($userUUID);
-
-        require_once APP_ROOT . "/views/dashboard/dashboard-menu-additions-edit-page.php";
-    }
-
-    public function menu_additions_post() : void {
-        $userUUID = $this->getUserUUID();
-        if(!$this->validateAuthority(ADMIN, $userUUID)){
-            $this->redirect("/");
-        }
-        if(!$this->sessionManager->validateCSRFToken($_POST["CSRFToken"])){
-            $this->redirect("/");
-        }
-
-        $this->menuManager->createAddition($_POST["name"], $_POST["price"] * 100);
-
-        // TODO(trystan): Probably should push a message here.
-        $this->redirect("/Dashboard/menu/additions");
-    }
-
     public function menu_item_get() : void {
         $this->pageTitle = "Dashboard - Menu Item";
         $userUUID = $this->getUserUUID();
@@ -319,17 +291,7 @@ class DashboardController extends Controller{
         if(isset($_GET["id"])){
             $this->menuStorage = $this->menuManager->getItemInfo($_GET["id"]);
             $this->menuStorage["categories"] = $this->menuManager->getCategories();
-            $this->menuStorage["all_additions"] = $this->menuManager->getAllAdditions();
 
-            // Cull out additions that are already associated with this item.
-            foreach($this->menuStorage["additions"] as $addition){
-                $index = array_search($addition, $this->menuStorage["all_additions"]);
-
-                if($index !== false){
-                    unset($this->menuStorage["all_additions"][$index]);
-                }
-            }
-            
             $this->user = $this->userManager->getUserInfo($userUUID);
 
             require_once APP_ROOT . "/views/dashboard/dashboard-menu-item-edit-page.php";
@@ -826,12 +788,6 @@ class DashboardController extends Controller{
                             echo "    - " . $option["name"] . PHP_EOL;
                         }
                     }
-                    if(!empty($lineItem["additions"])){
-                        echo " - Additions" . PHP_EOL;
-                    }
-                    foreach($lineItem["additions"] as $addition){
-                        echo "    - " . $addition["name"] . PHP_EOL;
-                    }
                     if(!empty($lineItem["comment"])){
                         echo "COMMENT: " . $lineItem["comment"] . PHP_EOL;
                     }
@@ -1034,138 +990,6 @@ class DashboardController extends Controller{
 
         $this->menuManager->removeChoiceOption($optionID);
         
-        echo "success";
-    }
-
-    public function menu_item_addAddition_post() : void {
-        $userUUID = $this->getUserUUID();
-        if(!$this->validateAuthority(ADMIN, $userUUID)){
-            echo "fail";
-            exit;
-        }
-
-        $json = file_get_contents("php://input");
-        $postData = json_decode($json, true);
-        
-        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
-            echo "fail";
-            exit;
-        }
-
-        $itemID = $postData["item-id"];
-        $additionID = $postData["addition-id"];
-
-        $this->menuManager->addAdditionToItem($itemID, $additionID);
-        
-        echo "success";
-    }
-    
-    public function menu_item_updateAdditionPositions_post() : void {
-        $userUUID = $this->getUserUUID();
-        if(!$this->validateAuthority(ADMIN, $userUUID)){
-            echo "fail";
-            exit;
-        }
-
-        $json = file_get_contents("php://input");
-        $postData = json_decode($json, true);
-        
-        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
-            echo "fail";
-            exit;
-        }
-
-        $ids = $postData["ids"];
-        $itemID = $postData["itemID"];
-
-        $position = 1;
-        foreach($ids as $id){
-            $id = explode("-", $id)[0];
-            $this->menuManager->updateItemAdditionPosition($itemID, $id, $position);
-            $position++;
-        }
-    }
-
-    public function menu_item_removeAddition_post() : void {
-        $userUUID = $this->getUserUUID();
-        if(!$this->validateAuthority(ADMIN, $userUUID)){
-            echo "fail";
-            exit;
-        }
-
-        $json = file_get_contents("php://input");
-        $postData = json_decode($json, true);
-        
-        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
-            echo "fail";
-            exit;
-        }
-
-        $itemID = $postData["item-id"];
-        $additionID = $postData["addition-id"];
-
-        $this->menuManager->removeAdditionFromItem($itemID, $additionID);
-
-        echo "success";
-    }
-
-    public function menu_additions_isLinkedToItem_get() : void {
-        $userUUID = $this->getUserUUID();
-        if(!$this->validateAuthority(ADMIN, $userUUID)){
-            echo "fail";
-            exit;
-        }
-
-        $isLinked = $this->menuManager->isAdditionLinkedToItem($_GET["id"]);
-
-        
-        
-        echo ($isLinked) ? "true" : "false";
-    }
-
-    public function menu_additions_updateAddition_post() : void {
-        $userUUID = $this->getUserUUID();
-        if(!$this->validateAuthority(ADMIN, $userUUID)){
-            echo "fail";
-            exit;
-        }
-
-        $json = file_get_contents("php://input");
-        $postData = json_decode($json, true);
-        
-        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
-            echo "fail";
-            exit;
-        }
-
-        $additionID = $postData["addition-id"];
-        $name = $postData["name"];
-        $price = $postData["price"] * 100;
-
-        $this->menuManager->updateAddition($additionID, $name, $price);
-
-        echo "success";
-    }
-
-    public function menu_additions_removeAddition_post() : void {
-        $userUUID = $this->getUserUUID();
-        if(!$this->validateAuthority(ADMIN, $userUUID)){
-            echo "fail";
-            exit;
-        }
-
-        $json = file_get_contents("php://input");
-        $postData = json_decode($json, true);
-        
-        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
-            echo "fail";
-            exit;
-        }
-
-        $additionID = $postData["addition-id"];
-
-        $this->menuManager->removeAdditionEntirely($additionID);
-
         echo "success";
     }
 

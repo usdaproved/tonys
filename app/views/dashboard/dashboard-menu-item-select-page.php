@@ -5,9 +5,6 @@
     Edit categories <a href="/Dashboard/menu/categories">here</a>.
 </div>
 <div>
-    Edit additions <a href="/Dashboard/menu/additions">here</a>.
-</div>
-<div>
     Create new menu item <a href="/Dashboard/menu/item?id=0">here</a>.
 </div>
 <input type="hidden" id="CSRFToken" value="<?=$this->sessionManager->getCSRFToken();?>">

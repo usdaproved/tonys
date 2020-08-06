@@ -329,15 +329,6 @@ class OrderController extends Controller{
             }
         }
 
-        foreach($userItemData["additions"] as $additionID){
-            if(array_key_exists($additionID, $item["additions"])){
-                $totalPrice += $item["additions"][$additionID]["price_modifier"];
-            } else {
-                echo json_encode(NULL);
-                exit;
-            }
-        }
-
         if($quantity > 0 && is_numeric($quantity)){
             $totalPrice *= $quantity;
         } else {
@@ -353,10 +344,6 @@ class OrderController extends Controller{
             foreach($optionIDs as $optionID){
                 $this->orderManager->addOptionToLineItem($lineItemUUID, $choiceID, $optionID);
             }
-        }
-
-        foreach($userItemData["additions"] as $additionID){
-            $this->orderManager->addAdditionToLineItem($lineItemUUID, $additionID);
         }
 
         $this->updateStripeOrderCost($cartUUID);

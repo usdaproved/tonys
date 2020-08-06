@@ -6,20 +6,14 @@ import { postJSON, intToCurrency } from './utility.js';
 const submitChoicesButton = document.querySelector('#update-choices');
 const addGroupButton = document.querySelector('#add-group-button');
 let choiceToggleEditButton = document.querySelector('#choice-toggle-order-edit');
-let additionToggleEditButton = document.querySelector('#addition-toggle-order-edit');
 let removeGroupButtons = document.querySelectorAll('.remove-group-button');
 let addOptionButtons = document.querySelectorAll('.add-option-button');
 let removeOptionButtons = document.querySelectorAll('.remove-option-button');
-let addAdditionButton = document.querySelector('#add-addition-button');
-let removeAdditionButtons = document.querySelectorAll('.remove-addition-button');
-let additionSelectList = document.querySelector('#addition-select-list');
 const menuItemID = document.querySelector('#menu-item-id').value;
 
 let inChoiceEditMode = false;
-let inAdditionEditMode = false;
 
 let choicesContainer = document.querySelector('#choices-container');
-let additionsContainer = document.querySelector('#additions-container');
 
 const removeOptionHandler = (e) => {
     e.preventDefault();
@@ -424,159 +418,5 @@ choiceToggleEditButton.addEventListener('click', e => {
         endChoiceOrderEditMode();
     } else {
         beginChoiceOrderEditMode();
-    }
-});
-
-const removeAdditionHandler = e => {
-    e.preventDefault();
-
-    let container = e.target.closest('.addition');
-    let additionID = e.target.id.split('-')[0];
-
-    container.remove();
-
-    let url = '/Dashboard/menu/item/removeAddition';
-    let data = {
-        "item-id" : menuItemID,
-        "addition-id" : additionID
-    };
-
-    postJSON(url, data).then(response => response.text()).then(result => {
-        
-    });
-};
-
-removeAdditionButtons.forEach(button => {
-    button.addEventListener('click', removeAdditionHandler);
-});
-
-const newAddition = (id, text) => {
-    let container = document.createElement('div');
-    container.id = `${id}-addition`;
-    container.classList.add('addition');
-
-    let p = document.createElement('p');
-    p.innerText = text;
-
-    container.appendChild(p);
-
-    let removeButton = document.createElement('input');
-    removeButton.type = 'button';
-    removeButton.classList.add('remove-addition-button');
-    removeButton.id = `${id}-remove-addition-button`;
-    removeButton.addEventListener('click', removeAdditionHandler);
-    removeButton.value = 'Remove';
-
-    container.appendChild(removeButton);
-
-    return container;
-};
-
-addAdditionButton.addEventListener('click', e =>{
-    e.preventDefault();
-    
-    let index = additionSelectList.selectedIndex;
-    let additionID = additionSelectList.options[index].value;
-    let additionText = additionSelectList.options[index].text;
-    
-    additionSelectList.options[index].remove();
-
-    let addition = newAddition(additionID, additionText);
-    additionsContainer.appendChild(addition);
-
-    const url = '/Dashboard/menu/item/addAddition';
-    let data = {
-        "item-id" : menuItemID,
-        "addition-id" : additionID
-    };
-    
-    postJSON(url, data).then(response => response.text()).then(result => {
-
-    });
-});
-
-let additionData;
-
-const beginAdditionOrderEditMode = () => {
-    inAdditionEditMode = true;
-
-    additionToggleEditButton.value = 'Update Order';
-    addAdditionButton.setAttribute('hidden', '');
-    additionSelectList.setAttribute('hidden', '');
-
-    let additions = additionsContainer.querySelectorAll('.addition');
-
-    let previousData = {};
-    additions.forEach(addition => {
-        let text = addition.querySelector('p').innerText;
-
-        previousData[addition.id] = { "text" : text };
-    });
-
-    additionData = previousData;
-
-    while(additionsContainer.firstChild) {
-        additionsContainer.removeChild(additionsContainer.firstChild);
-    }
-
-    let draggableList = document.createElement('ul');
-    for(var additionID in additionData){
-        let draggableItem = document.createElement('li');
-        draggableItem.id = additionID;
-        draggableItem.classList.add('draggable-addition');
-        draggableItem.setAttribute('draggable','true');
-        draggableItem.innerText = additionData[additionID].text;
-
-        addDragAndDropHandlers(draggableItem);
-
-        draggableList.appendChild(draggableItem);
-    }
-
-    additionsContainer.appendChild(draggableList);
-};
-
-const endAdditionOrderEditMode = () => {
-    inAdditionEditMode = false;
-
-    additionToggleEditButton.value = 'Edit Order';
-    addAdditionButton.removeAttribute('hidden');
-    additionSelectList.removeAttribute('hidden');
-
-    let additions = additionsContainer.querySelectorAll('li');
-
-    let orderedAdditionData = {};
-    let jsonData = {};
-    jsonData.ids = [];
-    additions.forEach(addition => {
-        orderedAdditionData[addition.id] = additionData[addition.id];
-        jsonData.ids.push(addition.id);
-    });
-
-    additionData = orderedAdditionData;
-    
-    
-    while(additionsContainer.firstChild) {
-        additionsContainer.removeChild(additionsContainer.firstChild);
-    }
-
-    for(var additionID in additionData){
-        let splitAdditionID = additionID.split('-')[0];
-        let addition = newAddition(splitAdditionID, additionData[additionID].text);
-        
-        additionsContainer.appendChild(addition);
-    }
-
-    jsonData.itemID = menuItemID;
-    let url = '/Dashboard/menu/item/updateAdditionPositions';
-    postJSON(url, jsonData);
-};
-
-additionToggleEditButton.addEventListener('click', e => {
-    e.preventDefault();
-
-    if(inAdditionEditMode){
-        endAdditionOrderEditMode();
-    } else {
-        beginAdditionOrderEditMode();
     }
 });

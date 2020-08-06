@@ -145,121 +145,6 @@ SET category_id = :category_id, position = :position WHERE id = :id";
         $this->db->executeStatement();
     }
 
-    public function createAddition(string $name, int $priceModifier) : void {
-        $sql = "INSERT INTO additions 
-(name, price_modifier) VALUES (:name, :price_modifier);";
-
-        $this->db->beginStatement($sql);
-
-        $this->db->bindValueToStatement(":name", $name);
-        $this->db->bindValueToStatement(":price_modifier", $priceModifier);
-
-        $this->db->executeStatement();
-    }
-
-    public function updateAddition(int $additionID, string $name,
-                                   int $priceModifier) : void {
-        $sql = "UPDATE additions
-SET name = :name, price_modifier = :price_modifier WHERE id = :id;";
-
-        $this->db->beginStatement($sql);
-
-        $this->db->bindValueToStatement(":name", $name);
-        $this->db->bindValueToStatement(":price_modifier", $priceModifier);
-        $this->db->bindValueToStatement(":id", $additionID);
-
-        $this->db->executeStatement();
-    }
-
-    public function addAdditionToItem(int $itemID, int $additionID) : void {
-        $sql = "INSERT INTO item_additions 
-(item_id, addition_id, position) VALUES (:item_id, :addition_id, :position);";
-
-        $position = $this->getHighestItemAdditionPosition($itemID) + 1;
-
-        $this->db->beginStatement($sql);
-
-        $this->db->bindValueToStatement(":item_id", $itemID);
-        $this->db->bindValueToStatement(":addition_id", $additionID);
-        $this->db->bindValueToStatement(":position", $position);
-
-        $this->db->executeStatement();
-    }
-
-    public function removeAdditionFromItem(int $itemID, int $additionID) : void {
-        $sql = "DELETE FROM item_additions
-WHERE item_id = :item_id AND addition_id = :addition_id;";
-
-        $this->db->beginStatement($sql);
-        
-        $this->db->bindValueToStatement(":item_id", $itemID);
-        $this->db->bindValueToStatement(":addition_id", $additionID);
-
-        $this->db->executeStatement();
-    }
-
-    public function removeAdditionEntirely(int $additionID) : void {
-        $sql = "DELETE FROM item_additions
-WHERE addition_id = :addition_id;";
-
-        $this->db->beginStatement($sql);
-        $this->db->bindValueToStatement(":addition_id", $additionID);
-        $this->db->executeStatement();
-
-        $sql = "SELECT * FROM line_item_additions
-WHERE addition_id = :addition_id;";
-
-        $this->db->beginStatement($sql);
-        $this->db->bindValueToStatement(":addition_id", $additionID);
-        $this->db->executeStatement();
-
-        $result = $this->db->getResultSet();
-
-        // This executes in the event addition was already ordered.
-        $sql = "UPDATE additions
-SET active = 0 WHERE id = :id;";
-        
-        if(empty($result)){
-            // Safe to completely remove.
-            $sql = "DELETE FROM additions WHERE id = :id";
-        }
-
-        $this->db->beginStatement($sql);
-        $this->db->bindValueToStatement(":id", $additionID);
-        $this->db->executeStatement();
-    }
-
-    public function isAdditionLinkedToItem(int $additionID) : bool {
-        $sql = "SELECT * FROM item_additions
-WHERE addition_id = :addition_id;";
-        
-        $this->db->beginStatement($sql);
-        $this->db->bindValueToStatement(":addition_id", $additionID);
-        $this->db->executeStatement();
-
-        $result = $this->db->getResultSet();
-        if(empty($result)){
-            return false;
-        }
-
-        return true;
-    }
-
-    public function updateItemAdditionPosition(int $itemID, int $additionID,
-                                               int $position) : void {
-        $sql = "UPDATE item_additions
-SET position = :position
-WHERE item_id = :item_id AND addition_id = :addition_id;";
-
-        $this->db->beginStatement($sql);
-
-        $this->db->bindValueToStatement(":item_id", $itemID);
-        $this->db->bindValueToStatement(":addition_id", $additionID);
-        $this->db->bindValueToStatement(":position", $position);
-
-        $this->db->executeStatement();
-    }
-
     public function createChoiceGroup(int $itemID, string $name,
                                       int $minPicks, int $maxPicks) : int {
         $sql = "INSERT INTO choices_parents
@@ -462,49 +347,6 @@ ORDER BY position ASC;";
         return $result;
     }
 
-    public function getAddition(int $additionID) : array {
-        $sql = "SELECT * FROM additions WHERE id = :id;";
-
-        $this->db->beginStatement($sql);
-        $this->db->bindValueToStatement(":id", $additionID);
-        $this->db->executeStatement();
-
-        return $this->db->getResult();
-    }
-
-    public function getAllAdditions() : array {
-        $sql = "SELECT * FROM additions;";
-
-        $this->db->beginStatement($sql);
-        $this->db->executeStatement();
-
-        $result = $this->db->getResultSet();
-        if(is_bool($result)) return array();
-        return $result;
-    }
-
-    public function getItemAdditions(int $itemID) : array {
-        $sql = "SELECT addition_id 
-FROM item_additions 
-WHERE item_id = :item_id
-ORDER BY position ASC;";
-        
-        $this->db->beginStatement($sql);
-        $this->db->bindValueToStatement(":item_id", $itemID);
-        $this->db->executeStatement();
-
-        $itemAdditions = $this->db->getResultSet();
-        if(is_bool($itemAdditions)) return array();
-
-        $additions = [];
-        foreach($itemAdditions as $itemAddition){
-            $addition = $this->getAddition($itemAddition["addition_id"]);
-            $additions[$addition["id"]] = $addition;
-        }
-        
-        return $additions;
-    }
-
     public function getAllOptionsByGroupID(int $groupID) : array {
         $sql = "SELECT id, name, price_modifier 
 FROM choices_children 
@@ -591,7 +433,6 @@ ORDER BY position ASC;";
         $menuItem = $this->db->getResult();
         if(is_bool($menuItem)) $menuItem = array();
 
-        $menuItem["additions"] = $this->getItemAdditions($menuItemID);
         $menuItem["choices"] = $this->getItemNestedChoices($menuItemID);
         
         return $menuItem;
@@ -659,17 +500,6 @@ WHERE parent_id = :parent_id;";
 
         $this->db->beginStatement($sql);
         $this->db->bindValueToStatement(":parent_id", $groupID);
-        $this->db->executeStatement();
-
-        $result = $this->db->getResult();
-        return $result["position"] ?? 0;
-    }
-
-    private function getHighestItemAdditionPosition(int $itemID) : int {
-        $sql = "SELECT MAX(position) as position FROM item_additions WHERE item_id = :item_id;";
-
-        $this->db->beginStatement($sql);
-        $this->db->bindValueToStatement(":item_id", $itemID);
         $this->db->executeStatement();
 
         $result = $this->db->getResult();

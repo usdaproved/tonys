@@ -97,26 +97,8 @@ VALUES (:line_item_uuid, :choice_parent_id, :choice_child_id);";
         $this->db->executeStatement();
     }
 
-    public function addAdditionToLineItem(string $lineItemUUID, int $additionID) : void {
-        $sql = "INSERT INTO line_item_additions (line_item_uuid, addition_id)
-VALUES (:line_item_uuid, :addition_id);";
-
-        $this->db->beginStatement($sql);
-
-        $this->db->bindValueToStatement(":line_item_uuid", $lineItemUUID);
-        $this->db->bindValueToStatement(":addition_id", $additionID);
-
-        $this->db->executeStatement();
-    }
-
     public function deleteLineItem(string $cartUUID, string $lineItemUUID) : void {
         $sql = "DELETE FROM line_item_choices WHERE line_item_uuid = :line_item_uuid;";
-
-        $this->db->beginStatement($sql);
-        $this->db->bindValueToStatement(":line_item_uuid", $lineItemUUID);
-        $this->db->executeStatement();
-
-        $sql = "DELETE FROM line_item_additions WHERE line_item_uuid = :line_item_uuid;";
 
         $this->db->beginStatement($sql);
         $this->db->bindValueToStatement(":line_item_uuid", $lineItemUUID);
@@ -433,31 +415,6 @@ AND lic.choice_parent_id = :choice_parent_id;";
                     = $option["name"];
             }
             $lineItem["choices"][$choiceID]["name"] = $choice["name"];
-        }
-
-        // These are guaranteed to be DISTINCT.
-        $sql = "SELECT 
-lia.addition_id AS id,
-a.name,
-a.price_modifier AS price
-FROM line_item_additions AS lia
-LEFT JOIN additions AS a
-ON lia.addition_id = a.id
-WHERE lia.line_item_uuid = :line_item_uuid;";
-
-        $this->db->beginStatement($sql);
-        $this->db->bindValueToStatement(":line_item_uuid", $UUID);
-        $this->db->executeStatement();
-
-        $additions = $this->db->getResultSet();
-
-        $lineItem["additions"] = [];
-        foreach($additions as $addition){
-            $additionID = $addition["id"];
-            $lineItem["additions"][$additionID]["price"]
-                = $addition["price"];
-            $lineItem["additions"][$additionID]["name"]
-                = $addition["name"];
         }
 
         return $lineItem;
