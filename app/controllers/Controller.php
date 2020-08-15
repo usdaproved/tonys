@@ -315,18 +315,20 @@ class Controller{
      */
     public function formatAddressForHTML(array $addressArray = NULL) : string {
 	if($addressArray === NULL || empty($addressArray)) return "";
-        $string  = "<span class='address-line-1'>";
+	$string  = "";
+	$string .= "<div class='address-container'>";
+        $string .= "<div class='address-line'>";
         $string .= $this->escapeForHTML($addressArray["line"]);
-        $string .= "</span>";
+        $string .= "</div>";
         // TODO: think about how to handle this two seperate line thing.
-        $string .= "<br>";
-        $string .= "<span class='address-line-2'>";
+        $string .= "<div class='address-line'>";
         $string .= $this->escapeForHTML($addressArray["city"]);
         $string .= ", ";
         $string .= $this->escapeForHTML($addressArray["state"]);
         $string .= " ";
         $string .= $this->escapeForHTML($addressArray["zip_code"]);
-        $string .= "</span>";
+        $string .= "</div>";
+	$string .= "</div>";
         return $string;
     }
 

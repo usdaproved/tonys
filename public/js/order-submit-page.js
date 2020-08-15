@@ -6,34 +6,47 @@ import { postJSON } from './utility.js';
 
 let CSRFToken = document.querySelector('#CSRFToken').value;
 const addressContainer = document.querySelector('#address-select-container');
-const changeAddressButton = document.querySelector('#change-address');
+const changeAddressButton = document.querySelector('#change-address-button');
 
 if(addressContainer){
   changeAddressButton.addEventListener('click', (e) => {
     addressContainer.hidden = !addressContainer.hidden;
     if(addressContainer.hidden){
+      changeAddressButton.classList.remove('cancel');
       changeAddressButton.value = 'Change';
     } else {
+      changeAddressButton.classList.add('cancel');
       changeAddressButton.value = 'Cancel';
     }
   });
 
-  addressContainer.querySelectorAll('.order-container').forEach(container => {
-    container.addEventListener('click', (e) => {
-      let container = e.target.closest('.order-container');
-      let addressUUID = container.id;
-    
-      // Send post request to set delivery id to the selected one.
-      // hide the address containers upon success and update the delivery address.
-      const url = '/Order/submit/setDeliveryAddress';
-      let json = {'address_uuid':addressUUID};
-      postJSON(url, json, CSRFToken).then(response => response.text()).then(result => {
-        if(result === 'success'){
-          addressContainer.hidden = true;
-          location.reload();
-        }
-      });
+  const addressSelected = (e) => {
+    if(e.type === 'keydown' && e.keyCode !== 13){
+      return;
+    }
+
+    e.preventDefault();
+
+    let container = e.target.closest('.order-container');
+    if(!container){
+      container = e.target.querySelector('.order-container');
+    }
+    let addressUUID = container.id;
+  
+    // Send post request to set delivery id to the selected one.
+    // hide the address containers upon success and update the delivery address.
+    const url = '/Order/submit/setDeliveryAddress';
+    let json = {'address_uuid':addressUUID};
+    postJSON(url, json, CSRFToken).then(response => response.text()).then(result => {
+      if(result === 'success'){
+        location.reload();
+      }
     });
+  };
+
+  addressContainer.querySelectorAll('.event-wrapper').forEach(container => {
+    container.addEventListener('click', addressSelected);
+    container.addEventListener('keydown', addressSelected);
   });
 }
 
@@ -46,8 +59,12 @@ let stripeElements = stripe.elements();
 let stripeStyling = {
   base: {
       color: "#32325d",
+      fontWeight: 500,
+      fontSize: "16px",
   }
 };
+
+
 
 let stripeCard = stripeElements.create("card", {style: stripeStyling});
 stripeCard.mount("#stripe-card-element");
@@ -91,6 +108,8 @@ const checkOrderConfirmation = () => {
 submitButton.addEventListener('click', function(e) {
   e.preventDefault();
 
+  submitButton.disabled = true;
+
   stripe.confirmCardPayment(clientSecret, {
     payment_method: {
       card: stripeCard,
@@ -104,6 +123,8 @@ submitButton.addEventListener('click', function(e) {
     if (result.error) {
       // Show error to your customer (e.g., insufficient funds)
       console.log(result.error.message);
+      // Allow the customer to make necessary changes and resubmit.
+      submitButton.disabled = false;
     } else {
       // The payment has been processed!
       if (result.paymentIntent.status === 'succeeded') {

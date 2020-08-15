@@ -1,73 +1,266 @@
-.grid-container{
-    display: grid;
-    grid-template-columns: 1fr 2fr 1fr;
+.line-items-container{
+    max-width: 768px;
 }
 
-.flex-container{
-    grid-column-start: 2;
-    grid-column-end: 3;
-    
+.line-item{
+    margin-top: 1rem;
+}
+
+.line-item-info{
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    width: 100%;
+}
+
+.line-item-quantity{
+    margin-left: 0.5rem;
+    font-weight: 700;
+}
+
+.line-item-name{
+    margin-left: 0.5rem;
+    font-weight: 700;
+    font-size: 18px;
+}
+
+.line-item-price{
+    margin-left: auto;
+    margin-right: 2rem;
+    color: #4a4a4a;
+}
+
+.line-item-choices-container{
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-evenly;
+
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius: 0.5rem;
+    margin-left: 0.25rem;
+    margin-right: 0.25rem;
+}
+
+.line-item-choice-container{
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.line-item-choice-name{
+    color: #4a4a4a;
+    font-weight: 700;
+}
+
+.line-item-options-container{
+    margin-top: 0.25rem;
+}
+
+.line-item-option{
+    color: #4a4a4a;
+    margin-top: 0.25rem;
+}
+
+.line-item-comment{
+    font-weight: 300;
+    color: #4a4a4a;
+    margin-top: 1rem;
+    text-align: center;
+}
+
+.layout-wrapper{
     display: flex;
     flex-direction: column;
 }
 
-.flex-item, .hover-disabled, .order_button{
-    padding: 30px;
-    margin: 5px;
+.center-section{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
 
-    background: #B69179;
-    box-shadow: 0 5px 0px #306569;
+.order-header{
+    margin: 0px;
+    margin-bottom: 0.25rem;
+}
+
+.delivery-address-container{
+    margin-top: 0.75rem;
+}
+
+.current-address-container{
+    display: flex;
+    flex-direction: row;
+}
+
+#change-address-button{
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    background-color: #5a67d8;
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+
+    margin-left: 1rem;
+}
+
+#change-address-button:hover, #change-address-button:focus{
+    background-color: #667eea;
+}
+
+#change-address-button.cancel{
+    background-color: #e53e3e;
+}
+
+#change-address-button.cancel:hover, 
+#change-address-button.cancel:focus{
+    background-color: #C23434;
+}
+
+#address-select-container{
+    margin-top: 1rem;
+}
+
+.ignore-link{
+    text-decoration: none;
+    color: inherit;
+}
+
+.payment-info-center{
+    display: flex;
+    justify-content: center;
+}
+
+.payment-info-container{
+    margin-top: 3rem;
+    width: 100%;
+    max-width: 496px;
+}
+
+.payment-info-line{
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+}
+
+.payment-descriptor{
+    font-weight: 700;
+}
+
+.payment-amount{
+    margin-left: 3rem;
+}
+
+.payment-total{
+    padding-top: 0.5rem;
     
-    color: #2B2B2B;
+    border-top-width: 2px;
+    border-color: #cccccc;
+    border-top-style: solid;
+    
+}
+
+.stripe-payment-container{
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 2rem;
+
+    background-color: #fff;
+    box-shadow: 0 4px 6px rgba(50, 50, 93, 0.20), 0 1px 3px rgba(0, 0, 0, 0.12);
+    border-radius: 4px;
+    padding: 3px;
+}
+
+#stripe-card-element{
+    padding: 10px;
+    margin-bottom: 2px;
+}
+
+#stripe-card-errors{
+    margin-bottom: 0.50rem;
     text-align: center;
-    font-family: 'Libre Baskerville', serif;
-    font-size: 40px;
-    
-
-    user-select: none;
-    -moz-user-select: none;
-    -webkit-user-select: none;
 }
 
-.order_button{
-    color: #E6E6E6;
+#stripe-payment-submit{
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    background-color: #12682f;
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+    width: 100%;
 }
 
-/* What the heck am I doing? */
-.flex-item:not(.hover-disabled):hover,
-.order_button:hover{
-    cursor: pointer;
-    
-    background: #9C7C67;
-    box-shadow: 0 3px 0px #244C4F;
+#stripe-payment-submit:hover, #stripe-payment-submit:focus{
+    background-color: #0f5024;
 }
 
-.quantifier{
-    color: #306569;
+.personal-info{
+    margin-top: 2rem;
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius: 0.5rem;
+    padding: 1rem;
 }
 
-.quantifier:hover{
-    cursor: pointer;
-    
-    color: #244C4F;
+.personal-name{
+    font-weight: 700;
 }
 
-/* This is the number field in the order form. */
-.quantity{
-    border: none;
-    background: rgba(0, 0, 0, 0);
-    outline: none;
-
-    width: 60px;
-    
-    font-size: 40px;
-    font-family: 'Libre Baskerville', serif;
-
-    -webkit-appearance: none;
-    -moz-appearance: textfield;
+.personal-line{
+    text-align: center;
 }
 
-label {
-  display: block;
-  margin: 5px 0;
+.section{
+    width: 80%;
+}
+
+@media (min-width: 768px){
+    .layout-wrapper{
+        flex-direction: row;
+        justify-content: center;
+    }
+
+    #order-section{
+        width: 50%;
+    }
+
+    #order-section > .section{
+        width: 100%;
+    }
+
+    #info-section > .section{
+        background-color: rgba(0, 0, 0, 0.05);
+        border-radius: 0.5rem;
+        padding: 1rem;
+    }
+
+    .section{
+        width: auto;
+    }
+
+    .personal-info{
+        margin: 0;
+    }
+
+    #address-select-container > a > .order-container{
+        margin-bottom: 0;
+    }
+}
+
+@media (min-width: 972px){
+    .stripe-payment-container{
+        width: 496px;
+    }
+}
+
+#address-select-container.orders-container{
+    display: flex;
+    flex-direction: column;
+}
+
+#address-select-container > a > .order-container{
+    border: thin solid black;
 }

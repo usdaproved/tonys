@@ -41,6 +41,13 @@
     text-align: center;
 }
 
+@media (min-width: 768px){
+    #submit-container{
+        text-align: center;
+        transform: translateX(-25%);
+    }
+}
+
 #order-submit-link{
     position: relative;
     display: flex;

@@ -397,6 +397,10 @@ class OrderController extends Controller{
         $addressUUID = UUID::arrangedStringToOrderedBytes($postData["address_uuid"]);
 
         $addresses = $this->userManager->getNonDefaultAddresses($userUUID);
+        $addresses[] = $this->userManager->getDefaultAddress($userUUID);
+
+        // TODO(Trystan): We need to echo different messages so we can display to the user
+        // the reason why it's failed. Not deliverable vs invalid request.
         $addressUUIDFound = false;
         foreach($addresses as $address){
             if($address["uuid"] === $addressUUID && $this->isAddressDeliverable($address)){
