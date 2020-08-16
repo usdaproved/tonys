@@ -274,6 +274,28 @@ class UserController extends Controller{
         }
     }
 
+    public function forgot_get() : void {
+        // a page where users enter their account email.
+    }
+
+    public function forgot_post() : void {
+        // The email is collected and a token is generated.
+        // this token is then sent to the email.
+    }
+
+    public function reset_get() : void {
+        // The token is verified identical to the remember me method.
+        // remove every 'remember me' token associated with this user.
+        // remove all reset tokens. Including the one just used.
+        // then a page is displayed where the user can set a new password.
+        
+    }
+
+    public function reset_post() : void {
+        // the new password should go through the same rules that making a new account has.
+        // login the user? Or make them login with the new credentials?
+    }
+
     // JS functions
 
     public function verify_post() : void {

@@ -1,73 +1,77 @@
-.grid-container{
-    display: grid;
-    grid-template-columns: 1fr 2fr 1fr;
+.login-container{
+    display: flex;
+    flex-direction: row;
+    align-content: center;
 }
 
-.flex-container{
-    grid-column-start: 2;
-    grid-column-end: 3;
-    
+.login-inner-container{
+    padding: 2rem;
+    margin: 0px auto;
+    margin-top: 2rem;
+    border-width: 2px;
+    border-style: solid;
+    border-color: rgba(0,0,0,0.05);
+    max-width: 400px;
+    width: 80%;
+}
+
+.input-container{
     display: flex;
     flex-direction: column;
+    margin-bottom: 1rem;
 }
 
-.flex-item, .hover-disabled, .order_button{
-    padding: 30px;
-    margin: 5px;
+.input-container > label{
+    margin-bottom: 0.25rem;
+}
 
-    background: #B69179;
-    box-shadow: 0 5px 0px #306569;
+.remember-forgot-container{
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    align-content: center;
+    margin-top: 1.5rem;
+}
+
+.remember-container{
+    display: flex;
+    flex-direction: row;
     
-    color: #2B2B2B;
-    text-align: center;
-    font-family: 'Libre Baskerville', serif;
-    font-size: 40px;
-    
-
-    user-select: none;
-    -moz-user-select: none;
-    -webkit-user-select: none;
+    align-content: center;
 }
 
-.order_button{
-    color: #E6E6E6;
+.remember-container > input{
+    margin: 0rem;
+    margin-right: 0.5rem;
 }
 
-/* What the heck am I doing? */
-.flex-item:not(.hover-disabled):hover,
-.order_button:hover{
-    cursor: pointer;
-    
-    background: #9C7C67;
-    box-shadow: 0 3px 0px #244C4F;
+.forgot-link-container{
+    margin-top: 1rem;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
 }
 
-.quantifier{
-    color: #306569;
+.forgot-link{
+    text-decoration: none;
 }
 
-.quantifier:hover{
-    cursor: pointer;
-    
-    color: #244C4F;
+.login-button-container{
+    margin-top: 1.5rem;
 }
 
-/* This is the number field in the order form. */
-.quantity{
-    border: none;
-    background: rgba(0, 0, 0, 0);
-    outline: none;
-
-    width: 60px;
-    
-    font-size: 40px;
-    font-family: 'Libre Baskerville', serif;
-
-    -webkit-appearance: none;
-    -moz-appearance: textfield;
+.login-button{
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    background-color: #5a67d8;
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+    width: 100%;
 }
 
-label {
-  display: block;
-  margin: 5px 0;
+.login-button:hover, .login-button:focus{
+    background-color: #667eea;
 }
