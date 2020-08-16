@@ -1,10 +1,11 @@
 <?php require APP_ROOT . "/views/includes/header.php" ?>
+<link href="<?= $this->getFile("css", "components"); ?>" rel="stylesheet">
 <link href="<?= $this->getFile("css", __FILE__); ?>" rel="stylesheet">
 
 <?php $this->printOneTimeMessages(USER_ALERT); ?>
 
-<div class="login-container">
-    <div class="shadow login-inner-container">
+<div class="text-form-container">
+    <div class="shadow text-form-inner-container">
 	<form method="post">
 	    <div class="input-container">
 		<label for="email">Email</label>
@@ -19,14 +20,14 @@
 		<label for="remember_me">Remember me</label>
 	    </div>
 	    <input type="hidden" name="CSRFToken" value="<?= $this->sessionManager->getCSRFToken(); ?>">
-	    <div class="login-button-container">
-		<button type="submit" class="login-button svg-button">
+	    <div class="wide-button-container">
+		<button type="submit" class="wide-button svg-button">
 		    Log in
 		</button>
 	    </div>
 	</form>
-	<div class="forgot-link-container">
-	    <a href="/User/forgot" class="forgot-link"> Forgot Password?</a>
+	<div class="center-container margin-top-1">
+	    <a href="/User/forgot" class="no-text-decorate"> Forgot Password?</a>
 	</div>
     </div>
 </div>
