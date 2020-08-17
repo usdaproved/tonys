@@ -4,7 +4,7 @@
 
 <?php $this->printOneTimeMessages(USER_ALERT); ?>
 
-<div class="text-form-container">
+<div class="center-container">
     <div class="shadow text-form-inner-container">
 	<form method="post">
 	    <div class="input-container">

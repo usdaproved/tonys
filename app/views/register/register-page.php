@@ -3,7 +3,7 @@
 <link href="<?= $this->getFile("css", __FILE__); ?>" rel="stylesheet">
 <?php $this->printOneTimeMessages(USER_ALERT); ?>
 
-<div class="text-form-container">
+<div class="center-container">
     <div class="shadow text-form-inner-container">
 	<form method="post">
 	    <div class="text-form-header">
@@ -55,4 +55,4 @@
     </div>
 </div>
 
-    <?php require APP_ROOT . "/views/includes/footer.php" ?>
+<?php require APP_ROOT . "/views/includes/footer.php" ?>
