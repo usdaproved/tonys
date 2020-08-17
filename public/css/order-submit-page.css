@@ -1,3 +1,11 @@
+.section{
+    width: 100%;
+}
+
+.order{
+    max-width: 768px;
+}
+
 .line-items-container{
     max-width: 768px;
 }
@@ -209,10 +217,6 @@
     text-align: center;
 }
 
-.section{
-    width: 80%;
-}
-
 @media (min-width: 768px){
     .layout-wrapper{
         flex-direction: row;
@@ -228,6 +232,7 @@
     }
 
     #info-section > .section{
+        margin-left: 2rem;
         background-color: rgba(0, 0, 0, 0.05);
         border-radius: 0.5rem;
         padding: 1rem;
