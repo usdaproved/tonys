@@ -35,6 +35,26 @@
     width: 100%;
 }
 
+.thank-you-text{
+    text-align: center;
+}
+
+.address-payment-info{
+    margin-top: 2rem;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-content: center;
+}
+
+.delivery-address-container{
+    margin-right: 3rem;
+}
+
+.delivery-address-header{
+    font-weight: 700;
+}
+
 .line-items-container{
     max-width: 768px;
 }
@@ -53,7 +73,6 @@
 }
 
 .payment-info-container{
-    margin-top: 2rem;
     max-width: 200px;
 }
 
@@ -61,4 +80,8 @@
     display: flex;
     flex-direction: row;
     justify-content: space-between;
+}
+
+.payment-amount{
+    margin-left: 2rem;
 }

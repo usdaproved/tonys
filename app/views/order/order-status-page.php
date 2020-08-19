@@ -21,31 +21,38 @@
     </div>
 </div>
 </div>
-<h3>Thank you for placing an order <?=$this->orderStorage["order_type"] != IN_RESTAURANT ? "for" : NULL?> <?=ORDER_TYPE_ARRAY[$this->orderStorage["order_type"]]?>.</h3>
-<?php if($this->orderStorage['order_type'] == DELIVERY): ?>
-    <strong>Delivery address</strong>
-    <div class="delivery-address-container">
-	<?= $this->formatAddressForHTML($this->orderStorage['delivery_address']); ?>
-    </div>
-<?php endif; ?>
 
-<div class="payment-info-center">
-    <div class="payment-info-container">
-	<div class="payment-info-line">
-	    <span><span class="payment-descriptor">Subtotal</span>:</span> <span class="payment-amount">$<?=$this->intToCurrency($this->orderStorage['cost']['subtotal'])?></span>
+<h3 class="center-container thank-you-text">Thank you for placing an order <?=$this->orderStorage["order_type"] != IN_RESTAURANT ? "for" : NULL?> <?=ORDER_TYPE_ARRAY[$this->orderStorage["order_type"]]?>.</h3>
+
+<div class="center-container">
+<div class="address-payment-info">
+    <?php if($this->orderStorage['order_type'] == DELIVERY): ?>
+	<div class="delivery-address-container">
+	    <div class="delivery-address-header">Delivery address</div>
+    
+	    <?= $this->formatAddressForHTML($this->orderStorage['delivery_address']); ?>
 	</div>
-	<?php if($this->orderStorage['cost']['fee'] > 0): ?>
+    <?php endif; ?>
+
+    <div class="payment-info-center">
+	<div class="payment-info-container">
 	    <div class="payment-info-line">
-		<span><span class="payment-descriptor">Fees</span>:</span> <span class="payment-amount">$<?=$this->intToCurrency($this->orderStorage['cost']['fee'])?></span>
+		<span><span class="payment-descriptor">Subtotal</span>:</span> <span class="payment-amount">$<?=$this->intToCurrency($this->orderStorage['cost']['subtotal'])?></span>
 	    </div>
-	<?php endif; ?>
-	<div class="payment-info-line">
-	    <span><span class="payment-descriptor">Tax</span>:</span> <span class="payment-amount">$<?=$this->intToCurrency($this->orderStorage['cost']['tax'])?></span>
-	</div>
-	<div class="payment-info-line payment-total">
-	    <span><span class="payment-descriptor">Total</span>:</span> <span class="payment-amount">$<?=$this->intToCurrency($this->orderStorage['cost']['total'])?></span>
+	    <?php if($this->orderStorage['cost']['fee'] > 0): ?>
+		<div class="payment-info-line">
+		    <span><span class="payment-descriptor">Fees</span>:</span> <span class="payment-amount">$<?=$this->intToCurrency($this->orderStorage['cost']['fee'])?></span>
+		</div>
+	    <?php endif; ?>
+	    <div class="payment-info-line">
+		<span><span class="payment-descriptor">Tax</span>:</span> <span class="payment-amount">$<?=$this->intToCurrency($this->orderStorage['cost']['tax'])?></span>
+	    </div>
+	    <div class="payment-info-line payment-total">
+		<span><span class="payment-descriptor">Total</span>:</span> <span class="payment-amount">$<?=$this->intToCurrency($this->orderStorage['cost']['total'])?></span>
+	    </div>
 	</div>
     </div>
+</div>
 </div>
 
 <div class="order-info" data-uuid="<?=UUID::orderedBytesToArrangedString($this->orderStorage["uuid"])?>" data-status="<?=$this->orderStorage["status"]?>">
