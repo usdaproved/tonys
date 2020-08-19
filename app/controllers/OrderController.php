@@ -154,8 +154,8 @@ class OrderController extends Controller{
     /**
      * Gets passed the orderUUID of the confirmed order.
      */
-    public function confirmed_get() : void {
-        $this->pageTitle = "Tony's - Order Confirmed";
+    public function status_get() : void {
+        $this->pageTitle = "Tony's - Order Status";
         
         if(!isset($_GET["order"])){
             $this->redirect("/Order");
@@ -182,12 +182,44 @@ class OrderController extends Controller{
         $cost = $this->orderManager->getCost($orderUUID);
         $cost["total"] = $cost["subtotal"] + $cost["tax"] + $cost["fee"];
         $this->orderStorage["cost"] = $cost;
-        
-        require_once APP_ROOT . "/views/order/order-confirmed-page.php";
+
+        require_once APP_ROOT . "/views/order/order-status-page.php";
     }
 
     
     // JS CALLS
+
+    public function getStatus_post() : void {
+        $userUUID = $this->getUserUUID();
+        if(is_null($userUUID)){
+            echo json_encode("fail");
+            exit;
+        }
+        
+        $json = file_get_contents("php://input");
+        $postData = json_decode($json, true);
+        
+        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
+            echo json_encode("fail");
+            exit;
+        }
+
+        $orderUUID = UUID::arrangedStringToOrderedBytes($postData["order_uuid"]);
+
+        $order = $this->orderManager->getBasicOrderInfo($orderUUID);
+
+        if(empty($order)){
+            echo json_encode("fail");
+            exit;
+        }
+
+        if((strcmp($order["user_uuid"], $userUUID) !== 0)){
+            echo json_encode("fail");
+            exit;
+        }
+
+        echo json_encode($order["status"]);
+    }
 
     public function getItemDetails_post() : void {
         $json = file_get_contents("php://input");

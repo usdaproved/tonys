@@ -100,7 +100,7 @@ const checkOrderConfirmation = () => {
   postJSON(url, json, CSRFToken).then(response => response.text()).then(result => {
     if(result === 'confirmed'){
       clearInterval(intervalID);
-      window.location.replace(`/Order/confirmed?order=${orderUUID}`);
+      window.location.replace(`/Order/status?order=${orderUUID}`);
     }
   });
 };

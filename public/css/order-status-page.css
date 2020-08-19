@@ -1,0 +1,64 @@
+.page-wrapper{
+    width: 100%;
+    max-width: 768px;
+    margin-left: 1rem;
+    margin-right: 1rem;
+}
+
+.order-status{
+    font-size: 18px;
+    background-color: rgba(0, 0, 0, 0.05);
+    width: auto;
+}
+
+.order-status.active{
+    color: white;
+    background-color: #5a67d8;
+}
+
+.main-order-status{
+    display: flex;
+    flex-direction: row;
+    align-content: center;
+}
+
+.status-flex-item{
+    margin-left: 0.5rem;
+}
+
+.order-status-description{
+    margin-top: 0.5rem;
+}
+
+.order{
+    max-width: 768px;
+    width: 100%;
+}
+
+.line-items-container{
+    max-width: 768px;
+}
+
+.blinking{
+    animation: 3s blink ease infinite;
+}
+
+@keyframes blink {
+    from, to{
+        opacity: 0;
+    }
+    50% {
+        opacity: 1;
+    }
+}
+
+.payment-info-container{
+    margin-top: 2rem;
+    max-width: 200px;
+}
+
+.payment-info-line{
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+}
