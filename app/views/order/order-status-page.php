@@ -28,7 +28,7 @@
 <div class="address-payment-info">
     <?php if($this->orderStorage['order_type'] == DELIVERY): ?>
 	<div class="delivery-address-container">
-	    <div class="delivery-address-header">Delivery address</div>
+	    <div class="font-weight-700">Delivery address</div>
     
 	    <?= $this->formatAddressForHTML($this->orderStorage['delivery_address']); ?>
 	</div>

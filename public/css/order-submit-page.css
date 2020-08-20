@@ -1,5 +1,5 @@
-.section{
-    width: 100%;
+.split-layout{
+    margin: 0 1rem;
 }
 
 .order{
@@ -8,11 +8,6 @@
 
 .line-items-container{
     max-width: 768px;
-}
-
-.layout-wrapper{
-    display: flex;
-    flex-direction: column;
 }
 
 .order-header{
@@ -136,6 +131,10 @@
     background-color: #0f5024;
 }
 
+#stripe-payment-button.inactive{
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
 .personal-info{
     margin-top: 2rem;
     background-color: rgba(0, 0, 0, 0.05);
@@ -151,51 +150,31 @@
     text-align: center;
 }
 
+.address-select-container > *{
+    margin: 0.25rem 1rem;
+}
+
+.address-select-container{
+    flex-wrap: wrap;
+}
+
 @media (min-width: 768px){
-    .layout-wrapper{
-        flex-direction: row;
-        justify-content: center;
+    .text-form-inner-container{
+        height: max-content;
+        margin: 0;
     }
 
-    #order-section{
-        width: 50%;
-    }
-
-    #order-section > .section{
-        width: 100%;
-    }
-
-    #info-section > .section{
-        margin-left: 2rem;
+    .background-gray{
         background-color: rgba(0, 0, 0, 0.05);
         border-radius: 0.5rem;
         padding: 1rem;
-    }
-
-    .section{
-        width: auto;
     }
 
     .personal-info{
         margin: 0;
     }
 
-    #address-select-container > a > .order-container{
-        margin-bottom: 0;
-    }
-}
-
-@media (min-width: 972px){
     .stripe-payment-container{
-        width: 496px;
+        max-width: 496px;
     }
-}
-
-#address-select-container.orders-container{
-    display: flex;
-    flex-direction: column;
-}
-
-#address-select-container > a > .order-container{
-    border: thin solid black;
 }

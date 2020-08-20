@@ -7,9 +7,34 @@ let selectedAddressUUID = null;
 
 const setDefaultButton = document.querySelector('#set-default-button');
 const deleteButton = document.querySelector('#delete-button');
-const addressContainers = document.querySelector('.orders-container').querySelectorAll('.order-container');
+const addressContainers = document.querySelector('.addresses-container').querySelectorAll('.selectable-address');
 
-let addressSelector = new SingleContainerSelector(addressContainers, [setDefaultButton, deleteButton]);
+addressContainers.forEach(addressContainer => {
+    addressContainer.addEventListener('click', (e) => {
+        // If we are unselecting the current one.
+        let deselection = addressContainer.classList.contains('active');
+        addressContainers.forEach(container => {
+            container.classList.remove('active');
+        });
+        selectedAddressUUID = null;
+
+        if(deselection){
+            deleteButton.classList.add('inactive');
+            setDefaultButton.classList.add('inactive');
+            deleteButton.disabled = true;
+            setDefaultButton.disabled = true;
+            return;
+        }
+
+        addressContainer.classList.add('active');
+        selectedAddressUUID = addressContainer.id;
+        deleteButton.classList.remove('inactive');
+        setDefaultButton.classList.remove('inactive');
+        deleteButton.disabled = false;
+        setDefaultButton.disabled = false;
+    });
+});
+
 setDefaultButton.addEventListener('click', (e) => {
     let addressUUID = addressSelector.selectedUUID;
 

@@ -307,7 +307,8 @@
 				</svg>
 			</button>
 		    <div class="dropdown" id="user-dropdown-container">
-				<div class="dropdown-box">
+			<div class="dropdown-box">
+			    <div class="shadow">
 				<div class="dropdown-link-container">
 				<a href="/User/orders" class="dropdown-link">Order History</a>
 				<a href="/User/info" class="dropdown-link">Info</a>
@@ -316,7 +317,8 @@
 					<a href="/logout" class="dropdown-link">Log out</a>
 				<?php endif; ?>
 				</div>
-				</div>
+			    </div>
+			</div>
 		    </div>
 		</div>
 		
@@ -329,7 +331,8 @@
 				</svg>
 			</button>
 			<div class="dropdown" id="dashboard-dropdown-container">
-				<div class="dropdown-box">
+			    <div class="dropdown-box">
+				<div class="shadow">
 				<div class="dropdown-link-container">
 				<a href="/Dashboard/orders/active" class="dropdown-link">Active Orders</a>
 				<a href="/Dashboard/orders/search" class="dropdown-link">Search Orders</a>
@@ -341,6 +344,7 @@
 				<?php endif; ?>
 				</div>
 				</div>
+			    </div>
 			</div>
 		</div>
 		<?php endif; ?>

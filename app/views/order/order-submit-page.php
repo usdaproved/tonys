@@ -4,21 +4,19 @@
 <link href="<?= $this->getFile("css", __FILE__); ?>" rel="stylesheet">
 
 <?php $this->printOneTimeMessages(USER_ALERT); ?>
-<article class="layout-wrapper">
-    <div class="center-container" id="order-section">
-	<div class="section">
-	    <section class="order shadow text-form-inner-container">
-		<h3 class="order-header">
-		    Your Order For <?=$this->orderStorage["order_type"] == DELIVERY ? "Delivery" : "Pickup" ?>
-		</h3>
-		<div class="order-info">
-		    <?=$this->formatCartForHTML($this->orderStorage)?>
-		</div>
-	    </section>
-	</div>
+<article class="split-layout">
+    <div class="split-left-section">
+	<section class="width-full max-width-768 shadow text-form-inner-container">
+	    <h3 class="order-header">
+		Your Order For <?=$this->orderStorage["order_type"] == DELIVERY ? "Delivery" : "Pickup" ?>
+	    </h3>
+	    <div class="order-info">
+		<?=$this->formatCartForHTML($this->orderStorage)?>
+	    </div>
+	</section>
     </div>
-    <div class="center-container" id="info-section">
-	<div class="section">
+    <div class="split-right-section">
+	<div class="max-width-768 width-full background-gray">
 	    <div class="personal-info">
 		<div class="personal-line personal-name">
 		    <span id="name_first">
@@ -36,17 +34,15 @@
 		</div>
 		<?php if($this->orderStorage["order_type"] == DELIVERY): ?>
 		    <div class="delivery-address-container">
-			<div class="current-address-container">
+			<div class="center-container">
 			    <?= $this->formatAddressForHTML($this->user['delivery_address'] ?? NULL); ?>
 			    <input type="button" id="change-address-button" class="svg-button" value="Change">
 			</div>
-			<div id="address-select-container" class="orders-container" hidden>
+			<div class="center-container address-select-container" id="address-select-container" hidden>
 			    <?php foreach($this->user["other_addresses"] as $address): ?>
-				<a href="#" class="event-wrapper ignore-link">
-				    <div class="order-container" id="<?=UUID::orderedBytesToArrangedString($address['uuid'])?>">
-					<?=$this->formatAddressForHTML($address)?>
-				    </div>
-				</a>
+				<button type="button" class="svg-button selectable-address" id="<?=UUID::orderedBytesToArrangedString($address['uuid'])?>">
+				    <?=$this->formatAddressForHTML($address)?>
+				</button>
 			    <?php endforeach; ?>
 			</div>
 		    </div>

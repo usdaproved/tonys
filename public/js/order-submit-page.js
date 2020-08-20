@@ -109,6 +109,7 @@ submitButton.addEventListener('click', function(e) {
   e.preventDefault();
 
   submitButton.disabled = true;
+  submitButton.classList.add('inactive');
 
   stripe.confirmCardPayment(clientSecret, {
     payment_method: {
@@ -121,15 +122,16 @@ submitButton.addEventListener('click', function(e) {
     }
   }).then(function(result) {
     if (result.error) {
-      // Show error to your customer (e.g., insufficient funds)
-      console.log(result.error.message);
       // Allow the customer to make necessary changes and resubmit.
       submitButton.disabled = false;
+      submitButton.classList.remove('inactive');
     } else {
       // The payment has been processed!
       if (result.paymentIntent.status === 'succeeded') {
         // TODO(Trystan): Show some success while this waits for confirmation.
         // disable all inputs.
+        // TODO(Trystan): Show some type of loading icon on the button.
+        // Perhaps something like a few dots going back and forth.
         intervalID = setInterval(checkOrderConfirmation, 2000);
       }
     }
