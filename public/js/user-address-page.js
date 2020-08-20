@@ -36,7 +36,7 @@ addressContainers.forEach(addressContainer => {
 });
 
 setDefaultButton.addEventListener('click', (e) => {
-    let addressUUID = addressSelector.selectedUUID;
+    let addressUUID = selectedAddressUUID;
 
     let url = '/User/address/setDefault';
     let json = {'address_uuid':addressUUID};
@@ -46,7 +46,7 @@ setDefaultButton.addEventListener('click', (e) => {
 });
 
 deleteButton.addEventListener('click', (e) => {
-    let addressUUID = addressSelector.selectedUUID;
+    let addressUUID = selectedAddressUUID;
 
     let url = '/User/address/delete';
     let json = {'address_uuid':addressUUID};

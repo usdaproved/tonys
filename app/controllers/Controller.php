@@ -418,9 +418,12 @@ class Controller{
 
     public function printOneTimeMessages(string $messageType) : void {
 	if(!isset($this->messages[$messageType])) return;
+
+	echo "<div class='center-container'>";
 	foreach($this->messages[$messageType] as $message){
 	    echo $message;
 	}
+	echo "</div>";
     }
 
     private function handleOneTimeMessages() : void {
