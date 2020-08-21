@@ -303,6 +303,21 @@
     margin-top: 1.5rem;
 }
 
+.short-button{
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    background-color: #5a67d8;
+    padding: 0.75rem;
+    border-radius: 0.25rem;
+    font-size: 1.25rem;
+}
+
+.short-button:hover, .short-button:focus, .short-button:focus-within{
+    background-color: #667eea;
+}
+
 .selectable-address{
     padding: 1rem;
     margin-bottom: 1rem;

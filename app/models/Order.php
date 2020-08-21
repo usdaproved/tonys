@@ -424,7 +424,7 @@ AND lic.choice_parent_id = :choice_parent_id;";
         $sql = "SELECT uuid FROM orders o 
 WHERE user_uuid = :user_uuid
 AND status > " . CART . "
-ORDER BY o.date ASC;";
+ORDER BY o.date DESC;";
 
         $this->db->beginStatement($sql);
         $this->db->bindValueToStatement(":user_uuid", $userUUID);

@@ -364,6 +364,26 @@ class Controller{
         return $string;
     }
 
+    public function formatBasicOrderForHTML(array $order = NULL) : string {
+	$string = "";
+        $string .= "<ul class='line-items-container'>";
+        foreach($order['line_items'] ?? array() as $lineItem){
+            $string .= "<li class='line-item' id='{$lineItem['uuid']}'>";
+	    $string .= "<div class='line-item-info'>";
+            $string .= "<span class='line-item-quantity'>";
+            $string .= $lineItem['quantity'];
+            $string .= "</span>";
+	    $string .= "<span class='line-item-name'>";
+            $string .= $lineItem['name'];
+	    $string .= "</span>";
+	    $string .= "</div>";
+            $string .= "</li>";
+        }
+        $string .= "</ul>";
+
+	return $string;
+    }
+
     public function formatCartForHTML(array $order = NULL) : string {
 	$string = "";
         $string .= "<ul class='line-items-container'>";
@@ -406,7 +426,6 @@ class Controller{
             $string .= "</li>";
         }
         $string .= "</ul>";
-	$string .= "</div>";
 
 	return $string;
     }

@@ -24,6 +24,10 @@
 
 <h3 class="center-container thank-you-text">Thank you for placing an order <?=$this->orderStorage["order_type"] != IN_RESTAURANT ? "for" : NULL?> <?=ORDER_TYPE_ARRAY[$this->orderStorage["order_type"]]?>.</h3>
 
+<div class="center-container date">
+    <?=date("F d, Y g:i A", strtotime($this->orderStorage["date"]))?>
+</div>
+
 <div class="center-container">
 <div class="address-payment-info">
     <?php if($this->orderStorage['order_type'] == DELIVERY): ?>
@@ -33,6 +37,7 @@
 	    <?= $this->formatAddressForHTML($this->orderStorage['delivery_address']); ?>
 	</div>
     <?php endif; ?>
+    
 
     <div class="payment-info-center">
 	<div class="payment-info-container">
