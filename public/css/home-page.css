@@ -22,7 +22,6 @@
     position: relative;
     background-color: #E8E8E8;
     z-index: 10;
-    margin-bottom: 2rem;
 }
 
 .slanted-separator{
@@ -139,6 +138,10 @@
 
 .schedule-day{
     font-weight: 500;
+}
+
+.header-link-button-container{
+    margin-bottom: 2rem;
 }
 
 /* small */
