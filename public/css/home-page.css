@@ -1,1 +1,260 @@
+*, ::after, ::before {
+    box-sizing: border-box;
+    border: 0 solid #d2d6dc;
+}
 
+.hero-container{
+    width: 100%;
+    position: relative;
+    overflow: hidden;
+    background-color: #E8E8E8;
+    /* This undoes the margin under the header, we want to be right up against it. */
+    margin-top: -1rem;
+}
+
+.hero-text-container{
+    max-width: 1280px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.hero-text{
+    position: relative;
+    background-color: #E8E8E8;
+    z-index: 10;
+}
+
+.slanted-separator{
+    display: none;
+    position: absolute;
+    color: #E8E8E8;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    height: 100%;
+    width: 12rem;
+    transform: translateX(50%);
+    filter: drop-shadow(16px 0px 8px rgba(0, 0, 0, 0.5));
+}
+
+.main-container{
+    margin-left: auto;
+    margin-right: auto;
+    max-width: 1280px;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    padding-top: 2rem;
+}
+
+.main-header{
+    font-size: 2.25rem;
+}
+
+.hero-image{
+    width: 100%;
+    height: 18rem;
+    object-fit: cover;
+    display: block
+}
+
+.blue-text{
+    color: #5a67d8;
+}
+
+.header-link-button-container{
+    margin-top: 1.25rem;
+}
+
+.header-link-button{
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    border-radius: 0.375rem;
+}
+
+.header-link{
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding-left: 2rem;
+    padding-right: 2rem;
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+    border-width: 1px;
+    border-color: transparent;
+    font-size: 1rem;
+    text-decoration: none;
+    background-color: #5a67d8;
+    color: white;
+    border-radius: 0.375rem;
+    font-weight: 500;
+}
+
+.header-link:hover{
+    background-color: #667eea;
+}
+
+.header-link:focus{
+    outline: 0;
+    box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.5);
+    border-color: #a3bffa;
+}
+
+.info-schedule-container{
+    display: flex;
+    flex-direction: column;
+}
+
+.info-layout-container{
+    margin-top: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.phone-number-container{
+    margin-top: 0.5rem;
+}
+
+.schedules-container{
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+    max-width: 20rem;
+    padding: 1rem;
+    border-radius: 0.375rem;
+}
+
+.schedule-header{
+    text-align: center;
+}
+
+.schedule-line{
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+    
+}
+
+.schedule-day{
+    font-weight: 500;
+}
+
+/* small */
+@media(min-width: 640px){
+    .hero-text{
+        padding-bottom: 4rem;
+    }
+
+    .main-container{
+        padding-right: 1.5rem;
+        padding-left: 1.5rem;
+    }
+
+    .main-header-container{
+        text-align: center;
+    }
+
+    .main-header{
+        font-size: 3rem;
+    }
+
+    .hero-image{
+        height: 24rem;
+    }
+
+    .header-link-button-container{
+        margin-top: 2rem;
+        display: flex;
+        justify-content: center;
+    }
+}
+
+/* medium */
+@media(min-width: 768px){
+    .hero-text{
+        padding-bottom: 5rem;
+    }
+
+    .main-header{
+        font-size: 4rem;
+    }
+
+    .hero-image{
+        height: 28rem;
+    }
+
+    .header-link{
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+        padding-left: 2.5rem;
+        padding-right: 2.5rem;
+        font-size: 1.125rem;
+    }
+}
+
+/* large */
+@media(min-width: 1024px){
+    .hero-text{
+        max-width: 42rem;
+        width: 100%;
+        padding-bottom: 7rem;
+    }
+
+    .slanted-separator{
+        display: block;
+    }
+
+    .main-container{
+        padding-left: 2rem;
+        padding-right: 2rem;
+    }
+
+    .main-header-container{
+        text-align: left;
+    }
+    
+    .hero-image-container{
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        right: 0;
+        width: 50%;
+    }
+
+    .hero-image{
+        width: 100%;
+        height: 100%;
+    }
+
+    .header-link-button-container{
+        margin-top: 2rem;
+        display: flex;
+        justify-content: flex-start;
+    }
+
+    .info-schedule-container{
+        display: grid;
+        grid-template-columns: minmax(42rem, auto) calc(50% - 2rem);
+        overflow: hidden;
+    }
+
+    .info-container{
+
+    }
+
+    .schedules-container{
+        
+        margin-left: 1rem;
+    }
+}
+
+/* x-large */
+@media(min-width: 1280px){
+    .hero-text{
+        padding-bottom: 8rem;
+    }
+
+    .main-container{
+    }
+}

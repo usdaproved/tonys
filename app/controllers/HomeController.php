@@ -4,6 +4,7 @@
 
 class HomeController extends Controller{
     private Order $orderManager;
+    private RestaurantSettings $restaurantManger;
     
     public $user;
     
@@ -11,6 +12,7 @@ class HomeController extends Controller{
         parent::__construct();
         
         $this->orderManager = new Order();
+        $this->restaurantManager = new RestaurantSettings();
     }
 
     public function get() : void {
@@ -18,6 +20,11 @@ class HomeController extends Controller{
                 
         $userUUID = $this->getUserUUID();
         $this->user = $this->userManager->getUserInfo($userUUID);
+
+        $schedule = [];
+        $schedule["delivery"] = $this->restaurantManager->getDeliverySchedule();
+        $schedule["pickup"] = $this->restaurantManager->getPickupSchedule();
+        $week = array_keys(DAY_TO_INT);
 
         require_once APP_ROOT . "/views/home/home-page.php";
     }

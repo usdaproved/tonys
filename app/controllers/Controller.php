@@ -310,8 +310,6 @@ class Controller{
      * This is how the address is formatted:
      * STREET_ADDRESS
      * CITY, STATE ZIP_CODE
-     *
-     * No wrappers are added.
      */
     public function formatAddressForHTML(array $addressArray = NULL) : string {
 	if($addressArray === NULL || empty($addressArray)) return "";

@@ -1,6 +1,8 @@
 <?php
 
-const DAY_TO_INT = ["Mon" => 0, "Tue" => 1, "Wed" => 2, "Thu" => 3, "Fri" => 4, "Sat" => 5, "Sun" => 6];
+const DAY_TO_INT = ["Monday" => 0, "Tuesday" => 1, "Wednesday" => 2,
+                    "Thursday" => 3, "Friday" => 4, "Saturday" => 5,
+                    "Sunday" => 6];
 
 const USER_ALERT = "alert";
 const USER_SUCCESS = "success";
