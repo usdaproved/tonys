@@ -1,7 +1,6 @@
 <?php require APP_ROOT . "/views/includes/header.php" ?>
 
 <link href="<?=$this->getFile('css', 'components');?>" rel="stylesheet">
-<link href="<?=$this->getFile('css', __FILE__);?>" rel="stylesheet">
 
 <?php $this->printOneTimeMessages(USER_ALERT); ?>
 <?php $this->printOneTimeMessages(USER_SUCCESS); ?>
@@ -34,10 +33,12 @@
 		    Update
 		</button>
 	    </div>
+	    <div class="center-container margin-top-1">
+		<a href="/User/password" class="no-text-decorate">Change Password</a>
+	    </div>
 	    <input type="hidden" name="CSRFToken"  id="CSRFToken" value="<?= $this->sessionManager->getCSRFToken(); ?>">
 	</form>
     </div>
 </div>
 
-<script src="<?=$this->getFile('js', __FILE__);?>" type="module"></script>
 <?php require APP_ROOT . "/views/includes/footer.php" ?>

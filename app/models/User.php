@@ -63,6 +63,19 @@ VALUES (:user_uuid, :password_hash);";
         return $userUUID;
     }
 
+    public function setPassword(string $userUUID, string $password) : void {
+        $passwordHash = password_hash($password, PASSWORD_ARGON2ID);
+
+        $sql = "UPDATE registered_credentials SET password_hash = :password_hash WHERE user_uuid = :user_uuid;";
+
+        $this->db->beginStatement($sql);
+        
+        $this->db->bindValueToStatement(":user_uuid", $userUUID);
+        $this->db->bindValueToStatement(":password_hash", $passwordHash);
+
+        $this->db->executeStatement();
+    }
+
     public function setVerificationRequired(string $userUUID) : void {
         $sql = "UPDATE registered_credentials SET verification_required = 1 WHERE user_uuid = :user_uuid;";
 
@@ -144,6 +157,15 @@ VALUES (:user_uuid, :selector, :hashed_token, DATE_ADD(NOW(), INTERVAL 1 MONTH))
         $this->db->executeStatement();
     }
 
+    // For when a password is reset, remove all sessions.
+    public function deleteAllRememberMeTokens(string $userUUID) : void {
+        $sql = "DELETE FROM remember_me_tokens WHERE user_uuid = :user_uuid;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":user_uuid", $userUUID);
+        $this->db->executeStatement();
+    }
+
 
     public function getRememberMeInfo(string $selectorBytes) : array {
         $sql = "SELECT user_uuid, hashed_token, expires FROM remember_me_tokens
@@ -156,6 +178,41 @@ WHERE selector = :selector;";
         $result = $this->db->getResult();
         if(is_bool($result)) return array();
         return $result;
+    }
+
+    public function setForgotToken(string $userUUID, string $selectorBytes, string $hashedTokenBytes) : void {
+        $sql = "INSERT INTO forgot_tokens (user_uuid, selector, hashed_token, expires) 
+VALUES (:user_uuid, :selector, :hashed_token, DATE_ADD(NOW(), INTERVAL 1 HOUR));";
+
+        $this->db->beginStatement($sql);
+
+        $this->db->bindValueToStatement(":user_uuid", $userUUID);
+        $this->db->bindValueToStatement(":selector", $selectorBytes);
+        $this->db->bindValueToStatement(":hashed_token", $hashedTokenBytes);
+        
+        $this->db->executeStatement();
+    }
+
+    public function getForgotTokenInfo(string $selectorBytes) : array {
+        $sql = "SELECT user_uuid, hashed_token, expires FROM forgot_tokens
+WHERE selector = :selector;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":selector", $selectorBytes);
+        $this->db->executeStatement();
+
+        $result = $this->db->getResult();
+        if(is_bool($result)) return array();
+        return $result;
+    }
+
+    // When one forgot token is used, we want to remove all tokens out there.
+    public function deleteAllForgotTokens(string $userUUID) : void {
+        $sql = "DELETE FROM forgot_tokens WHERE user_uuid = :user_uuid;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":user_uuid", $userUUID);
+        $this->db->executeStatement();
     }
 
     // TODO(Trystan): Allow this to be updated more than once?
@@ -417,6 +474,19 @@ WHERE u.email = :email;";
         return $result;
     }
 
+    public function getPasswordHash(string $userUUID = NULL) : ?string {
+        $sql = "SELECT password_hash FROM registered_credentials WHERE user_uuid = :user_uuid;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":user_uuid", $userUUID);
+        $this->db->executeStatement();
+
+        $result = $this->db->getResult();
+
+        if(is_bool($result)) return NULL;
+        return $result["password_hash"];
+    }
+
     /**
      * This is for consolidation when a user has previously used their email
      * during a now expired session, and they are registering using that email.
@@ -437,20 +507,7 @@ WHERE u.email = :email;";
         return $result;
     }
 
-    public function getUserUUIDByEmail(string $email = NULL) : ?string {
-        $sql = "SELECT uuid FROM users WHERE email = :email;";
-
-        $this->db->beginStatement($sql);
-        $this->db->bindValueToStatement(":email", $email);
-        $this->db->executeStatement();
-
-        $result = $this->db->getResult();
-
-        if(is_bool($result)) return NULL;
-        return $result["uuid"];
-    }
-
-    public function getUnregisteredInfoLevel(string $userUUID) : int {
+    public function getUnregisteredInfoLevel(string $userUUID = NULL) : int {
         $sql = "SELECT info_level FROM unregistered_credentials
 WHERE user_uuid = :user_uuid;";
 
@@ -459,6 +516,8 @@ WHERE user_uuid = :user_uuid;";
         $this->db->executeStatement();
 
         $result = $this->db->getResult();
+        if(is_bool($result)) return INFO_NONE;
+        
         return (int)$result["info_level"];
     }
 

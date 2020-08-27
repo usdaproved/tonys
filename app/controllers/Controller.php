@@ -28,13 +28,16 @@ class Controller{
             if(!empty($rememberMeInfo)){
                 $hashedToken = hash("sha256", $token);
                 if(hash_equals(bin2hex($rememberMeInfo["hashed_token"]), $hashedToken)){
-                    $this->sessionManager->login($rememberMeInfo["user_uuid"]);
-                    $this->sessionManager->setReauthRequired(true);
-                    // Remove the used token and generate a new one.
-                    $this->userManager->deleteRememberMeToken($rememberMeInfo["user_uuid"], $selectorBytes);
-                    $this->initializeRememberMe($rememberMeInfo["user_uuid"]);
+		    // We want the token deleted even if expired.
+		    $this->userManager->deleteRememberMeToken($rememberMeInfo["user_uuid"], $selectorBytes);
+
+		    if(strtotime($rememberMeInfo["expires"]) > time()){
+			$this->sessionManager->login($rememberMeInfo["user_uuid"]);
+			$this->sessionManager->setReauthRequired(true);
+			$this->initializeRememberMe($rememberMeInfo["user_uuid"]);
+		    }
                 }
-            }
+	    }
         }
     }
 
@@ -61,9 +64,9 @@ class Controller{
     
     public static function getFile(string $fileType, string $file) : string {
         if(strpos($file, ".php") !== false){
-            $file = explode("/", $file);
-            $file = end($file);
-            $file = explode(".", $file)[0];
+	    $file = explode("/", $file);
+	    $file = end($file);
+	    $file = explode(".", $file)[0];
         }
 
         // TODO: This should be https only
@@ -74,8 +77,8 @@ class Controller{
         $acceptableHosts = array("tonys.db", "localhost", "tonys.trystanbrock.dev");
         
         if(!isset($_SERVER['HTTP_HOST']) || !in_array($_SERVER['HTTP_HOST'], $acceptableHosts)) {
-            http_response_code(404);
-            exit;
+	    http_response_code(404);
+	    exit;
         }
         
         return $protocol . $_SERVER["HTTP_HOST"] . "/" . $fileType . "/" . $file . "." . $fileType;
@@ -86,10 +89,17 @@ class Controller{
      */
     public function getUserUUID() : ?string {
         if($this->sessionManager->isUserLoggedIn()){
-            return $this->sessionManager->getUserUUID();
+	    return $this->sessionManager->getUserUUID();
         }
         
         return $this->userManager->getUserUUIDByUnregisteredSessionID();
+    }
+
+    public function validatePasswordRequirements(string $password) : bool{
+	// I know this is a really simple requirement. Not worthy of calling a function really.
+	// But I want everything that modifies passwords to go through this function.
+	// So in the future if we update this requirement. Everything will be fine.
+	return (strlen($password) >= 8);
     }
 
     /**
@@ -99,46 +109,56 @@ class Controller{
         $credentials = $this->userManager->getRegisteredCredentialsByEmail($email);
 
         if(empty($credentials)){
-            return NULL;
+	    return NULL;
         }
         if(password_verify($password, $credentials["password_hash"])){
-            return $credentials["user_uuid"];
+	    return $credentials["user_uuid"];
         }
         
         return NULL;
+    }
+
+    // TODO(Trystan): We probably want to rename these two functions. credentials and password.
+    // They do the almost the same thing, but in two different use cases.
+    public function validatePassword(string $userUUID, string $password) : bool {
+	$passwordHash = $this->userManager->getPasswordHash($userUUID);
+
+	if(is_null($passwordHash)) return false;
+
+	return password_verify($password, $passwordHash);
     }
 
     public function validateNewUserInformation() : bool {
         $valid = true;
         
         if(!isset($_POST["email"], $_POST["name_first"], $_POST["name_last"], $_POST["phone"])){
-            // We exit the function so that empty values aren't checked.
-            $message = "Missing information.";
-            $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
-            $valid = false;
-            return $valid;
+	    // We exit the function so that empty values aren't checked.
+	    $message = "Missing information.";
+	    $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
+	    $valid = false;
+	    return $valid;
         }
         
         if(!$this->validateEmail($_POST["email"])){
-            $message = "Please enter a valid email.";
-            $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
-            $valid = false;
+	    $message = "Please enter a valid email.";
+	    $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
+	    $valid = false;
         }
         if(strlen($_POST["name_first"]) > MAX_LENGTH_NAME_FIRST){
-            $message = "First name must be fewer than " . MAX_LENGTH_NAME_FIRST . " characters.";
-            $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
-            $valid = false;
+	    $message = "First name must be fewer than " . MAX_LENGTH_NAME_FIRST . " characters.";
+	    $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
+	    $valid = false;
         }
         if(strlen($_POST["name_first"]) > MAX_LENGTH_NAME_LAST){
-            $message = "Last name must be fewer than " . MAX_LENGTH_NAME_LAST . " characters.";
-            $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
-            $valid = false;
+	    $message = "Last name must be fewer than " . MAX_LENGTH_NAME_LAST . " characters.";
+	    $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
+	    $valid = false;
         }
         
         if(!empty($this->userManager->getRegisteredCredentialsByEmail($_POST["email"]))){
-            $message = MESSAGE_EMAIL_IN_USE;
-            $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
-            $valid = false;
+	    $message = MESSAGE_EMAIL_IN_USE;
+	    $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
+	    $valid = false;
         }
         
         return $valid;
@@ -148,32 +168,32 @@ class Controller{
         $valid = true;
         
         if(!isset($_POST["address_line"], $_POST["city"], $_POST["state"], $_POST["zip_code"])){
-            // We exit the function so that empty values aren't checked.
-            $message = "Missing information.";
-            $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
-            $valid = false;
-            return $valid;
+	    // We exit the function so that empty values aren't checked.
+	    $message = "Missing information.";
+	    $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
+	    $valid = false;
+	    return $valid;
         }
         
         if(strlen($_POST["address_line"]) > MAX_LENGTH_ADDRESS_LINE){
-            $message = "Street address must be fewer than " . MAX_LENGTH_ADDRESS_LINE . " characters.";
-            $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
-            $valid = false;
+	    $message = "Street address must be fewer than " . MAX_LENGTH_ADDRESS_LINE . " characters.";
+	    $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
+	    $valid = false;
         }
         if(strlen($_POST["city"]) > MAX_LENGTH_ADDRESS_CITY){
-            $message = "City must be fewer than " . MAX_LENGTH_ADDRESS_CITY . " characters.";
-            $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
-            $valid = false;
+	    $message = "City must be fewer than " . MAX_LENGTH_ADDRESS_CITY . " characters.";
+	    $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
+	    $valid = false;
         }
         if(strlen($_POST["state"]) > MAX_LENGTH_ADDRESS_STATE){
-            $message = "State must be fewer than " . MAX_LENGTH_ADDRESS_STATE . " characters.";
-            $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
-            $valid = false;
+	    $message = "State must be fewer than " . MAX_LENGTH_ADDRESS_STATE . " characters.";
+	    $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
+	    $valid = false;
         }
         if(strlen($_POST["zip_code"]) > MAX_LENGTH_ADDRESS_ZIP_CODE){
-            $message = "Zip code must be fewer than " . MAX_LENGTH_ADDRESS_ZIP_CODE . " characters.";
-            $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
-            $valid = false;
+	    $message = "Zip code must be fewer than " . MAX_LENGTH_ADDRESS_ZIP_CODE . " characters.";
+	    $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
+	    $valid = false;
         }
 
         return $valid;
@@ -182,8 +202,8 @@ class Controller{
     public function validateAddressUSPS() : array {
         $url = 'https://secure.shippingapis.com/ShippingAPI.dll';
         $postData = array(
-            'API' => 'Verify',
-            'XML' => "<AddressValidateRequest USERID=\"" . USPS_USER_ID . "\">
+	    'API' => 'Verify',
+	    'XML' => "<AddressValidateRequest USERID=\"" . USPS_USER_ID . "\">
 <Address ID=\"0\">
 <Address1></Address1>
 <Address2>{$_POST['address_line']}</Address2>
@@ -214,8 +234,8 @@ class Controller{
 
         // Parse the response, beginning with checking for an error.
         if(strpos($xml, "<Error>")){
-            // We don't care WHAT the error is, we just know it's not valid.
-            return array();
+	    // We don't care WHAT the error is, we just know it's not valid.
+	    return array();
         }
         
         // if no error, then grab the values we need from the address.
@@ -246,7 +266,7 @@ class Controller{
     // But for the moment this suits our purposes while still introducing the concept of 'undelivarable'.
     public function isAddressDeliverable(array $address) : bool {
         if(in_array($address["zip_code"], DELIVERY_ZIP_CODES)){
-            return true;
+	    return true;
         }
         return false;
     }
@@ -256,7 +276,7 @@ class Controller{
 
         $email = filter_var($email, FILTER_SANITIZE_EMAIL);
         if(strlen($email) > MAX_LENGTH_EMAIL || !filter_var($email, FILTER_VALIDATE_EMAIL)){
-            $valid = false;
+	    $valid = false;
         }
 
         return $valid;
@@ -280,12 +300,12 @@ class Controller{
         $result = "";
         $stringLength = strlen($string);
         for($i = 0; $i < $stringLength; $i++){
-            $char = $string[$i];
-            if(array_key_exists($char, $this->htmlChars)){
+	    $char = $string[$i];
+	    if(array_key_exists($char, $this->htmlChars)){
                 $char = $this->htmlChars[$char];
-            }
+	    }
 
-            $result = $result . $char;
+	    $result = $result . $char;
         }
         
         return $result;
@@ -295,12 +315,12 @@ class Controller{
         $result = "";
         $stringLength = strlen($string);
         for($i = 0; $i < $stringLength; $i++){
-            $char = $string[$i];
-            if(!ctype_alnum($char)){
+	    $char = $string[$i];
+	    if(!ctype_alnum($char)){
                 $char = "&#" . ord($char) . ";";
-            }
+	    }
 
-            $result = $result . $char;
+	    $result = $result . $char;
         }
         
         return $result;
@@ -334,28 +354,28 @@ class Controller{
         $string = "";
         $string .= "<ul class='line-items-container'>";
         foreach($order['line_items'] ?? array() as $lineItem){
-            $string .= "<li class='line-item' id='{$lineItem['uuid']}'>";
-            $string .= "<span class='line-item-quantity'>";
-            $string .= $lineItem['quantity'];
-            $string .= "</span>";
-            $string .= ' ' . $lineItem['name'];
-            foreach($lineItem['choices'] as $choice){
+	    $string .= "<li class='line-item' id='{$lineItem['uuid']}'>";
+	    $string .= "<span class='line-item-quantity'>";
+	    $string .= $lineItem['quantity'];
+	    $string .= "</span>";
+	    $string .= ' ' . $lineItem['name'];
+	    foreach($lineItem['choices'] as $choice){
                 $string .= "<div class='line-item-choice'>";
                 $string .= $choice['name'];
                 $string .= "<ul class='options-container'>";
                 foreach($choice['options'] as $option){
-                    $string .= "<li class='line-item-option'>";
-                    $string .= $option['name'];
-                    $string .= "</li>";
+		    $string .= "<li class='line-item-option'>";
+		    $string .= $option['name'];
+		    $string .= "</li>";
                 }
                 $string .= "</ul>";
                 $string .= "</div>";
-            }
-            $string .= "<div class='line-item-comment'>";
-            $string .= $this->escapeForHTML($lineItem['comment']);
-            $string .= "</div>";
-            
-            $string .= "</li>";
+	    }
+	    $string .= "<div class='line-item-comment'>";
+	    $string .= $this->escapeForHTML($lineItem['comment']);
+	    $string .= "</div>";
+	    
+	    $string .= "</li>";
         }
         $string .= "</ul>";
 
@@ -366,16 +386,16 @@ class Controller{
 	$string = "";
         $string .= "<ul class='line-items-container'>";
         foreach($order['line_items'] ?? array() as $lineItem){
-            $string .= "<li class='line-item' id='{$lineItem['uuid']}'>";
+	    $string .= "<li class='line-item' id='{$lineItem['uuid']}'>";
 	    $string .= "<div class='line-item-info'>";
-            $string .= "<span class='line-item-quantity'>";
-            $string .= $lineItem['quantity'];
-            $string .= "</span>";
+	    $string .= "<span class='line-item-quantity'>";
+	    $string .= $lineItem['quantity'];
+	    $string .= "</span>";
 	    $string .= "<span class='line-item-name'>";
-            $string .= $lineItem['name'];
+	    $string .= $lineItem['name'];
 	    $string .= "</span>";
 	    $string .= "</div>";
-            $string .= "</li>";
+	    $string .= "</li>";
         }
         $string .= "</ul>";
 
@@ -386,13 +406,13 @@ class Controller{
 	$string = "";
         $string .= "<ul class='line-items-container'>";
         foreach($order['line_items'] ?? array() as $lineItem){
-            $string .= "<li class='line-item' id='{$lineItem['uuid']}'>";
+	    $string .= "<li class='line-item' id='{$lineItem['uuid']}'>";
 	    $string .= "<div class='line-item-info'>";
-            $string .= "<span class='line-item-quantity'>";
-            $string .= $lineItem['quantity'];
-            $string .= "</span>";
+	    $string .= "<span class='line-item-quantity'>";
+	    $string .= $lineItem['quantity'];
+	    $string .= "</span>";
 	    $string .= "<span class='line-item-name'>";
-            $string .= $lineItem['name'];
+	    $string .= $lineItem['name'];
 	    $string .= "</span>";
 	    $string .= "<span class='line-item-price'>";
 	    $string .= "$";
@@ -402,26 +422,26 @@ class Controller{
 	    $string .= "</span>";
 	    $string .= "</div>";
 	    $string .= "<div class='line-item-choices-container'>";
-            foreach($lineItem['choices'] as $choice){
+	    foreach($lineItem['choices'] as $choice){
                 $string .= "<div class='line-item-choice-container'>";
 		$string .= "<span class='line-item-choice-name'>";
                 $string .= $choice['name'];
 		$string .= "</span>";
                 $string .= "<ul class='line-item-options-container'>";
                 foreach($choice['options'] as $option){
-                    $string .= "<li class='line-item-option'>";
-                    $string .= $option['name'];
-                    $string .= "</li>";
+		    $string .= "<li class='line-item-option'>";
+		    $string .= $option['name'];
+		    $string .= "</li>";
                 }
                 $string .= "</ul>";
                 $string .= "</div>";
-            }
+	    }
 	    $string .= "</div>";
-            $string .= "<div class='line-item-comment'>";
-            $string .= $this->escapeForHTML($lineItem['comment']);
-            $string .= "</div>";
-            
-            $string .= "</li>";
+	    $string .= "<div class='line-item-comment'>";
+	    $string .= $this->escapeForHTML($lineItem['comment']);
+	    $string .= "</div>";
+	    
+	    $string .= "</li>";
         }
         $string .= "</ul>";
 

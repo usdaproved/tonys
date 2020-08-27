@@ -61,7 +61,7 @@ class HomeController extends Controller{
         }
         
         $validPassword = true;
-        if(empty($_POST["password"]) || strlen($_POST["password"]) < '8'){
+        if(empty($_POST["password"]) || !$this->validatePasswordRequirements($_POST['password'])){
             $message = "Password must be at least 8 characters.";
             $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
             $validPassword = false;
@@ -123,12 +123,11 @@ class HomeController extends Controller{
 
             $emailToken = $selector . "-" . $token;
 
-            $expires = time() + (60*60); // expires in one hour.
             $this->userManager->setEmailVerificationToken($userUUID, $selectorBytes, $hashedTokenBytes);
 
             $headers = ["from" => "noreply@trystanbrock.dev"];
             // TODO(Trystan): In order to send html emails, the entire email needs to be in a <html></html>
-            $message = "Click this link: https://tonys.trystanbrock.dev/Users/verify?token=" . $emailToken . " \r\n";
+            $message = "Click this link: https://tonys.trystanbrock.dev/User/verify?token=" . $emailToken . " \r\n";
             mail($_POST["email"], "Verify your account at Tony's Taco House", $message, $headers);
         }
 

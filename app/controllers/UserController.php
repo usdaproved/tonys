@@ -137,6 +137,56 @@ class UserController extends Controller{
         $this->redirect("/User/info");
     }
 
+    // A page to change the current password, not displaying the actual password obviously.
+    public function password_get() : void {
+        $this->pageTitle = "Tony's - Change Password";
+        $userUUID = $this->getUserUUID();
+        if(is_null($userUUID) || !$this->sessionManager->isUserLoggedIn()){
+            $this->redirect("/");
+        }
+
+        $this->user = $this->userManager->getUserInfo($userUUID);
+
+        require_once APP_ROOT . "/views/user/user-password-page.php";
+    }
+
+    public function password_post() : void {
+        $userUUID = $this->getUserUUID();
+        if(is_null($userUUID) || !$this->sessionManager->isUserLoggedIn()){
+            $this->redirect("/");
+        }
+
+        if(!$this->sessionManager->validateCSRFToken($_POST["CSRFToken"])){
+            $this->redirect("/User/password");
+        }
+
+        if(!isset($_POST["current_password"])
+           || !isset($_POST["new_password"])
+           || !isset($_POST["repeat_password"])){
+            $this->sessionManager->pushOneTimeMessage(USER_ALERT, "Missing input, please try again.");
+            $this->redirect("/User/password");
+        }
+
+        if(!$this->validatePassword($userUUID, $_POST["current_password"])){
+            $this->sessionManager->pushOneTimeMessage(USER_ALERT, "Current password incorrect.");
+            $this->redirect("/User/password");
+        }
+
+        if(!$this->validatePasswordRequirements($_POST["new_password"])){
+            $this->sessionManager->pushOneTimeMessage(USER_ALERT, "New password must be at least 8 characters long.");
+            $this->redirect("/User/password");
+        }
+
+        if(strcmp($_POST["new_password"], $_POST["repeat_password"]) == 0){
+            $this->userManager->setPassword($userUUID, $_POST['new_password']);
+            $this->sessionManager->pushOneTimeMessage(USER_SUCCESS, "Password changed successfully.");
+            $this->redirect("/User/password");
+        } else {
+            $this->sessionManager->pushOneTimeMessage(USER_ALERT, "Repeat password does not match the new password.");
+            $this->redirect("/User/password");
+        }
+    }
+
     public function address_get() : void {
         $this->pageTitle = "Tony's - User Address";
         // If no addresses exist we can add one here.
@@ -204,7 +254,7 @@ class UserController extends Controller{
 
     public function orders_get() : void {
         $this->pageTitle = "Tony's - Order History";
-        // TODO(Trystan): This is where customers can view order history.
+
         $userUUID = $this->getUserUUID();
         if(is_null($userUUID)){
             $this->redirect("/");
@@ -248,7 +298,10 @@ class UserController extends Controller{
                 $hashedToken = hash("sha256", $token);
                 if(hash_equals(bin2hex($emailVerifyInfo["hashed_token"]), $hashedToken)){
                     $this->userManager->deleteEmailVerificationToken($userUUID);
-                    $verified = true;
+                    // We want the expired token to be deleted, but not verified.
+                    if(strtotime($emailVerifyInfo["expires"]) > time()){
+                        $verified = true;
+                    }
                 }
             }
         }
@@ -275,29 +328,148 @@ class UserController extends Controller{
     }
 
     public function forgot_get() : void {
-        // a page where users enter their account email.
+        $this->pageTitle = "Tony's - Forgot Password";
+        $userUUID = $this->getUserUUID();
+
+        if($this->sessionManager->isUserLoggedIn()){
+            $this->redirect("/User/info");
+        }
+        
+
+        require_once APP_ROOT . "/views/user/user-forgot-page.php";
     }
 
     public function forgot_post() : void {
-        // The email is collected and a token is generated.
-        // this token is then sent to the email.
+        if(!$this->sessionManager->validateCSRFToken($_POST["CSRFToken"])){
+            $this->sessionManager->pushOneTimeMessage(USER_ALERT, "Invalid session. Try again.");
+            $this->redirect("/User/forgot");
+        }
+
+        $message = "If " . $this->escapeForHTML($_POST['email']) . " has an account, a reset link has been sent.";
+        $this->sessionManager->pushOneTimeMessage(USER_SUCCESS, $message);
+
+        $credentials = $this->userManager->getRegisteredCredentialsByEmail($_POST['email']);
+        if(empty($credentials)){
+            $this->redirect("/User/forgot");
+        }
+
+        // Valid registered email, generate a token and send it.
+        $token = bin2hex(random_bytes(32));
+        $hashedTokenBytes = hash("sha256", $token, true);
+        $selectorBytes = UUID::generateOrderedBytes();
+        $selector = UUID::orderedBytesToArrangedString($selectorBytes);
+        $selector = str_replace("-", "", $selector);
+
+        $emailToken = $selector . "-" . $token;
+
+        $this->userManager->setForgotToken($credentials['user_uuid'], $selectorBytes, $hashedTokenBytes);
+
+        $headers = ["from" => "noreply@trystanbrock.dev"];
+        // TODO(Trystan): In order to send html emails, the entire email needs to be in a <html></html>
+        $message = "Click this link: https://tonys.trystanbrock.dev/User/reset?token=" . $emailToken . " \r\n";
+        mail($_POST["email"], "Verify your account at Tony's Taco House", $message, $headers);
+
+        $this->redirect("/User/forgot");
     }
 
     public function reset_get() : void {
-        // The token is verified identical to the remember me method.
-        // remove every 'remember me' token associated with this user.
-        // remove all reset tokens. Including the one just used.
-        // then a page is displayed where the user can set a new password.
+        $userUUID = $this->getUserUUID();
+        header('Referrer-Policy: no-referrer');
         
+        $verified = false;
+        if(isset($_GET["token"])){
+            // I now see it is possible for an attacker to submit a bad token that doesn't conform
+            // to what our expectations are. However, I am not seeing anything that breaks
+            // this code in a way that leads to a verified result. It would only lead to the failed redirect.
+            $userToken = explode("-", $_GET["token"]);
+            $selector = $userToken[0];
+            $token = $userToken[1];
+            $selectorBytes = UUID::arrangedStringToOrderedBytes($selector);
+            $forgotTokenInfo = $this->userManager->getForgotTokenInfo($selectorBytes);
+            
+            if(!empty($forgotTokenInfo)){
+                $hashedToken = hash("sha256", $token);
+                if(hash_equals(bin2hex($forgotTokenInfo["hashed_token"]), $hashedToken)){
+                    $this->userManager->deleteAllForgotTokens($forgotTokenInfo["user_uuid"]);
+                    // Even if the token is expired I think it would be good security practice
+                    // to remove all current sessions.
+                    $this->userManager->deleteAllRememberMeTokens($forgotTokenInfo["user_uuid"]);
+                    
+                    if(strtotime($forgotTokenInfo["expires"]) > time()){
+                        $verified = true;
+
+                        $_SESSION['reset_uuid'] = UUID::orderedBytesToArrangedString($forgotTokenInfo['user_uuid']);
+                    }
+                }
+            }
+        }
+
+        // If the token has already been used, this user can end up making an additional reset_get request.
+        // For example if they type in a password that doesn't conform to the requirements.
+        if(!$verified){
+            if(isset($_GET["reset"])){
+                $resetTokenHash = hash("sha256", $_GET['reset']);
+                if(hash_equals($_SESSION['reset_token_hash'], $resetTokenHash)){
+                    $verified = true;
+                }
+            }
+        }
+        
+        if($verified){
+            // Display a page where a user can type in a new password.
+            $this->pageTitle = "Tony's - Reset Password";
+
+            // Generate a one time use token that is embedded in the page.
+            // like the CSRFToken and sent with the reset post.
+            $resetToken = bin2hex(random_bytes(32));
+            $_SESSION['reset_token_hash'] = hash("sha256", $resetToken);
+            
+            require_once APP_ROOT . "/views/user/user-forgot-success-page.php";
+        } else {
+            $message = "Reset link either expired or invalid. Please enter email to send a new link.";
+            $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
+            $this->redirect("/User/forgot");
+        }
     }
 
     public function reset_post() : void {
-        // the new password should go through the same rules that making a new account has.
-        // login the user? Or make them login with the new credentials?
+        if(!$this->sessionManager->validateCSRFToken($_POST["CSRFToken"]) || !isset($_SESSION['reset_token_hash'])){
+            $message = "Session associated with the reset link has expired. Please enter email to send a new link.";
+            $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
+            $this->redirect("/User/forgot");
+        }
+
+        if(!isset($_POST['reset']) || !isset($_POST['password'])){
+            $message = "Values missing, try resubmitting again.";
+            $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
+            $this->redirect("/User/reset");
+        }
+
+        $resetTokenHash = hash("sha256", $_POST["reset"]);
+        if(hash_equals($_SESSION['reset_token_hash'], $resetTokenHash)){
+            if(!$this->validatePasswordRequirements($_POST['password'])){
+                $message = "Password does not meet requirements, must be at least 8 characters long.";
+                $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
+                $this->redirect("/User/reset?reset=" . $_POST["reset"]);
+            } else {
+                // everything is valid and ready to set the new password.
+                $userUUID = UUID::ArrangedStringToOrderedBytes($_SESSION['reset_uuid']);
+                $this->userManager->setPassword($userUUID, $_POST['password']);
+                
+                unset($_SESSION['reset_token_hash']);
+                unset($_SESSION['reset_uuid']);
+                                                
+                $this->sessionManager->pushOneTimeMessage(USER_SUCCESS, "Password changed successfully.");
+                $this->sessionManager->login($userUUID);
+                $this->redirect("/User/info");
+            }
+        }
     }
 
     // JS functions
 
+    // TODO(Trystan): I'm not even sure this needs to be a javascript function.
+    // Can't remember why I did it this way.
     public function verify_post() : void {
         $userUUID = $this->getUserUUID();
 
