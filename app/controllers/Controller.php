@@ -460,6 +460,12 @@ class Controller{
 	return $email;
     }
 
+    public function constructVerifyEmail(string $token) : string {
+	require_once APP_ROOT . "/email_templates/verifyEmail.php";
+
+	return $email;
+    }
+
     public function sendHTMLEmail(string $recipient, string $subject, string $message) : void {
 	$headers = ["from" => "noreply@trystanbrock.dev",
 		    "MIME-Version" => "1.0",

@@ -491,8 +491,12 @@ class UserController extends Controller{
 
         $emailToken = $selector . "-" . $token;
 
-        $expires = time() + (60*60); // expires in one hour.
         $this->userManager->setEmailVerificationToken($userUUID, $token["selector"], $token["hash"]);
+
+        $this->user = $this->userManager->getUserInfo($userUUID);
+
+        $message = $this->constructVerifyEmail($emailToken);
+        $this->sendHTMLEmail($this->user["email"], "Tony's Taco House - Verify Email", $message);
     }
 
     public function address_setDefault_post() : void {

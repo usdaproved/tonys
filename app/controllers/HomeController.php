@@ -125,10 +125,8 @@ class HomeController extends Controller{
 
             $this->userManager->setEmailVerificationToken($userUUID, $selectorBytes, $hashedTokenBytes);
 
-            $headers = ["from" => "noreply@trystanbrock.dev"];
-            // TODO(Trystan): In order to send html emails, the entire email needs to be in a <html></html>
-            $message = "Click this link: https://tonys.trystanbrock.dev/User/verify?token=" . $emailToken . " \r\n";
-            mail($_POST["email"], "Verify your account at Tony's Taco House", $message, $headers);
+            $message = $this->constructVerifyEmail($emailToken);
+            $this->sendHTMLEmail($_POST["email"], "Tony's Taco House - Verify Email", $message);
         }
 
         $this->sessionManager->login($userUUID);
