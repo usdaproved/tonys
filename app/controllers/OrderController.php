@@ -516,6 +516,12 @@ class OrderController extends Controller{
             $this->user = $this->userManager->getUserInfo($userUUID);
 
             $order = $this->orderManager->getOrderByUUID($orderUUID);
+            $order["delivery_address"] = $this->orderManager->getDeliveryAddress($order["uuid"]);
+
+            $cost = $this->orderManager->getCost($order["uuid"]);
+            $cost["total"] = $cost["subtotal"] + $cost["fee"] + $cost["tax"];
+            $order["cost"] = $cost;
+            
             $message = $this->constructOrderConfirmationEmail($this->user, $order);
             $this->sendHTMLEmail($this->user["email"], "Tony's Taco House - Order Confirmed", $message);
             

@@ -449,12 +449,7 @@ class Controller{
     }
 
     public function constructOrderConfirmationEmail(array $user, array $order) : string {
-	$order["delivery_address"] = $this->orderManager->getDeliveryAddress($order["uuid"]);
-	$cost = $this->orderManager->getCost($order["uuid"]);
-	$cost["total"] = $cost["subtotal"] + $cost["fee"] + $cost["tax"];
-	$order["cost"] = $cost;
-	
-	require_once APP_ROOT . "email_templates/orderConfirmation.php";
+	require_once APP_ROOT . "/email_templates/orderConfirmation.php";
 
 	return $email;
     }

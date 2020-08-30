@@ -1405,7 +1405,7 @@ body.outlook p {
                             <table>
                               <tr>
                                 <th>
-                                  <h1>Thank you for your order, ' . $user['name_first'] . ' </h1>
+                                  <h1>Thank you for your order, ' . $this->escapeForHTML($user['name_first']) . ' </h1>
                                   <p>';
 if($order['order_type'] == DELIVERY){
     $email .= 'Your order will be delivered shortly. ';
@@ -1457,16 +1457,19 @@ foreach($order['line_items'] as $lineItem){
                                       <td>' . $this->intToCurrency($lineItem['price']) . '</td>
                                     </tr>';
     foreach($lineItem['choices'] as $choice){
-	$email .= '
+        $email .= '
 	                            <tr colspan="3">
                                        <td>' . $choice['name']  . '</td>
                                     </tr>';
-	foreach($choice['options'] as $option){
-	    $email .= '             <tr colspan="3">
+        foreach($choice['options'] as $option){
+            $email .= '             <tr colspan="3">
                                        <td>' . $option['name'] . '</td>
                                     </tr>';
-	}
+        }
     }
+    $email .= '                    <tr colspan="3">
+                                       <td>' . $this->escapeForHTML($lineItem['comment']) . '</td>
+                                    </tr>';
 }
 $email .= '
                                     <tr>
