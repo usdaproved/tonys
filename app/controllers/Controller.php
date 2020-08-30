@@ -448,6 +448,24 @@ class Controller{
 	return $string;
     }
 
+    public function constructOrderConfirmationEmail(array $user, array $order) : string {
+	$order["delivery_address"] = $this->orderManager->getDeliveryAddress($order["uuid"]);
+	$cost = $this->orderManager->getCost($order["uuid"]);
+	$cost["total"] = $cost["subtotal"] + $cost["fee"] + $cost["tax"];
+	$order["cost"] = $cost;
+	
+	require_once APP_ROOT . "email_templates/orderConfirmation.php";
+
+	return $email;
+    }
+
+    public function sendHTMLEmail(string $recipient, string $subject, string $message) : void {
+	$headers = ["from" => "noreply@trystanbrock.dev",
+		    "MIME-Version" => "1.0",
+		    "Content-type" => "text/html; charset=utf-8"];
+	mail($recipient, $subject, $message, $headers);
+    }
+
     public function intToCurrency(int $price = NULL) : string {
 	if(empty($price)) $price = 0;
 	return number_format((float)($price / 100.0), 2);

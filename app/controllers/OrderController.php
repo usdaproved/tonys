@@ -514,10 +514,11 @@ class OrderController extends Controller{
             $this->submitOrder($userUUID, $orderUUID, $paymentIntent->amount, PAYMENT_STRIPE);
 
             $this->user = $this->userManager->getUserInfo($userUUID);
-            // TODO: Construct a better email, each line in an email cannot be more than 70 chars.
 
-            $headers = ["from" => "noreply@trystanbrock.dev"];
-            mail($this->user["email"], "Tony's Taco House Order", "Your order has been confirmed.", $headers);
+            $order = $this->orderManager->getOrderByUUID($orderUUID);
+            $message = $this->constructOrderConfirmationEmail($this->user, $order);
+            $this->sendHTMLEmail($this->user["email"], "Tony's Taco House - Order Confirmed", $message);
+            
             break;
         default:
             // Unexpected event type
@@ -526,88 +527,6 @@ class OrderController extends Controller{
         }
 
         http_response_code(200);
-    }
-
-    public function paypalCreateOrder_post() : void {
-        // In order to fill out the information in the body,
-        // we must get the info from the order.
-        $userUUID = $this->getUserUUID();
-
-        $cartUUID = $this->orderManager->getCartUUID($userUUID);
-        if(is_null($cartUUID)){
-            http_response_code(400);
-        }
-        $cost = $this->orderManager->getCost($cartUUID);
-
-        $paymentTotal = $cost["subtotal"] + $cost["tax"] + $cost["fee"];
-        $paymentTotal = $paymentTotal * 0.01; // NOTE(Trystan): Paypal expects 0.00 format
-        
-        $request = new \PayPalCheckoutSdk\Orders\OrdersCreateRequest();
-        $request->prefer('return=representation');
-        $request->body = array(
-            'intent' => 'CAPTURE',
-            'purchase_units' =>
-                array(
-                    0 =>
-                        array(
-                            'amount' =>
-                                array(
-                                    'currency_code' => 'USD',
-                                    'value' => $paymentTotal
-                                )
-                        )
-                )
-        );
-
-        $environment = new \PayPalCheckoutSdk\Core\SandboxEnvironment(PAYPAL_PUBLIC_KEY, PAYPAL_PRIVATE_KEY);
-        $client = new \PayPalCheckoutSdk\Core\PayPalHttpClient($environment);
-        
-        $response = $client->execute($request);
-
-        $data = ["paypalID" => $response->result->id];
-
-        echo json_encode($data);
-    }
-
-    public function paypalCaptureOrder_post() : void {
-        $userUUID = $this->getUserUUID();
-
-        $json = file_get_contents("php://input");
-        $postData = json_decode($json, true);
-
-        $cartUUID = $this->orderManager->getCartUUID($userUUID);
-        if(is_null($cartUUID)){
-            http_response_code(400);
-        }
-
-        $paypalID = $postData["paypalID"];
-        $request = new \PayPalCheckoutSdk\Orders\OrdersCaptureRequest($paypalID);
-
-        $environment = new \PayPalCheckoutSdk\Core\SandboxEnvironment(PAYPAL_PUBLIC_KEY, PAYPAL_PRIVATE_KEY);
-        $client = new \PayPalCheckoutSdk\Core\PayPalHttpClient($environment);
-
-        // NOTE(Trystan): This response is where we would gather information about the customer.
-        // such as name and address. Instead of asking the customer for info twice, we could gather once here,
-        // but only if they're using paypal of course.
-        // Using Stripe we would still have to collect address info manually.
-        // response->result->purchase_units[0]->shipping->address
-        $response = $client->execute($request);
-
-        $paypalToken = $response->result->id;
-        $paymentTotal = 0;
-        // Please just look at paypal compared to stripe. Use Stripe exclusively if you can, I beg you.
-        // I would imagine there would only ever be one purchase_unit/capture for every transaction,
-        // but if PayPal allows you to split your own transaction, then this would be necessary.
-        foreach($response->result->purchase_units as $purchaseUnit){
-            foreach($purchaseUnit->payments->captures as $capture){
-                $paymentTotal += ((float)$capture->amount->value * 100);
-            }
-        }
-
-        $this->orderManager->setPaypalToken($cartUUID, $paypalToken);
-        $this->submitOrder($userUUID, $cartUUID, $paymentTotal, PAYMENT_PAYPAL);
-        
-        echo json_encode($response);
     }
 
     // HELPER FUNCTIONS
