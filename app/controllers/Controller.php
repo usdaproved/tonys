@@ -455,7 +455,7 @@ class Controller{
     }
 
     public function constructForgotPasswordEmail(string $token) : string {
-	require_once APP_ROOT . "/email_templates/";
+	require_once APP_ROOT . "/email_templates/forgotPassword.php";
 
 	return $email;
     }
