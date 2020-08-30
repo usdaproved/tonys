@@ -364,10 +364,9 @@ class UserController extends Controller{
 
         $this->userManager->setForgotToken($credentials['user_uuid'], $selectorBytes, $hashedTokenBytes);
 
-        $headers = ["from" => "noreply@trystanbrock.dev"];
-        // TODO(Trystan): In order to send html emails, the entire email needs to be in a <html></html>
-        $message = "Click this link: https://tonys.trystanbrock.dev/User/reset?token=" . $emailToken . " \r\n";
-        mail($_POST["email"], "Verify your account at Tony's Taco House", $message, $headers);
+        $message = $this->constructForgotPasswordEmail($emailToken);
+
+        $this->sendHTMLEmail($_POST["email"], "Tony's Taco House - Reset Password", $message);
 
         $this->redirect("/User/forgot");
     }
