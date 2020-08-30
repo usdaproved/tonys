@@ -1412,7 +1412,7 @@ if($order['order_type'] == DELIVERY){
 } else {
     $email .= 'Your order will be ready for pickup shortly. ';
 }
-$email .= 'Follow along <a href="/Order/status?order=' . UUID::orderedBytesToArrangedString($order['uuid']) . '">here</a></p>
+$email .= 'Follow along <a href="https://tonys.trystanbrock.dev/Order/status?order=' . UUID::orderedBytesToArrangedString($order['uuid']) . '">here</a></p>
                                   <table class="spacer">
                                     <tbody>
                                       <tr>
@@ -1452,44 +1452,54 @@ $email .= '
 foreach($order['line_items'] as $lineItem){
     $email .= '
                                     <tr>
-                                      <td>' . $lineItem['quantity'] . '</td>
-                                      <td><b>' . $lineItem['name']  . '</b></td>
+                                      <td>' . $lineItem['quantity'] . ' <b>' . $lineItem['name']  . '</b></td>
                                       <td>' . $this->intToCurrency($lineItem['price']) . '</td>
                                     </tr>';
     foreach($lineItem['choices'] as $choice){
         $email .= '
-	                            <tr colspan="3">
+	                            <tr colspan="2">
                                        <td>' . $choice['name']  . '</td>
                                     </tr>';
         foreach($choice['options'] as $option){
-            $email .= '             <tr colspan="3">
+            $email .= '             <tr colspan="2">
                                        <td>' . $option['name'] . '</td>
                                     </tr>';
         }
     }
-    $email .= '                    <tr colspan="3">
+    $email .= '                    <tr colspan="2">
                                        <td>' . $this->escapeForHTML($lineItem['comment']) . '</td>
-                                    </tr>';
+                                    </tr>
+                                    <tr colspan="2">
+                                    <td>
+                                    <table>
+                                       <tbody>
+                                         <tr>
+                                           <td height="20" style="font-size:20px;line-height:20px;">&nbsp;</td>
+                                         </tr>
+                                       </tbody>
+                                    </table>
+                                    </tr>
+                                    </td>';
 }
 $email .= '
                                     <tr>
-                                       <td colspan="2">Subtotal:</td>
+                                       <td>Subtotal:</td>
                                        <td>' . $this->intToCurrency($order["cost"]["subtotal"]) . '</td>
                                     </tr>';
 if($order['cost']['fee'] > 0){
     $email .= '
                                     <tr>
-                                       <td colspan="2">Fees:</td>
+                                       <td>Fees:</td>
                                        <td>' . $this->intToCurrency($order["cost"]["fee"]) . '</td>
                                     </tr>';
 }
 $email .= '
                                     <tr>
-                                       <td colspan="2">Tax:</td>
+                                       <td>Tax:</td>
                                        <td>' . $this->intToCurrency($order["cost"]["tax"]) . '</td>
                                     </tr>
                                     <tr>
-                                       <td colspan="2"><b>Total:</b></td>
+                                       <td><b>Total:</b></td>
                                        <td><b>' . $this->intToCurrency($order["cost"]["total"]) . '</b></td>
                                     </tr>
                                   </table>
