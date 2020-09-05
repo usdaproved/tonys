@@ -8,6 +8,8 @@ const pickupOrdersContainer = document.querySelector('#pickup-orders');
 const restaurantOrdersContainer = document.querySelector('#in-restaurant-orders');
 const ORDER_TYPE = ['delivery','pickup','in-restaurant'];
 
+const updateStatusButton = document.querySelector('#update-status-button');
+
 const orderTypeContainers = [deliveryOrdersContainer, pickupOrdersContainer, restaurantOrdersContainer];
 
 let lastReceivedOrderDate = null;
@@ -25,6 +27,11 @@ const addToSelection = (e) => {
         const index = orderSelection.indexOf(orderUUID);
         orderSelection.splice(index, 1);
         statusElement.innerText = STATUS_ARRAY[statusIndex];
+        
+        if(!orderSelection.length){
+            updateStatusButton.classList.add('inactive');
+            updateStatusButton.disabled = true;
+        }
     } else {
         if(!container.classList.contains('delivery')){
             // If it's not a delivery, skip the 'delivering' status.
@@ -34,6 +41,11 @@ const addToSelection = (e) => {
         container.classList.add('selected');
         orderSelection.push(orderUUID);
         statusElement.innerText = STATUS_ARRAY[statusIndex + 1];
+
+        if(updateStatusButton.classList.contains('inactive')){
+            updateStatusButton.classList.remove('inactive');
+            updateStatusButton.disabled = false;
+        }
     }
 }
 
@@ -284,10 +296,16 @@ const toggleHidden = (element) => {
     element.hidden = !element.hidden;
 }
 
-const orderTypeFilters = document.querySelectorAll('#order-type-filters > input');
+const orderTypeFilters = document.querySelectorAll('#order-type-filters > button');
 orderTypeFilters.forEach(filter => {
-    filter.addEventListener('change', (e) => {
-        switch (e.target.id){
+    filter.addEventListener('click', (e) => {
+        const target = e.target.closest('button');
+        if(target.classList.contains('inactive')){
+            target.classList.remove('inactive');
+        } else {
+            target.classList.add('inactive');
+        }
+        switch (target.id){
             case 'view-delivery':
                 toggleHidden(document.querySelector('#order-type-name-delivery'));
                 toggleHidden(deliveryOrdersContainer);
@@ -363,7 +381,6 @@ const getStatus = () => {
 
 setInterval(getStatus, fetchInterval);
 
-const updateStatusButton = document.querySelector('#update-status-button');
 updateStatusButton.addEventListener('click', (e) => {
     const url = '/Dashboard/orders/active/updateStatus';
     let json = {'status' : orderSelection};

@@ -33,9 +33,11 @@
 		    Update
 		</button>
 	    </div>
+	    <?php if($this->sessionManager->isUserLoggedIn()): ?>
 	    <div class="center-container margin-top-1">
 		<a href="/User/password" class="no-text-decorate">Change Password</a>
 	    </div>
+	    <?php endif; ?>
 	    <input type="hidden" name="CSRFToken"  id="CSRFToken" value="<?= $this->sessionManager->getCSRFToken(); ?>">
 	</form>
     </div>

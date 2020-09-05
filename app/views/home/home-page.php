@@ -27,7 +27,7 @@
 	</div>
     </div>
     <div class="hero-image-container">
-	<img class="hero-image" src="/image/home/hero.jpg" alt="restaurant-exterior">
+	<img class="hero-image" src="/image/home/hero.jpg" alt="restaurant exterior">
     </div>
 </div>
 <div class="info-schedule-container">
