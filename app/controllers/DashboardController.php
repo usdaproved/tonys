@@ -217,12 +217,18 @@ class DashboardController extends Controller{
             exit;
         }
 
-        $customerUUID = UUID::arrangedStringToOrderedBytes($postData["user_uuid"]);
+        $customerUUID = NULL;
 
+        if(!is_null($postData["user_uuid"])){
+            $customerUUID = UUID::arrangedStringToOrderedBytes($postData["user_uuid"]);
+        }
+
+        // No matter what we want to assign user here, we override the employee with null if none selected.
         $this->orderManager->assignUserToOrder($cartUUID, $customerUUID);
+
         $this->orderManager->submitOrder($cartUUID);
         
-        $this->sessionManager->pushOneTimeMessage(USER_ALERT, "Order successfully submitted.");
+        $this->sessionManager->pushOneTimeMessage(USER_SUCCESS, "Order successfully submitted.");
         echo "success";
     }
 

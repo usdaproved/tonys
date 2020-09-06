@@ -223,12 +223,7 @@ const beginDialogMode = (orderPaymentInfo, orderUUID) => {
 };
 
 const collectPayment = (orderElement) => {
-    orderElement.classList.add('unpaid');
     orderElement.removeEventListener('click', addToSelection);
-    let moneySVG = new Image(24, 24);
-    moneySVG.classList.add('info-icon');
-    moneySVG.src = '/svg/money-24px.svg';
-    orderElement.appendChild(moneySVG);
     orderElement.addEventListener('click', clickCollect);
 }
 
@@ -286,10 +281,12 @@ const getOrderList = () => {
             orderTypeContainers[order.order_type].appendChild(orderElement);
 
             if(!order.is_paid){
-                // TODO(Trystan): Show an indicator that the order
-                // has not been paid for.
-                // I want one there the whole time, not just when the order is almost complete.
+                orderElement.classList.add('unpaid');
                 unpaidOrderUUIDs.push(order.uuid);
+                let moneySVG = new Image(24, 24);
+                moneySVG.classList.add('info-icon');
+                moneySVG.src = '/svg/money-24px.svg';
+                orderElement.appendChild(moneySVG);
             }
 
             // The orders are given in ascending order, every new order we get
@@ -414,6 +411,9 @@ updateStatusButton.addEventListener('click', (e) => {
     const selectedElements = document.querySelectorAll('.order-container.selected');
     selectedElements.forEach(element => element.classList.remove('selected'));
     orderSelection = [];
+
+    updateStatusButton.classList.add('inactive');
+    updateStatusButton.disabled = true;
 });
 
 // Not correct grammar, 'is' is tied with being boolean though.

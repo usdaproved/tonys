@@ -34,9 +34,7 @@ submitButton.addEventListener('click', (e) => {
 
     postJSON(url, json).then(response => response.text()).then(result => {
         if(result === 'success'){
-            // TODO(Trystan): Decide where we want to go after submission.
-            // at the moment we just push a message saying success.
-            window.location.replace(`/Dashboard`);
+            window.location.replace(`/Order`);
         }
     });
 });
