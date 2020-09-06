@@ -149,6 +149,20 @@ const createOrderElement = (order) => {
     return orderContainer;
 };
 
+const createDetailedOrderElement = (order) => {
+    let orderContainer = document.createElement('div');
+    orderContainer.classList.add('order-container');
+    orderContainer.id = `${order.uuid}`;
+
+    const lineItems = order.line_items;
+    for(var lineItem in lineItems){
+        let lineItemElement = createLineItemForCart(lineItems[lineItem]);
+        orderContainer.appendChild(lineItemElement);
+    }
+
+    return orderContainer;
+}
+
 const initSearchUsersComponent = (callback) => {
     const button = document.querySelector('#user-search-button');
     const table = document.querySelector('#user-table');
@@ -257,5 +271,5 @@ const intToCurrency = (price) => {
 };
 
 export { postJSON, createLineItemElement, createLineItemForCart,
-         createOrderElement, STATUS_ARRAY, intToCurrency, 
+         createOrderElement, createDetailedOrderElement, STATUS_ARRAY, intToCurrency, 
          initSearchUsersComponent, SingleContainerSelector }

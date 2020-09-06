@@ -31,20 +31,20 @@
 	</div>
     </div>
 </div>
-<h3 id="order-type-name-delivery" class="order-type-name">
+<h3 id="order-type-name-delivery" class="text-center order-type-name">
     DELIVERY:
 </h3>
-<div id="delivery-orders" class="orders-container">
+<div id="delivery-orders" class="center-container active-order-container">
 </div>
-<h3 id="order-type-name-pickup" class="order-type-name">
+<h3 id="order-type-name-pickup" class="text-center order-type-name">
     PICKUP:
 </h3>
-<div id="pickup-orders" class="orders-container">
+<div id="pickup-orders" class="center-container active-order-container">
 </div>
-<h3 id="order-type-name-in-restaurant" class="order-type-name">
+<h3 id="order-type-name-in-restaurant" class="text-center order-type-name">
     IN RESTAURANT:
 </h3>
-<div id="in-restaurant-orders" class="orders-container">
+<div id="in-restaurant-orders" class="center-container active-order-container">
 </div>
 <input type="hidden" name="CSRFToken"  id="CSRFToken" value="<?= $this->sessionManager->getCSRFToken(); ?>">
 

@@ -1,5 +1,5 @@
 // (C) Copyright 2020 by Trystan Brock All Rights Reserved.
-import { postJSON, createOrderElement, STATUS_ARRAY, intToCurrency} from './utility.js';
+import { postJSON, createDetailedOrderElement, STATUS_ARRAY, intToCurrency} from './utility.js';
 
 "use strict";
 
@@ -238,18 +238,32 @@ const getOrderList = () => {
     postJSON(getOrdersURL, getOrdersJson).then(response => response.json()).then(orders => {
         orders.forEach(order => {
             orderStorage[order.uuid] = order;
-            const orderElement = createOrderElement(order);
+            const orderElement = createDetailedOrderElement(order);
             orderElement.classList.add(ORDER_TYPE[order.order_type]);
+            orderElement.classList.add('text-form-inner-container', 'shadow')
+
+            let statusElement = document.createElement('div');
+            statusElement.classList.add('order-status');
+            statusElement.innerText = STATUS_ARRAY[parseInt(order.status)];
+            orderElement.prepend(statusElement);
             
             // TODO(Trystan): Add any additional info we want to show with orders.
             // Names, addresses, etc.
             let orderType = parseInt(order.order_type);
             if(orderType === 0){
                 let addressInfoElement = document.createElement('div');
+                addressInfoElement.classList.add('text-center', 'margin-top-1');
                 let addressLine = document.createElement('div');
                 addressLine.innerText = order.address.line;
 
                 addressInfoElement.appendChild(addressLine);
+
+                let addressLine2 = document.createElement('div');
+                addressLine2.innerText = order.address.city + ', ' 
+                                       + order.address.state + ' ' + order.address.zip_code;
+
+                addressInfoElement.appendChild(addressLine2);
+                
                 orderElement.prepend(addressInfoElement);
             }
             
@@ -260,11 +274,6 @@ const getOrderList = () => {
                 nameElement.innerText = userInfo.name_first + ' ' + userInfo.name_last;
                 orderElement.prepend(nameElement);
             }
-
-            let statusElement = document.createElement('div');
-            statusElement.classList.add('order-status');
-            statusElement.innerText = STATUS_ARRAY[parseInt(order.status)];
-            orderElement.appendChild(statusElement);
 
             if(((order.status == 3 && orderType !== 0) 
                 || (order.status == 4)) && !order.is_paid){
@@ -277,6 +286,9 @@ const getOrderList = () => {
             orderTypeContainers[order.order_type].appendChild(orderElement);
 
             if(!order.is_paid){
+                // TODO(Trystan): Show an indicator that the order
+                // has not been paid for.
+                // I want one there the whole time, not just when the order is almost complete.
                 unpaidOrderUUIDs.push(order.uuid);
             }
 

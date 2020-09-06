@@ -152,7 +152,7 @@
 .order-container{
     padding: 10px;
     margin-bottom: 1rem;
-    border: thin solid rgb(226, 226, 226);
+    border: 2px solid rgb(226, 226, 226);
     position: relative;
 
     cursor: pointer;
@@ -163,7 +163,7 @@
 }
 
 .order-container.selected{
-    border: thin solid rgb(32, 200, 80);
+    border: 2px solid rgb(32, 200, 80);
 }
 
 .order-container.inactive{
