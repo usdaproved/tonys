@@ -17,6 +17,129 @@ let orderStorage = {};
 let orderSelection = [];
 let unpaidOrderUUIDs = [];
 
+const endDialogMode = (orderUUID) => {
+    if(orderUUID){
+        const unpaidIndex = unpaidOrderUUIDs.indexOf(orderUUID);
+        unpaidOrderUUIDs.splice(unpaidIndex, 1);
+        let container = document.querySelector(`[id='${orderUUID}']`);
+        container.classList.remove('unpaid');
+        container.querySelector('.info-icon').remove();
+        container.removeEventListener('click', clickCollect);
+        orderComplete(orderUUID);
+        delete orderStorage[orderUUID];
+        updateOrderStatusText(orderUUID, STATUS_ARRAY[5]); // Complete
+    }
+
+
+    let dialog = document.querySelector('#dialog-container');
+    dialog.remove();
+
+    document.body.style.overflow = 'auto';
+};
+
+// Stripe POS stuff
+
+const stripeStatusButton = document.querySelector('#stripe-status-button');
+const stripeStatusText = document.querySelector('#stripe-status-text');
+let stripeReaderConnected = false;
+let stripeOrderSecret = null;
+
+const getStripeConnectionToken = () => {
+    const url = '/Dashboard/orders/active/stripeConnectionToken';
+    let json = {};
+
+    return postJSON(url, json).then(response => response.json()).then(data => {
+        return data.secret;
+    });
+};
+
+const stripeUnexpectedDisconnect = () => {
+    stripeStatusText.style.display = 'inherit';
+    stripeStatusButton.classList.remove('connected');
+    stripeStatusButton.disabled = false;
+};
+
+let terminal = StripeTerminal.create({
+    onFetchConnectionToken: getStripeConnectionToken,
+    onUnexpectedReaderDisconnect: stripeUnexpectedDisconnect,
+});
+
+const connectReaderHandler = () => {
+    // TODO(Trystan): Remove from production.
+    let config = {simulated: true};
+    terminal.discoverReaders(config).then(discoverResult => {
+        if(discoverResult.error){
+            // This means there was an issue when discovering.
+        } else if(discoverResult.discoveredReaders.length === 0){
+            // This means no readers were found.
+            // Alert user that they need to connect one.
+        } else {
+            let selectedReader = discoverResult.discoveredReaders[0];
+
+            terminal.connectReader(selectedReader).then(connectResult => {
+                if(connectResult.error){
+                    // Alert user that it failed to connect.
+                } else {
+                    // reader is finally connected.
+                    stripeReaderConnected = true;
+                    stripeStatusText.style.display = 'none';
+                    stripeStatusButton.classList.add('connected');
+                    stripeStatusButton.disabled = true;
+                    // TODO(Trystan): Remove from production.
+                    terminal.setSimulatorConfiguration({testCardNumber: '4242424242424242'});
+                }
+            });
+        }
+    });
+};
+
+stripeStatusButton.addEventListener('click', (e) => {
+    connectReaderHandler();
+});
+
+// Call this function only if a reader is connected when a modal is opened.
+const getStripeCheckoutInfo = (orderUUID) => {
+    const url = '/Dashboard/orders/active/getStripeCheckoutInfo';
+    let json = {'order_uuid' : orderUUID};
+
+    postJSON(url, json).then(response => response.json()).then(result => {
+        stripeOrderSecret = result;
+    });
+};
+
+const stripeCheckout = (clientSecret, orderUUID) => {
+    // TODO(Trystan): We can update the display on the card reader
+    // to show the line items of the order.
+    // Then there's also the part about printing receipts.
+    terminal.collectPaymentMethod(clientSecret).then(collectResult => {
+        if(collectResult.error){
+            // Handle the processing error.
+        } else {
+            // This gets us the paymentIntent
+            // We cam either automatically process here.
+            // Or present a confirmation screen.
+            terminal.processPayment(collectResult.paymentIntent).then(processResult => {
+                if(processResult.error){
+                    // Alert that there was some error when processing.
+                    // There's a few different errors that can happen here.
+                    // all of which result in just retrying the same payment intent again.
+                } else if (processResult.paymentIntent){
+                    stripeOrderSecret = null;
+                    endDialogMode(orderUUID);
+                    const url = '/Dashboard/orders/active/captureStripePayment';
+                    let json = {'payment_intent_id' : processResult.paymentIntent.id}
+
+                    postJSON(url, json).then(response => response.text()).then(postResult => {
+                        // Check if postResult === 'success'
+                    });
+                }
+            });
+        }
+    });
+};
+
+// End of stripe stuff.
+
 const addToSelection = (e) => {
     let container = e.target.closest('.order-container');
     let statusElement = container.querySelector('.order-status');
@@ -47,7 +170,7 @@ const addToSelection = (e) => {
             updateStatusButton.disabled = false;
         }
     }
-}
+};
 
 const orderComplete = (orderUUID) => {
     let container = document.querySelector(`[id='${orderUUID}']`);
@@ -62,17 +185,9 @@ const orderComplete = (orderUUID) => {
         let container = e.target.closest('.order-container');
         container.remove();
     });
-}
-
-// TODO(Trystan): we copied a whole bunch of code from the other page,
-// we could probably share it in the utility or something.
-
-const endDialogMode = () => {
-    let dialog = document.querySelector('#dialog-container');
-    dialog.remove();
-
-    document.body.style.overflow = 'auto';
 };
+
+
 
 const onCashInput = (e) => {
     // Not sure if we want to grab this every time the cash input is updated. Better to just store once.
@@ -95,6 +210,9 @@ const clickCollect = (e) => {
 
     let urlGetPaymentInfo = "/Dashboard/orders/active/getPaymentInfo";
     postJSON(urlGetPaymentInfo, {"uuid":orderUUID}).then(response => response.json()).then(info => {
+        if(stripeReaderConnected){
+            getStripeCheckoutInfo(orderUUID);
+        }
         beginDialogMode(info, orderUUID);
     });
 };
@@ -112,16 +230,7 @@ const submitCashPayment = (e) => {
 
         });
 
-        const unpaidIndex = unpaidOrderUUIDs.indexOf(orderUUID);
-        unpaidOrderUUIDs.splice(unpaidIndex, 1);
-        let container = document.querySelector(`[id='${orderUUID}']`);
-        container.classList.remove('unpaid');
-        container.querySelector('.info-icon').remove();
-        container.removeEventListener('click', clickCollect);
-        orderComplete(orderUUID);
-        delete orderStorage[orderUUID];
-        updateOrderStatusText(orderUUID, STATUS_ARRAY[5]); // Complete
-        endDialogMode();
+        endDialogMode(orderUUID);
     } else {
         // show error that cash does not meet requirements.
     }
@@ -207,6 +316,18 @@ const newDialog = (orderPaymentInfo, orderUUID) => {
     submitPaymentButton.addEventListener('click', submitCashPayment);
 
     dialogInfoContainer.appendChild(submitPaymentButton);
+
+    let stripeCheckoutButton = document.createElement('button');
+    stripeCheckoutButton.classList.add('stripe-checkout-button')
+    if(!stripeReaderConnected){
+        stripeCheckoutButton.classList.add('inactive');
+    }
+    stripeCheckoutButton.innerText = 'Credit/Debit';
+    stripeCheckoutButton.addEventListener('click', (e) => {
+        stripeCheckout(stripeOrderSecret, orderUUID);
+    });
+
+    dialogInfoContainer.appendChild(stripeCheckoutButton);
 
     dialog.appendChild(dialogInfoContainer);
 

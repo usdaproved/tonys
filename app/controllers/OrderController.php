@@ -508,6 +508,11 @@ class OrderController extends Controller{
         switch ($event->type) {
         case "payment_intent.succeeded":
             $paymentIntent = $event->data->object; // contains a \Stripe\PaymentIntent
+            // We create all transactions the same way, regardless of in person POS.
+            // in order to acheive this, all transactions must be created with 'capture_method' => 'manual'
+            // So we must call capture here to actually get the funds, instead of just an authorization.
+            // This seems to better allow us to accept tips after the fact, allowing us to modify the amount.
+            $paymentIntent->capture();
             $orderUUID = UUID::arrangedStringToOrderedBytes($paymentIntent["metadata"]["order_uuid"]);
             $userUUID = UUID::arrangedStringToOrderedBytes($paymentIntent["metadata"]["user_uuid"]);
 

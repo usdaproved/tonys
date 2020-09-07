@@ -24,6 +24,14 @@
 		</svg>
 	    </button>
 	</div>
+	<div class="stripe-status-button-container">
+	    <button type="button" id="stripe-status-button" class="svg-button stripe-status-button">
+		<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" width="24px" height="24px">
+		    <path d="M0 0h24v24H0z" fill="none"/>
+		    <path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/>
+		</svg>
+		<span id="stripe-status-text">Connect</span>
+	</div>
 	<div class="update-status-button-container">
 	    <button type="button" id="update-status-button" class="svg-button update-status-button inactive" disabled>
 		Update status
@@ -48,5 +56,6 @@
 </div>
 <input type="hidden" name="CSRFToken"  id="CSRFToken" value="<?= $this->sessionManager->getCSRFToken(); ?>">
 
+<script src="https://js.stripe.com/terminal/v1/"></script>
 <script src="<?=$this->getFile('js', __FILE__);?>" type="module"></script>
 <?php require APP_ROOT . "/views/includes/footer.php" ?>

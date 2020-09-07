@@ -25,6 +25,7 @@ VALUES (:uuid, :user_uuid);";
             // TODO(Trystan): Figure out what other options to set here.
             "amount" => 50, // create a stub transaction of 50 cents, stripe min.
             "currency" => "usd",
+            "capture_method" => 'manual',
             "metadata" => [
                 "user_uuid" => UUID::orderedBytesToArrangedString($userUUID),
                 "order_uuid" => UUID::orderedBytesToArrangedString($cartUUID),
@@ -674,14 +675,17 @@ ORDER BY o.date DESC;";
         return $this->db->getResult()["paypal_token"];
     }
 
-    public function getStripeToken(string $orderUUID) : string {
+    public function getStripeToken(string $orderUUID) : ?string {
         $sql = "SELECT * FROM stripe_tokens WHERE order_uuid = :order_uuid;";
 
         $this->db->beginStatement($sql);
         $this->db->bindValueToStatement(":order_uuid", $orderUUID);
         $this->db->executeStatement();
 
-        return $this->db->getResult()["stripe_token"];
+        $result = $this->db->getResult();
+        if(is_bool($result)) return NULL;
+
+        return $result["stripe_token"];
     }
 
     /**

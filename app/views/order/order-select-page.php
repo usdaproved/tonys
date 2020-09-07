@@ -1,7 +1,6 @@
 <?php require APP_ROOT . "/views/includes/header.php" ?>
 <link href="<?=$this->getFile('css', 'components');?>" rel="stylesheet">
 <link rel="stylesheet" type="text/css" href="<?= $this->getFile("css", __FILE__); ?>">
-<?php $this->printOneTimeMessages(USER_ALERT); ?>
 <?php $submitLinkHidden = NULL; ?>
 <?php if(empty($this->orderStorage['line_items']) || (($this->orderStorage['order_type'] ?? NULL) === NULL)): ?>
     <?php $submitLinkHidden = "hidden"; ?>
@@ -117,6 +116,9 @@
 	</div>
     </div>
 </div>
+
+<?php $this->printOneTimeMessages(USER_ALERT); ?>
+<?php $this->printOneTimeMessages(USER_SUCCESS); ?>
 
 <?php foreach($this->menuStorage as $category): ?>
     <h3 class="category-name">
