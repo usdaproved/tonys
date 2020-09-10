@@ -533,7 +533,7 @@ class OrderController extends Controller{
                 $this->orderManager->submitOrder($orderUUID);
             }
 
-            $this->user = $this->userManager->getUserInfo($orderUUID['user_uuid']);
+            $this->user = $this->userManager->getUserInfo($order['user_uuid']);
 
             // If the order was placed in_restaurant, and wasn't associated with anyone.
             if(!empty($this->user)){
