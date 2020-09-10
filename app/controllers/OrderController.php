@@ -506,29 +506,46 @@ class OrderController extends Controller{
 
         // Handle the event
         switch ($event->type) {
+        case "charge.succeeded":
+            // Note(Trystan): Stripe payments have been updated to require a manual capture.
+            // This was to allow us to make in-person payments route through the same code paths.
+            // I believe this will also have the added benifit of allowing tip amounts to change,
+            // if we wanted to do that, so a user could say they want to give X tip before everything is done.
+            // then afterward they could update to Y amount. That is, if we don't capture right away,
+            // which we will for now for simplicity and because tips don't exist yet.
+
+            $chargeObject = $event->data->object;
+            $paymentIntentID = $chargeObject->payment_intent;
+            \Stripe\Stripe::setApiKey(STRIPE_PRIVATE_KEY);
+            $intent = \Stripe\PaymentIntent::retrieve($paymentIntentID);
+            $intent->capture();
+            break;
         case "payment_intent.succeeded":
             $paymentIntent = $event->data->object; // contains a \Stripe\PaymentIntent
-            // We create all transactions the same way, regardless of in person POS.
-            // in order to acheive this, all transactions must be created with 'capture_method' => 'manual'
-            // So we must call capture here to actually get the funds, instead of just an authorization.
-            // This seems to better allow us to accept tips after the fact, allowing us to modify the amount.
-            $paymentIntent->capture();
             $orderUUID = UUID::arrangedStringToOrderedBytes($paymentIntent["metadata"]["order_uuid"]);
-            $userUUID = UUID::arrangedStringToOrderedBytes($paymentIntent["metadata"]["user_uuid"]);
 
-            $this->submitOrder($userUUID, $orderUUID, $paymentIntent->amount, PAYMENT_STRIPE);
-
-            $this->user = $this->userManager->getUserInfo($userUUID);
-
-            $order = $this->orderManager->getOrderByUUID($orderUUID);
-            $order["delivery_address"] = $this->orderManager->getDeliveryAddress($order["uuid"]);
-
-            $cost = $this->orderManager->getCost($order["uuid"]);
-            $cost["total"] = $cost["subtotal"] + $cost["fee"] + $cost["tax"];
-            $order["cost"] = $cost;
+            $this->orderManager->submitPayment($orderUUID, $paymentIntent->amount, PAYMENT_STRIPE);
             
-            $message = $this->constructOrderConfirmationEmail($this->user, $order);
-            $this->sendHTMLEmail($this->user["email"], "Tony's Taco House - Order Confirmed", $message);
+            $order = $this->orderManager->getOrderByUUID($orderUUID);
+
+            // An order was already submitted if it was placed in_restaurant.
+            if($order["order_type"] != IN_RESTAURANT){
+                $this->orderManager->submitOrder($orderUUID);
+            }
+
+            $this->user = $this->userManager->getUserInfo($orderUUID['user_uuid']);
+
+            // If the order was placed in_restaurant, and wasn't associated with anyone.
+            if(!empty($this->user)){
+                $order["delivery_address"] = $this->orderManager->getDeliveryAddress($order["uuid"]);
+                
+                $cost = $this->orderManager->getCost($order["uuid"]);
+                $cost["total"] = $cost["subtotal"] + $cost["fee"] + $cost["tax"];
+                $order["cost"] = $cost;
+
+                $message = $this->constructOrderConfirmationEmail($this->user, $order);
+                $this->sendHTMLEmail($this->user["email"], "Tony's Taco House - Order Confirmed", $message);
+            }
             
             break;
         default:
@@ -554,11 +571,6 @@ class OrderController extends Controller{
             // Stripe will throw an exception if given a value less than 50 cents
             "amount" => max($paymentTotal, 50), 
         ]);
-    }
-
-    private function submitOrder($userUUID, $orderUUID, $amount, $paymentMethod) : void {
-        $this->orderManager->submitPayment($orderUUID, $amount, $paymentMethod);
-        $this->orderManager->submitOrder($orderUUID);
     }
 }
 

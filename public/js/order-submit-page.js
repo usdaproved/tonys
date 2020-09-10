@@ -127,7 +127,7 @@ submitButton.addEventListener('click', function(e) {
       submitButton.classList.remove('inactive');
     } else {
       // The payment has been processed!
-      if (result.paymentIntent.status === 'succeeded') {
+      if (result.paymentIntent.status === 'requires_capture') {
         // TODO(Trystan): Show some success while this waits for confirmation.
         // disable all inputs.
         // TODO(Trystan): Show some type of loading icon on the button.

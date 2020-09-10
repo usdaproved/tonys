@@ -27,7 +27,6 @@ VALUES (:uuid, :user_uuid);";
             "currency" => "usd",
             "capture_method" => 'manual',
             "metadata" => [
-                "user_uuid" => UUID::orderedBytesToArrangedString($userUUID),
                 "order_uuid" => UUID::orderedBytesToArrangedString($cartUUID),
             ],
         ]);

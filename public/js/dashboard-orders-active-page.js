@@ -17,20 +17,7 @@ let orderStorage = {};
 let orderSelection = [];
 let unpaidOrderUUIDs = [];
 
-const endDialogMode = (orderUUID) => {
-    if(orderUUID){
-        const unpaidIndex = unpaidOrderUUIDs.indexOf(orderUUID);
-        unpaidOrderUUIDs.splice(unpaidIndex, 1);
-        let container = document.querySelector(`[id='${orderUUID}']`);
-        container.classList.remove('unpaid');
-        container.querySelector('.info-icon').remove();
-        container.removeEventListener('click', clickCollect);
-        orderComplete(orderUUID);
-        delete orderStorage[orderUUID];
-        updateOrderStatusText(orderUUID, STATUS_ARRAY[5]); // Complete
-    }
-
-
+const endDialogMode = () => {
     let dialog = document.querySelector('#dialog-container');
     dialog.remove();
 
@@ -116,7 +103,7 @@ const stripeCheckout = (clientSecret, orderUUID) => {
             // Handle the processing error.
         } else {
             // This gets us the paymentIntent
-            // We cam either automatically process here.
+            // We can either automatically process here.
             // Or present a confirmation screen.
             terminal.processPayment(collectResult.paymentIntent).then(processResult => {
                 if(processResult.error){
@@ -124,14 +111,13 @@ const stripeCheckout = (clientSecret, orderUUID) => {
                     // There's a few different errors that can happen here.
                     // all of which result in just retrying the same payment intent again.
                 } else if (processResult.paymentIntent){
-                    stripeOrderSecret = null;
-                    endDialogMode(orderUUID);
-                    const url = '/Dashboard/orders/active/captureStripePayment';
-                    let json = {'payment_intent_id' : processResult.paymentIntent.id}
-
-                    postJSON(url, json).then(response => response.text()).then(postResult => {
-                        // Check if postResult === 'success'
-                    });
+                    // NOTE(Trystan): Previously we captured the payment here,
+                    // this is done automatically via webhooks now.
+                    endDialogMode();
+                    const url = '/Dashboard/orders/active/updateStatus';
+                    let json = {'status' : [orderUUID]};
+                    postJSON(url, json);
+                    orderComplete(orderUUID);
                 }
             });
         }
@@ -174,6 +160,17 @@ const addToSelection = (e) => {
 
 const orderComplete = (orderUUID) => {
     let container = document.querySelector(`[id='${orderUUID}']`);
+    
+    const unpaidIndex = unpaidOrderUUIDs.indexOf(orderUUID);
+    unpaidOrderUUIDs.splice(unpaidIndex, 1);
+    if(container.classList.contains('unpaid')){
+        container.classList.remove('unpaid');
+        container.querySelector('.info-icon').remove();
+    }
+
+    delete orderStorage[orderUUID];
+    updateOrderStatusText(orderUUID, STATUS_ARRAY[5]); // Complete
+    
     container.classList.add('completed');
     container.removeEventListener('click', addToSelection);
     container.removeEventListener('click', clickCollect);
@@ -230,7 +227,8 @@ const submitCashPayment = (e) => {
 
         });
 
-        endDialogMode(orderUUID);
+        endDialogMode();
+        orderComplete(orderUUID);
     } else {
         // show error that cash does not meet requirements.
     }
@@ -501,8 +499,6 @@ const getStatus = () => {
                     updateOrderStatusText(order.uuid, 'complete');
     
                     orderComplete(order.uuid);
-                    // We can remove it from local storage as we are not tracking info anymore.
-                    delete orderStorage[order.uuid];
                 }
             }
         });
@@ -519,7 +515,6 @@ updateStatusButton.addEventListener('click', (e) => {
             orderStorage[uuid].status = orders[uuid];
             if(orders[uuid] == 5){
                 orderComplete(uuid);
-                delete orderStorage[uuid];
             } else if(((orderStorage[uuid].status == 3 && parseInt(orderStorage[uuid].order_type) !== 0) 
                         || (orderStorage[uuid].status == 4)) && !orderStorage[uuid].is_paid){
                 let orderElement = document.querySelector(`[id='${uuid}']`);

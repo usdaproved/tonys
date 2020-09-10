@@ -771,39 +771,11 @@ class DashboardController extends Controller{
         echo json_encode($stripePaymentIntent["client_secret"]);
     }
 
-    public function orders_active_captureStripePayment_post() : void {
-        $userUUID = $this->getUserUUID();
-        if(!$this->validateAuthority(EMPLOYEE, $userUUID)){
-            echo json_encode("fail");
-            exit;
-        }
-        
-        $json = file_get_contents("php://input");
-        $postData = json_decode($json, true);
-        
-        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
-            echo json_encode("fail");
-            exit;
-        }
-
-        // Take the paymentIntent.id retrieve the paymentIntent and call capture on it.
-        \Stripe\Stripe::setApiKey(STRIPE_PRIVATE_KEY);
-
-        $intent = \Stripe\PaymentIntent::retrieve($postData["payment_intent_id"]);
-        // TODO(Trystan): Verify what actually happens when no intent is retrieved.
-        if($intent){
-            $intent->capture();
-
-            echo "success";
-        }
-    }
-
     // TODO(Trystan): This function needs a major relook. Lots has changed.
     public function orders_printerStream_post() : void {
-        // TODO(Trystan): Send proper http codes for invalid token.
         $selectorBytes = NULL;
         if(!isset($_POST["token"])){
-            echo "Missing token";
+            http_response_code(400);
             exit;
         } else {
             // remove any new lines if there are any.
@@ -820,11 +792,11 @@ class DashboardController extends Controller{
                     // validated.
                     $this->settingsManager->setPrinterConnection($selectorBytes, true);
                 } else {
-                    echo "Invalid token";
+                    http_response_code(401);
                     exit;
                 }
             } else {
-                echo "Invalid token";
+                http_response_code(401);
                 exit;
             }
         }
@@ -846,7 +818,7 @@ class DashboardController extends Controller{
         header("Cache-Control: no-cache");
         header("X-Accel-Buffering: no");
 
-        // The connection will abort before connection_aborted()
+        // NOTE(Trystan): The connection will abort before connection_aborted()
         // code path is executed without this setting.
         ignore_user_abort(true);
 
