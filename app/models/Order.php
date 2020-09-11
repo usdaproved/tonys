@@ -311,7 +311,7 @@ WHERE user_uuid = :unregistered_user_uuid;";
      * Returns top level order info, no line items etc.
      */
     public function getBasicOrderInfo(string $orderUUID) : array {
-        $sql = "SELECT * FROM orders WHERE uuid = :uuid;";
+        $sql = "SELECT uuid, user_uuid, order_type, status, CONVERT_TZ(date, @@global.time_zone, 'US/Central') as date FROM orders WHERE uuid = :uuid;";
 
         $this->db->beginStatement($sql);
         $this->db->bindValueToStatement(":uuid", $orderUUID);
@@ -323,16 +323,9 @@ WHERE user_uuid = :unregistered_user_uuid;";
     }
     
     public function getOrderByUUID(string $orderUUID = NULL) : array {
-        $sql = "SELECT * FROM orders WHERE uuid = :uuid;";
-
-        $this->db->beginStatement($sql);
-        $this->db->bindValueToStatement(":uuid", $orderUUID);
-        $this->db->executeStatement();
-
-        $order = $this->db->getResult();
-
-        if(is_bool($order)){
-            return array();
+        $order = $this->getBasicOrderInfo($orderUUID);
+        if(empty($order)){
+            return $order;
         }
 
         $sql = "SELECT uuid FROM order_line_items WHERE order_uuid = :order_uuid;";

@@ -1409,7 +1409,7 @@ body.outlook p {
                                   <p>';
 if($order['order_type'] == DELIVERY){
     $email .= 'Your order will be delivered shortly. ';
-} else {
+} else if($order['order_type'] == PICKUP) {
     $email .= 'Your order will be ready for pickup shortly. ';
 }
 $email .= 'Follow along <a href="https://tonys.trystanbrock.dev/Order/status?order=' . UUID::orderedBytesToArrangedString($order['uuid']) . '">here</a></p>
