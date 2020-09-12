@@ -122,17 +122,55 @@
     align-items: center;
     color: white;
     background-color: #12682f;
-    padding: 0.5rem;
+    padding: 0.75rem;
     border-radius: 0.25rem;
     width: 100%;
+    font-size: 16px;
 }
 
-#stripe-payment-submit:hover, #stripe-payment-submit:focus{
+#stripe-payment-submit:hover:not(.inactive), #stripe-payment-submit:focus:not(.inactive){
     background-color: #0f5024;
 }
 
-#stripe-payment-button.inactive{
-    background-color: rgba(0, 0, 0, 0.05);
+.spinner {
+    text-align: center;
+}
+  
+.spinner > div {
+    width: 16px;
+    height: 16px;
+    background-color: #FFF;
+  
+    border-radius: 100%;
+    display: inline-block;
+    -webkit-animation: sk-bouncedelay 1.4s infinite ease-in-out both;
+    animation: sk-bouncedelay 1.4s infinite ease-in-out both;
+    margin-right: 0.5rem;
+}
+  
+.spinner .bounce1 {
+    -webkit-animation-delay: -0.32s;
+    animation-delay: -0.32s;
+}
+  
+.spinner .bounce2 {
+    -webkit-animation-delay: -0.16s;
+    animation-delay: -0.16s;
+}
+  
+@-webkit-keyframes sk-bouncedelay {
+    0%, 80%, 100% { -webkit-transform: scale(0) }
+    40% { -webkit-transform: scale(1.0) }
+}
+  
+@keyframes sk-bouncedelay {
+    0%, 80%, 100% { 
+      -webkit-transform: scale(0);
+      transform: scale(0);
+} 40% { 
+      -webkit-transform: scale(1.0);
+      transform: scale(1.0);
+    }
 }
 
 .personal-info{

@@ -89,6 +89,10 @@ const name_first = document.querySelector('#name_first').innerText;
 const name_last = document.querySelector('#name_last').innerText;
   
 const submitButton = document.querySelector('#stripe-payment-submit');
+const submitButtonText = document.querySelector('#stripe-submit-text');
+const submitButtonLoading = document.querySelector('#stripe-submit-loading');
+const submitButtonSuccess = document.querySelector('#stripe-submit-success');
+
 const clientSecret = submitButton.dataset.secret;
 const orderUUID = submitButton.dataset.orderuuid;
 
@@ -100,6 +104,8 @@ const checkOrderConfirmation = () => {
   postJSON(url, json, CSRFToken).then(response => response.text()).then(result => {
     if(result === 'confirmed'){
       clearInterval(intervalID);
+      submitButtonLoading.hidden = true;
+      submitButtonSuccess.hidden = false;
       window.location.replace(`/Order/status?order=${orderUUID}`);
     }
   });
@@ -110,6 +116,9 @@ submitButton.addEventListener('click', function(e) {
 
   submitButton.disabled = true;
   submitButton.classList.add('inactive');
+
+  submitButtonText.hidden = true;
+  submitButtonLoading.hidden = false;
 
   stripe.confirmCardPayment(clientSecret, {
     payment_method: {
@@ -123,6 +132,8 @@ submitButton.addEventListener('click', function(e) {
   }).then(function(result) {
     if (result.error) {
       // Allow the customer to make necessary changes and resubmit.
+      submitButtonLoading.hidden = true;
+      submitButtonText.hidden = false;
       submitButton.disabled = false;
       submitButton.classList.remove('inactive');
     } else {

@@ -310,7 +310,7 @@ WHERE user_uuid = :unregistered_user_uuid;";
     /***
      * Returns top level order info, no line items etc.
      */
-    public function getBasicOrderInfo(string $orderUUID) : array {
+    public function getBasicOrderInfo(string $orderUUID = NULL) : array {
         $sql = "SELECT uuid, user_uuid, order_type, status, CONVERT_TZ(date, @@global.time_zone, 'US/Central') as date FROM orders WHERE uuid = :uuid;";
 
         $this->db->beginStatement($sql);

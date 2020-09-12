@@ -72,7 +72,20 @@
 		</div>
 		<div id="stripe-card-errors" role="alert">
 		</div>
-		<button type="button" class="svg-button stripe-submit-button" id="stripe-payment-submit" data-secret="<?=$this->user['stripe_client_secret']?>" data-orderuuid="<?=UUID::orderedBytesToArrangedString($this->orderStorage['uuid'])?>">Pay</button>
+		<button type="button" class="svg-button stripe-submit-button" id="stripe-payment-submit" data-secret="<?=$this->user['stripe_client_secret']?>" data-orderuuid="<?=UUID::orderedBytesToArrangedString($this->orderStorage['uuid'])?>">
+		    <span id="stripe-submit-text">Pay</span>
+		    <div id="stripe-submit-loading" class="spinner" hidden>
+			<div class="bounce1"></div>
+			<div class="bounce2"></div>
+			<div class="bounce3"></div>
+		    </div>
+		    <div id="stripe-submit-success" hidden>
+			<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" width="18px" height="18px">
+			    <path d="M0 0h24v24H0z" fill="none"/>
+			    <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/>
+			</svg>
+		    </div>
+		</button>
 	    </div>
 
 	    <!-- TODO(Trystan): Remove this when we go live. -->
