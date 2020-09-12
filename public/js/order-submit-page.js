@@ -118,7 +118,7 @@ submitButton.addEventListener('click', function(e) {
   submitButton.classList.add('inactive');
 
   submitButtonText.hidden = true;
-  submitButtonSuccess.hidden = false;
+  submitButtonLoading.hidden = false;
 
   stripe.confirmCardPayment(clientSecret, {
     payment_method: {
