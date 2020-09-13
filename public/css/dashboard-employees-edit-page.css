@@ -1,73 +1,99 @@
-.grid-container{
-    display: grid;
-    grid-template-columns: 1fr 2fr 1fr;
+.current-employee-container{
+
 }
 
-.flex-container{
-    grid-column-start: 2;
-    grid-column-end: 3;
-    
+.current-employee{
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    justify-content: space-between;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+    width: 100%;
+    font-size: 16px;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
 }
 
-.flex-item, .hover-disabled, .order_button{
-    padding: 30px;
-    margin: 5px;
-
-    background: #B69179;
-    box-shadow: 0 5px 0px #306569;
-    
-    color: #2B2B2B;
-    text-align: center;
-    font-family: 'Libre Baskerville', serif;
-    font-size: 40px;
-    
-
-    user-select: none;
-    -moz-user-select: none;
-    -webkit-user-select: none;
+.current-employee:hover, .current-employee:focus{
+    background-color: rgba(0.1, 0.1, 0.1, 0.1);
 }
 
-.order_button{
-    color: #E6E6E6;
+.current-employee.selected{
+    background-color: rgba(0.25, 0.25, 0.25, 0.25);
 }
 
-/* What the heck am I doing? */
-.flex-item:not(.hover-disabled):hover,
-.order_button:hover{
-    cursor: pointer;
-    
-    background: #9C7C67;
-    box-shadow: 0 3px 0px #244C4F;
+.employee-name{
+
 }
 
-.quantifier{
-    color: #306569;
+.employee-role{
+    font-weight: 700;
 }
 
-.quantifier:hover{
-    cursor: pointer;
-    
-    color: #244C4F;
+.double-button-container{
+    display: flex;
+
+    justify-content: space-around;
+    flex-flow: row wrap;
+    align-items: stretch;
 }
 
-/* This is the number field in the order form. */
-.quantity{
-    border: none;
-    background: rgba(0, 0, 0, 0);
-    outline: none;
-
-    width: 60px;
-    
-    font-size: 40px;
-    font-family: 'Libre Baskerville', serif;
-
-    -webkit-appearance: none;
-    -moz-appearance: textfield;
+.wide-button-container{
+    flex-grow: 2;
 }
 
-label {
-  display: block;
-  margin: 5px 0;
+.margin-left-1{
+    margin-left: 1rem;
+}
+
+.add-button-container{
+    margin-top: 1.5rem;
+}
+.add-button{
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    background-color: #12682f;
+    padding: 0.75rem;
+    border-radius: 0.25rem;
+    font-size: 1.25rem;
+}
+
+.add-button:hover:not(.inactive), .add-button:focus:not(.inactive){
+    background-color: #0f5024;
+}
+
+.add-button.inactive{
+    background-color: rgba(0.25, 0.25, 0.25, 0.25);
+}
+
+.wide-button.inactive{
+    background-color: rgba(0.25, 0.25, 0.25, 0.25);
+}
+
+.search-result-container{
+    margin-top: 2rem;
+}
+
+.search-result{
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+    width: 100%;
+    font-size: 16px;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+}
+
+.search-result:hover, .search-result:focus{
+    background-color: rgba(0.1, 0.1, 0.1, 0.1);
+}
+
+.search-result.selected{
+    background-color: rgba(0.25, 0.25, 0.25, 0.25);
+}
+
+.search-result-name{
+    font-weight: 700;
+    margin-bottom: 0.5rem;
 }

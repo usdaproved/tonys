@@ -3,24 +3,29 @@ import { postJSON, initSearchUsersComponent } from './utility.js';
 
 "use strict";
 
+const defaultCustomerText = "No customer selected.";
+
 const submitButton = document.querySelector('#submit-order-button');
+const customerTextElement = document.querySelector('#customer-name-text');
 let selectedUserUUID = null;
 
 initSearchUsersComponent((e) => {
-    let container = e.target.closest('.order-container');
+    let container = e.target.closest('.search-result');
     if(container.classList.contains('selected')){
         container.classList.remove('selected');
         selectedUserUUID = null;
-        submitButton.value = "Submit Order";
+        customerTextElement.innerText = defaultCustomerText;
         return;
     }
-    container.closest('.orders-container')
-    .querySelectorAll('.order-containers')
+    container.closest('.search-result-container')
+    .querySelectorAll('.search-result')
     .forEach(container => {
         container.classList.remove('selected');
     });
     container.classList.add('selected');
     selectedUserUUID = container.id;
+    let name = container.querySelector('.search-result-name').innerText;
+    customerTextElement.innerText = name;
 });
 
 document.querySelector('#user-search-button').addEventListener('click', (e) => {

@@ -24,7 +24,7 @@ const EMPLOYEE = 1;
 const ADMIN    = 2;
 const OWNER    = 3; // The person who setup the restaurant page. cannot be removed or remove admin status. 
 
-const USER_TYPE_ARRAY = ['customer','printer','employee','admin'];
+const USER_TYPE_ARRAY = ['customer','employee','admin','owner'];
 
 // An unregistered user can have varying levels of info about them.
 const INFO_NONE    = 0;

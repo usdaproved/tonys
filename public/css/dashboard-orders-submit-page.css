@@ -1,0 +1,30 @@
+.customer-name{
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.search-result-container{
+    margin-top: 2rem;
+}
+  
+.search-result{
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+    width: 100%;
+    font-size: 16px;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+}
+  
+.search-result:hover, .search-result:focus{
+    background-color: rgba(0.1, 0.1, 0.1, 0.1);
+}
+  
+.search-result.selected{
+    background-color: rgba(0.25, 0.25, 0.25, 0.25);
+}
+  
+.search-result-name{
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}

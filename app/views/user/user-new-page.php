@@ -39,13 +39,15 @@
 		    <label for="address_line">Street address</label>
 		    <input type="text" id="address_line" name="address_line" value="<?=$this->escapeForAttributes($this->user["address"]["line"] ?? NULL);?>" autocomplete="street-address" required>
 		</div>
+		<div class="input-shared-line">
 		<div class="input-container">
 		    <label for="city">City</label>
 		    <input type="text" id="city" name="city" value="<?=$this->escapeForAttributes($this->user["address"]["city"] ?? NULL);?>" autocomplete="address-level2" required>
 		</div>
 		<div class="input-container">
 		    <label for="state">State</label>
-		    <input type="text" id="state" name="state" minlength="2" maxlength="2" value="<?=$this->escapeForAttributes($this->user["address"]["state"] ?? NULL);?>" autocomplete="address-level1" required>
+		    <input type="text" id="state" name="state" minlength="2" maxlength="2" style="width: 2rem;" value="<?=$this->escapeForAttributes($this->user["address"]["state"] ?? NULL);?>" autocomplete="address-level1" required>
+		</div>
 		</div>
 		<div class="input-container">
 		    <label for="zip_code">Zip code</label>

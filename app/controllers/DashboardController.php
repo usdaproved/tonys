@@ -482,10 +482,11 @@ class DashboardController extends Controller{
 
         $orders = [];
         foreach($uuids as $uuid){
-            $order = $this->orderManager->getOrderByUUID($uuid["uuid"]);
+            $order = $this->orderManager->getBasicOrderInfo($uuid["uuid"]);
             $order["uuid"] = UUID::orderedBytesToArrangedString($order["uuid"]);
             $order["user_uuid"] = UUID::orderedBytesToArrangedString($order["user_uuid"]);
             $order["user_info"] = $this->userManager->getUserInfo($uuid["user_uuid"]);
+            $order["date"] = date("F d, Y g:i A", strtotime($order["date"]));
 
             $orders[] = $order;
         }
@@ -1100,6 +1101,13 @@ class DashboardController extends Controller{
             $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
             exit;
         }
+
+        $employeeLevel = $this->userManager->getUserAuthorityLevel($employeeUUID);
+        if($employeeLevel == OWNER){
+            $message = "Owners cannot be deleted.";
+            $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
+            exit;
+        }
         
         $this->userManager->removeEmployee($employeeUUID);
 
@@ -1127,6 +1135,13 @@ class DashboardController extends Controller{
         $employeeUUID = UUID::arrangedStringToOrderedBytes($postData["user_uuid"]);
         if($userUUID === $employeeUUID){
             $message = "The system will not allow you to remove your own admin status.";
+            $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
+            exit;
+        }
+
+        $employeeLevel = $this->userManager->getUserAuthorityLevel($employeeUUID);
+        if($employeeLevel == OWNER){
+            $message = "Owners status cannot be changed.";
             $this->sessionManager->pushOneTimeMessage(USER_ALERT, $message);
             exit;
         }
@@ -1242,31 +1257,6 @@ class DashboardController extends Controller{
         
         return $userAuthority >= $requiredAuthority;
     }
-
-    private function searchUserComponent(bool $getRegisteredOnly) : string {
-        $modifiers = "";
-        if($getRegisteredOnly) $modifiers = "checked disabled hidden";
-        $string = "";
-        $string .= "<p>Use as many filters as necessary.</p>";
-        if($getRegisteredOnly) $string .= "<p>Note: registered users only.</p>";
-        $string .= "<div id='search-filters'>";
-        $string .= "<label for='name_first'>First Name: </label>";
-        $string .= "<input type='text'  id='name_first' autocomplete='off'>";
-        $string .= "<label for='name_last'>Last Name: </label>";
-        $string .= "<input type='text'  id='name_last' autocomplete='off'>";
-        $string .= "<label for='email'>Email: </label>";
-        $string .= "<input type='email' id='email'  autocomplete='off'>";
-        $string .= "<label for='phone_number'>Phone Number: </label>";
-        $string .= "<input type='text' id='phone_number' autocomplete='off'>";
-        if(!$getRegisteredOnly) $string .= "<label for='registered-only'>Registered Users Only:</label>";
-        $string .= "<input type='checkbox' id='registered-only' " . $modifiers . ">";
-        $string .= "</div>";
-        $string .= "<input type='submit' id='user-search-button' value='Search'>";
-        $string .= "<div id='user-table' class='orders-container'>";
-        $string .= "</div>";
-        return $string;
-    }
-    
 }
 
 ?>

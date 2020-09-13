@@ -190,21 +190,25 @@ const initSearchUsersComponent = (callback) => {
         postJSON(url, json).then(response => response.json()).then(users => {
             if(!users) return;
             users.forEach(user => {
-                let userContainer = document.createElement('div');
+                let userContainer = document.createElement('button');
                 userContainer.id = user.uuid;
-                userContainer.classList.add('order-container');
+                userContainer.classList.add('search-result');
+                userContainer.classList.add('svg-button');
     
-                let userName = document.createElement('div')
+                let userName = document.createElement('div');
+                userName.classList.add('search-result-name');
                 userName.innerText = user.name_first + ' ' + user.name_last;
     
                 userContainer.appendChild(userName);
     
                 let userEmail = document.createElement('div');
+                userEmail.classList.add('search-result-email');
                 userEmail.innerText = user.email;
     
                 userContainer.appendChild(userEmail);
     
                 let userNumber = document.createElement('div');
+                userNumber.classList.add('search-result-number');
                 userNumber.innerText = user.phone_number;
     
                 userContainer.appendChild(userNumber);
@@ -245,7 +249,7 @@ class SingleContainerSelector {
                 container.classList.add('selected');
                 this.selectedContainerUUID = container.id;
                 this.buttonList.forEach(button => button.hidden = false);
-            })
+            });
         });
     }
 

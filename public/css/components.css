@@ -273,6 +273,12 @@
     margin-bottom: 0.5rem;
 }
 
+.input-shared-line{
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+}
+
 .input-container{
     display: flex;
     flex-direction: column;

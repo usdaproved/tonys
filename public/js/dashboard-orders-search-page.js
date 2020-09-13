@@ -5,14 +5,26 @@ import { postJSON, createOrderElement } from './utility.js';
 
 const orderTableElement = document.querySelector('#order-table');
 const searchButton = document.querySelector('#order-search-button');
-const orderTypeCheckboxes = document.querySelector('#order-type-container').querySelectorAll('input');
+const orderTypeCheckboxes = document.querySelector('#order-type-container').querySelectorAll('button');
 
-orderTypeCheckboxes.forEach((input) => {
-    input.addEventListener('input', (e) => {
+let currentSearch = null;
+
+orderTypeCheckboxes.forEach((button) => {
+    button.addEventListener('click', (e) => {
         orderTypeCheckboxes.forEach(checkbox => {
-            if(e.target != checkbox) checkbox.checked = false;
-        })
-    })
+            // If we are turning the same checkbox off.
+            let doubleClick = false;
+            if(!checkbox.classList.contains('inactive')){
+                checkbox.classList.add('inactive');
+                doubleClick = true;
+            }
+            if(e.target.closest('button') == checkbox){
+                if(!doubleClick){
+                    checkbox.classList.remove('inactive');
+                }   
+            }
+        });
+    });
 });
 
 searchButton.addEventListener('click', (e) => {
@@ -30,15 +42,21 @@ searchButton.addEventListener('click', (e) => {
     let phoneNumber = document.querySelector('#phone_number').value;
     let orderType = null;
     orderTypeCheckboxes.forEach(checkbox => {
-        if(checkbox.checked){
-            orderType = checkbox.value;
+        if(!checkbox.classList.contains('inactive')){
+            if(checkbox.id === 'checkbox-delivery'){
+                orderType = 0;
+            } else if(checkbox.id === 'checkbox-pickup'){
+                orderType = 1;
+            } else {
+                orderType = 2;
+            }
         }
-    })
+    });
     startAmount = (startAmount === "") ? null : startAmount * 100;
     endAmount = (endAmount === "") ? null : endAmount * 100;
 
     let url = '/Dashboard/searchOrders';
-    let json = {
+    currentSearch = {
         'start_date' : startDate,
         'end_date' : endDate,
         'start_amount' : startAmount,
@@ -50,22 +68,27 @@ searchButton.addEventListener('click', (e) => {
         'order_type' : orderType
     };
 
-    postJSON(url, json).then(response => response.json()).then(orders => {
+    postJSON(url, currentSearch).then(response => response.json()).then(orders => {
         orders.forEach(order => {
-            const orderElement = createOrderElement(order);
+            // Format these orders differently.
+            // Probably just want to get basicOrderInfo
+            let orderElement = document.createElement('button');
+            orderElement.classList.add('search-result');
+            orderElement.classList.add('svg-button');
             
             let userInfo = order.user_info;
             if(userInfo){
                 let nameElement = document.createElement('div');
-                nameElement.classList.add('order-name');
+                nameElement.classList.add('search-result-name');
                 nameElement.innerText = userInfo.name_first + ' ' + userInfo.name_last;
-                orderElement.prepend(nameElement);
+                orderElement.append(nameElement);
             }
 
             let dateElement = document.createElement('div');
+            dateElement.classList.add('search-result-date');
             dateElement.innerText = order.date;
             
-            orderElement.prepend(dateElement);
+            orderElement.append(dateElement);
 
             orderElement.addEventListener('click', (e) => {
                 window.open(`/Dashboard/orders?uuid=${order.uuid}`);
