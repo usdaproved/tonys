@@ -903,7 +903,7 @@ class DashboardController extends Controller{
                 
             
                 foreach($order["line_items"] as $lineItem){
-                    echo $lineItem["name"] .  " - " . $lineItem["quantity"]  "       $" . $this->intToCurrency($lineItem["price"]) . PHP_EOL;
+                    echo $lineItem["name"] .  " - " . $lineItem["quantity"] . "       $" . $this->intToCurrency($lineItem["price"]) . PHP_EOL;
                     foreach($lineItem["choices"] as $choice){
                         echo " - " . $choice["name"] . PHP_EOL;
                         foreach($choice["options"] as $option){
