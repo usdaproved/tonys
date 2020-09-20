@@ -1,73 +1,21 @@
-.grid-container{
-    display: grid;
-    grid-template-columns: 1fr 2fr 1fr;
+.split-left-section{
+    height: max-content;
 }
 
-.flex-container{
-    grid-column-start: 2;
-    grid-column-end: 3;
-    
-    display: flex;
-    flex-direction: column;
+.text-form-inner-container{
+    margin: 2rem auto;
 }
 
-.flex-item, .hover-disabled, .order_button{
-    padding: 30px;
-    margin: 5px;
-
-    background: #B69179;
-    box-shadow: 0 5px 0px #306569;
-    
-    color: #2B2B2B;
-    text-align: center;
-    font-family: 'Libre Baskerville', serif;
-    font-size: 40px;
-    
-
-    user-select: none;
-    -moz-user-select: none;
-    -webkit-user-select: none;
+@media (min-width:768px){
+    .text-form-inner-container{
+        margin: 0;
+    }
 }
 
-.order_button{
-    color: #E6E6E6;
-}
-
-/* What the heck am I doing? */
-.flex-item:not(.hover-disabled):hover,
-.order_button:hover{
-    cursor: pointer;
-    
-    background: #9C7C67;
-    box-shadow: 0 3px 0px #244C4F;
-}
-
-.quantifier{
-    color: #306569;
-}
-
-.quantifier:hover{
-    cursor: pointer;
-    
-    color: #244C4F;
-}
-
-/* This is the number field in the order form. */
-.quantity{
-    border: none;
-    background: rgba(0, 0, 0, 0);
-    outline: none;
-
-    width: 60px;
-    
-    font-size: 40px;
-    font-family: 'Libre Baskerville', serif;
-
-    -webkit-appearance: none;
-    -moz-appearance: textfield;
-}
-
-label {
-  display: block;
-  margin: 5px 0;
+.category-line{
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+    background-color: rgba(0.1,0.1,0.1,0.1);
 }

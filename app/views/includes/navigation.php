@@ -348,12 +348,12 @@
 			</div>
 		</div>
 		<?php endif; ?>
-		<?php endif; ?>
-		<?php if(!$loggedIn): ?>
+	    <?php endif; ?>
+	    <?php if(!$loggedIn): ?>
 		<li><a href="/register">Register</a></li>
 		<li><a href="/login">Log in</a></li>
 	    <?php endif; ?>
-	</nav>	
+    </nav>	
 </header>
 <div class="mobile-menu-container" id="mobile-menu-container">
 	<div class="shadow">
@@ -367,36 +367,36 @@
 				</button>
 			</div>
 			<div class="mobile-user-container">
-				<nav class="mobile-menu-nav">
+				<div class="mobile-menu-nav">
 					<a href="/" class="mobile-nav-link">
 						Home
 					</a>
 					<a href="/Order" class="mobile-nav-link">
 						Order
 					</a>
-				</nav>
+				</div>
 				<div class="space-y-6">
 					<div class="mobile-user-actions-container">
-						<nav class="mobile-user-actions">
+						<div class="mobile-user-actions">
 						<?php if($displayUser): ?>
 							<a href="/User/orders" class="user-link">Order History</a>
 							<a href="/User/info"  class="user-link">Info</a>
 							<a href="/User/address"  class="user-link">Address</a>
 						<?php endif; ?>
-						</nav>
-						<nav class="mobile-user-actions">
+						</div>
+						<div class="mobile-user-actions">
 						<?php if($userType >= EMPLOYEE) : ?>
 							<a href="#" class="mobile-dashboard-title">Dashboard</a>
 							<a href="/Dashboard/orders/active"  class="user-link">Active Orders</a>
 							<a href="/Dashboard/orders/search"  class="user-link">Search Orders</a>
 							<a href="/Dashboard/customers/search"  class="user-link">Search Customers</a>
-							<?php if($userType == ADMIN): ?>
+							<?php if($userType >= ADMIN): ?>
 								<a href="/Dashboard/menu"  class="user-link">Menu</a>
 								<a href="/Dashboard/employees"  class="user-link">Employees</a>
 								<a href="/Dashboard/settings"  class="user-link">Settings</a>
 							<?php endif; ?>
 						<?php endif; ?>
-						</nav>
+						</div>
 					</div>
 					<?php if(!$loggedIn): ?>
 					<div class="space-y-6">

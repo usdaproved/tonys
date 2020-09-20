@@ -231,38 +231,6 @@ const initSearchUsersComponent = (callback) => {
     });
 };
 
-class SingleContainerSelector {
-    constructor(containerList, buttonList){
-        this.selectedContainerUUID = null;
-        this.containerList = containerList;
-        this.buttonList = buttonList;
-        this.containerList.forEach(container => {
-            container.addEventListener('click', (e) => {
-                let container = e.target.closest('.order-container');
-                if(container.classList.contains('selected')){
-                    container.classList.remove('selected');
-                    this.selectedContainerUUID = null;
-                    this.buttonList.forEach(button => button.hidden = true);
-                    return;
-                }
-                this.containerList.forEach(container => container.classList.remove('selected'));
-                container.classList.add('selected');
-                this.selectedContainerUUID = container.id;
-                this.buttonList.forEach(button => button.hidden = false);
-            });
-        });
-    }
-
-    get selectedUUID() {
-        // Whenever we grab the value, we want to clear it.
-        this.containerList.forEach(container => container.classList.remove('selected'));
-        this.buttonList.forEach(button => button.hidden = true);
-        let result = this.selectedContainerUUID;
-        this.selectedContainerUUID = null;
-        return result;
-    }
-}
-
 const STATUS_ARRAY = ['cart','submitted','preparing','prepared','delivering','complete'];
 
 const intToCurrency = (price) => {
@@ -276,4 +244,4 @@ const intToCurrency = (price) => {
 
 export { postJSON, createLineItemElement, createLineItemForCart,
          createOrderElement, createDetailedOrderElement, STATUS_ARRAY, intToCurrency, 
-         initSearchUsersComponent, SingleContainerSelector }
+         initSearchUsersComponent }

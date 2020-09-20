@@ -71,7 +71,7 @@
 
 	<div class="order-action" id="submit-container" <?=$submitLinkHidden?>>
 	    <?php $submitLink = "/Order/submit"; ?>
-	    <?php if(($this->orderStorage["order_type"] ?? NULL) == IN_RESTAURANT): ?>
+	    <?php if(($this->user['user_type'] ?? 0) >= EMPLOYEE): ?>
 		<?php $submitLink = "/Dashboard/orders/submit";?>
 	    <?php endif; ?>
 	    <a href="<?=$submitLink?>" id="order-submit-link">
@@ -131,17 +131,17 @@
 		<?php if(!$inactive): ?>
 		    <a href="/Order?id=<?=$item['id']?>" rel="nofollow" class="item-link">
 		<?php endif; ?>
-		    <div class="item-info-container">
-			<div class="item-name">
-			    <?=$this->escapeForHTML($item['name']);?>
-			</div>
-			<div class="item-description">
-			    <?=$this->escapeForHTML($item['description']);?>
-			</div>
-			<div class="item-price">
-			    <?='$' . $this->intToCurrency($item['price']);?>
-			</div>
+		<div class="item-info-container">
+		    <div class="item-name">
+			<?=$this->escapeForHTML($item['name']);?>
 		    </div>
+		    <div class="item-description">
+			<?=$this->escapeForHTML($item['description']);?>
+		    </div>
+		    <div class="item-price">
+			<?='$' . $this->intToCurrency($item['price']);?>
+		    </div>
+		</div>
 		<?php if($item['active'] == 1): ?>
 		    </a>
 		<?php endif; ?>

@@ -266,6 +266,28 @@ name_first = :name_first, name_last = :name_last
         return $addressUUID;
     }
 
+    // NOTE(Trystan): This function is necessary for when orders are called in,
+    // we still need to set an address so delivery people can see where it's going.
+    public function addNullUserAddress(string $line, string $city, string $state, string $zipCode) : string {
+        $addressUUID = $this->db->generateUUID();
+        
+        $sql = "INSERT INTO address (uuid, user_uuid, line, city, state, zip_code)
+ VALUES (:uuid, :user_uuid, :line, :city, :state, :zip_code);";
+
+        $this->db->beginStatement($sql);
+
+        $this->db->bindValueToStatement(":uuid", $addressUUID);
+        $this->db->bindValueToStatement(":user_uuid", NULL);
+        $this->db->bindValueToStatement(":line", $line);
+        $this->db->bindValueToStatement(":city", $city);
+        $this->db->bindValueToStatement(":state", $state);
+        $this->db->bindValueToStatement(":zip_code", $zipCode);
+        
+        $this->db->executeStatement();
+
+        return $addressUUID;
+    }
+
     public function setAddressDeliverable(string $addressUUID) : void {
         $sql = "UPDATE address SET deliverable = 1 WHERE uuid = :uuid;";
 

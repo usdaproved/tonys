@@ -162,3 +162,9 @@
     font-size: 1.2rem;
     font-weight: 700;
 }
+
+.stripe-checkout-button{
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+}
+

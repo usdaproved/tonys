@@ -317,7 +317,7 @@ class OrderController extends Controller{
         $json = file_get_contents("php://input");
         $postData = json_decode($json, true);
         
-        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
+       if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
             echo json_encode(NULL);
             exit;
         }
@@ -528,14 +528,13 @@ class OrderController extends Controller{
             
             $order = $this->orderManager->getOrderByUUID($orderUUID);
 
-            // An order was already submitted if it was placed in_restaurant.
-            if($order["order_type"] != IN_RESTAURANT){
+            if($order["status"] == CART){
                 $this->orderManager->submitOrder($orderUUID);
             }
 
             $this->user = $this->userManager->getUserInfo($order['user_uuid']);
 
-            // If the order was placed in_restaurant, and wasn't associated with anyone.
+            // If the order was placed by employee, and wasn't associated with anyone.
             if(!empty($this->user)){
                 $order["delivery_address"] = $this->orderManager->getDeliveryAddress($order["uuid"]);
                 

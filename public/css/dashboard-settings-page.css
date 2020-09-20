@@ -1,0 +1,36 @@
+.checkbox-container{
+    display: flex;
+    flex-direction: row;
+    
+    align-content: center;
+
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+}
+
+.checkbox-container > input{
+    margin: 0rem;
+    margin-right: 0.5rem;
+}
+
+.setting-link-container{
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+}
+
+.setting-link{
+    display: inline-flex;
+    text-decoration: none;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    background-color: #5a67d8;
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+    margin-right: 1rem;
+    font-family: sans-serif;
+}
+
+.setting-link:hover, .setting-link:focus{
+    background-color: #454fa7;
+}

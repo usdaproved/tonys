@@ -11,15 +11,20 @@ let addOptionButtons = document.querySelectorAll('.add-option-button');
 let removeOptionButtons = document.querySelectorAll('.remove-option-button');
 const menuItemID = document.querySelector('#menu-item-id').value;
 
+const deleteSVG = `<svg xmlns="http://www.w3.org/2000/svg" fill="red" height="24" viewBox="0 0 24 24" width="24">
+<path d="M0 0h24v24H0z" fill="none"/>
+<path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+</svg>`;
+
 let inChoiceEditMode = false;
 
 let choicesContainer = document.querySelector('#choices-container');
 
 const removeOptionHandler = (e) => {
     e.preventDefault();
-    let optionID = e.target.id.split('-')[0];
+    let optionID = e.target.closest('button').id.split('-')[0];
     let choiceContainer = e.target.closest('.choice-option');
-    
+
     let data = {"option-id" : optionID};
     const url = '/Dashboard/menu/item/removeChoiceOption';
 
@@ -38,21 +43,28 @@ const newChoiceOption = (optionID, name = "", price = 0) => {
     let optionContainer = document.createElement('div');
     optionContainer.id = `${optionID}-choice-option`;
     optionContainer.classList.add('choice-option');
+
+    let inputContainer = document.createElement('div');
+    inputContainer.classList.add('input-shared-line');
     
-    let removeOptionButton = document.createElement('input');
+    let removeOptionButton = document.createElement('button');
     removeOptionButton.type = 'button';
     removeOptionButton.id = `${optionID}-remove-option`;
-    removeOptionButton.value = 'Remove Option';
+    removeOptionButton.innerHTML = deleteSVG;
     removeOptionButton.classList.add('remove-option-button');
+    removeOptionButton.classList.add('svg-button');
     removeOptionButton.addEventListener('click', removeOptionHandler);
 
-    optionContainer.appendChild(removeOptionButton);
+    inputContainer.appendChild(removeOptionButton);
+
+    let nameInputContainer = document.createElement('div');
+    nameInputContainer.classList.add('input-container');
     
     let nameLabel = document.createElement('label');
     nameLabel.setAttribute('for', `${optionID}-option-name`);
     nameLabel.innerText = 'Name';
 
-    optionContainer.appendChild(nameLabel);
+    nameInputContainer.appendChild(nameLabel);
     
     let nameInput = document.createElement('input');
     nameInput.type = 'text';
@@ -60,15 +72,21 @@ const newChoiceOption = (optionID, name = "", price = 0) => {
     nameInput.classList.add('option-name');
     nameInput.name = 'name';
     nameInput.value = name;
+    nameInput.style.maxWidth = '8rem';
     nameInput.required = true;
 
-    optionContainer.appendChild(nameInput);
+    nameInputContainer.appendChild(nameInput);
+
+    inputContainer.appendChild(nameInputContainer);
+
+    let priceInputContainer = document.createElement('div');
+    priceInputContainer.classList.add('input-container');
 
     let priceLabel = document.createElement('label');
     priceLabel.setAttribute('for', `${optionID}-option-price`);
     priceLabel.innerText = 'Price Modifier';
 
-    optionContainer.appendChild(priceLabel);
+    priceInputContainer.appendChild(priceLabel);
     
     let priceInput = document.createElement('input');
     priceInput.type = 'number';
@@ -78,9 +96,14 @@ const newChoiceOption = (optionID, name = "", price = 0) => {
     priceInput.setAttribute('step', '0.01');
     priceInput.setAttribute('min', '0');
     priceInput.value = price;
+    priceInput.style.width = '4rem';
     priceInput.required = true;
 
-    optionContainer.appendChild(priceInput);
+    priceInputContainer.appendChild(priceInput);
+
+    inputContainer.appendChild(priceInputContainer);
+
+    optionContainer.appendChild(inputContainer);
 
     return optionContainer;
 };
@@ -92,11 +115,9 @@ const addOptionHandler = (e) => {
     const url = '/Dashboard/menu/item/addChoiceOption';
     
     postJSON(url, data).then(response => response.text()).then(optionID => {
-        let choiceContainer = e.target.closest('.choice-group');
+        let choiceContainer = e.target.closest('.choice-group').querySelector('.choice-option-container');
         let optionContainer = newChoiceOption(optionID);
         choiceContainer.appendChild(optionContainer);
-
-
     });
 };
 
@@ -104,94 +125,13 @@ addOptionButtons.forEach(button => {
     button.addEventListener('click', addOptionHandler);
 });
 
-const newChoiceGroup = (groupID, name = "", minPicks = 0, maxPicks = 0) => {
-    let groupContainer = document.createElement('div');
-    groupContainer.id = `${groupID}-choice-group`;
-    groupContainer.classList.add('choice-group');
-    
-    let removeGroupButton = document.createElement('input');
-    removeGroupButton.type = 'button';
-    removeGroupButton.id = `${groupID}-remove-group`;
-    removeGroupButton.value = 'Remove Group';
-    removeGroupButton.classList.add('remove-group-button');
-    removeGroupButton.addEventListener('click', removeGroupHandler);
-    
-    groupContainer.appendChild(removeGroupButton);
-    
-    let addOptionButton = document.createElement('input');
-    addOptionButton.type = 'button';
-    addOptionButton.id = `${groupID}-add-option`;
-    addOptionButton.value = 'Add Option';
-    addOptionButton.classList.add('add-option-button');
-    addOptionButton.addEventListener('click', addOptionHandler);
-
-    groupContainer.appendChild(addOptionButton);
-
-    let nameLabel = document.createElement('label');
-    nameLabel.setAttribute('for', `${groupID}-group-name`);
-    nameLabel.innerText = 'Name';
-
-    groupContainer.appendChild(nameLabel);
-
-    let nameInput = document.createElement('input');
-    nameInput.type = 'text';
-    nameInput.id = `${groupID}-group-name`;
-    nameInput.classList.add('group-name');
-    nameInput.name = 'name';
-    nameInput.value = name;
-    nameInput.required = true;
-
-    groupContainer.appendChild(nameInput);
-
-    let minPicksLabel = document.createElement('label');
-    minPicksLabel.setAttribute('for', `${groupID}-group-min-picks`);
-    minPicksLabel.innerText = 'Minimum Picks';
-
-    groupContainer.appendChild(minPicksLabel);
-
-    let minPicksInput = document.createElement('input');
-    minPicksInput.type = 'number';
-    minPicksInput.id = `${groupID}-group-min-picks`;
-    minPicksInput.classList.add('group-min-picks');
-    minPicksInput.name = 'min-picks';
-    minPicksInput.setAttribute('step', '1');
-    minPicksInput.setAttribute('min', '0');
-    minPicksInput.value = minPicks;
-    minPicksInput.required = true;
-
-    groupContainer.appendChild(minPicksInput);
-
-    let maxPicksLabel = document.createElement('label');
-    maxPicksLabel.setAttribute('for', `${groupID}-group-max-picks`);
-    maxPicksLabel.innerText = 'Maximum Picks';
-
-    groupContainer.appendChild(maxPicksLabel);
-
-    let maxPicksInput = document.createElement('input');
-    maxPicksInput.type = 'number';
-    maxPicksInput.id = `${groupID}-group-max-picks`;
-    maxPicksInput.classList.add('group-max-picks');
-    maxPicksInput.name = 'max-picks';
-    maxPicksInput.setAttribute('step', '1');
-    maxPicksInput.setAttribute('min', '0');
-    maxPicksInput.value = maxPicks;
-    maxPicksInput.required = true;
-
-    groupContainer.appendChild(maxPicksInput);
-
-    return groupContainer;
-};
-
 addGroupButton.addEventListener('click', (e) => {
     e.preventDefault();
     let postData = {"item-id" : menuItemID};
     const url = '/Dashboard/menu/item/addChoiceGroup';
     
     postJSON(url, postData).then(response => response.text()).then(groupID => {
-        let choiceGroup = newChoiceGroup(groupID);
-        choicesContainer.appendChild(choiceGroup);
-
-
+        location.reload();
     });
 });
 
@@ -251,26 +191,71 @@ const getChoiceData = () => {
     return result;
 };
 
-submitChoicesButton.addEventListener('click', (event) => {
-    event.preventDefault();
+const serializeMenu = () => {
+    let result = {};
 
-    let data = getChoiceData();
-
-    const url = '/Dashboard/menu/item/updateChoices';
-
-    postJSON(url, data).then(response => response.text()).then(result => {
-
+    let choiceContainers = document.querySelectorAll('.choice-group');
+    choiceContainers.forEach(choice => {
+        let options = choice.querySelectorAll('.choice-option');
+        let optionIDs = [];
+        options.forEach(option => {
+            optionIDs.push(option.id);
+        });
+        result[choice.id] = optionIDs;
     });
-});
+
+    return result;
+};
+
+
 
 // Toggle edit choices order
 
 let draggedElement;
+let allDraggableElements = null;
 
 const handleDragStart = (e) => {
-    event.dataTransfer.setData('text/html', null);
+    if(!inChoiceEditMode) return;
+    e.dataTransfer.setData('text/html', null);
+
+    let target = e.target.closest('.choice-option');
+    if(!target) target = e.target.closest('.choice-group');
 
     draggedElement = e.target;
+};
+
+const handleDragEnter = (e) => {
+    e.preventDefault();
+    if(!inChoiceEditMode) return;
+
+    if(!e.target.closest) return;
+
+    let target = null;
+
+    if(draggedElement.classList.contains('choice-option')){
+        target = e.target.closest('.choice-option');
+        
+        // The dragged element is looking to join another menu item and hasn't found one.
+        if(!target) return;
+
+        // also check if they are in the same group.
+        let targetChoiceID = target.closest('.choice-group').id;
+        let draggedElementChoiceID = draggedElement.closest('.choice-group').id;
+        if(targetChoiceID !== draggedElementChoiceID) return;
+    }
+
+    // If we are here, and no target, the dragged element and target are both groups.
+    if(!target) target = e.target.closest('.choice-group');
+
+    let currentDraggedOver = Array.from(allDraggableElements).filter((element) => {
+        if(element.classList.contains('dragged-over')) return element;
+    });
+
+    currentDraggedOver.forEach(element => {
+        element.classList.remove('dragged-over');
+    });
+
+    target.classList.add('dragged-over');
 };
 
 const handleDragOver = (e) => {
@@ -279,6 +264,14 @@ const handleDragOver = (e) => {
 
 const handleDrop = (e) => {
     e.preventDefault();
+
+    let currentDraggedOver = Array.from(allDraggableElements).filter((element) => {
+        if(element.classList.contains('dragged-over')) return element;
+    });
+
+    currentDraggedOver.forEach(element => {
+        element.classList.remove('dragged-over');
+    });
     
     let dropTarget = e.target.closest('.' + draggedElement.classList[0]);
     let startGroupID = draggedElement.parentElement.id;
@@ -290,33 +283,85 @@ const handleDrop = (e) => {
     }
 };
 
+const handleDragEnd = (e) => {
+    e.preventDefault();
+
+    let currentDraggedOver = Array.from(allDraggableElements).filter((element) => {
+        if(element.classList.contains('dragged-over')) return element;
+    });
+
+    currentDraggedOver.forEach(element => {
+        element.classList.remove('dragged-over');
+    });
+}
+
 const addDragAndDropHandlers = (element) => {
     element.addEventListener('dragstart', handleDragStart);
+    element.addEventListener('dragenter', handleDragEnter);
     element.addEventListener('dragover', handleDragOver);
     element.addEventListener('drop', handleDrop);
+    element.addEventListener('dragend', handleDragEnd);
 };
 
-let choiceData;
+const submitChoiceData = (e) => {
+    e.preventDefault();
+
+    let data = getChoiceData();
+
+    const url = '/Dashboard/menu/item/updateChoices';
+
+    postJSON(url, data).then(response => response.text()).then(result => {
+        location.reload();
+    });
+};
+
+
+
+const submitChoiceSequence = (e) => {
+    e.preventDefault();
+
+    let data = serializeMenu();
+
+    const url = '/Dashboard/menu/item/updateChoicesSequence';
+
+    postJSON(url, data).then(response => response.text()).then(result => {
+        location.reload();
+    });
+};
+
+let previousState = null;
+let choiceData = null;
 
 const beginChoiceOrderEditMode = () => {
     inChoiceEditMode = true;
 
-    submitChoicesButton.setAttribute('hidden', '');
-    addGroupButton.setAttribute('hidden', '');
-    choiceToggleEditButton.value = 'Update Choices';
-
+    previousState = choicesContainer.innerHTML;
     choiceData = getChoiceData();
+
+    submitChoicesButton.removeEventListener('click', submitChoiceData);
+    submitChoicesButton.addEventListener('click', submitChoiceSequence);
+
+    addGroupButton.classList.add('inactive');
+    addGroupButton.disabled = true;
+
+    choiceToggleEditButton.innerText = 'Cancel';
+    choiceToggleEditButton.classList.add('cancel');
 
     while(choicesContainer.firstChild) {
         choicesContainer.removeChild(choicesContainer.firstChild);
     }
+
+    let editContainer = document.createElement('div');
+    editContainer.classList.add('shadow');
+    editContainer.classList.add('text-form-inner-container');
 
     for(var groupID in choiceData){
         let splitGroupID = groupID.split('-')[0];
 
         let groupContainer = document.createElement('div');
         groupContainer.id = groupID;
-        groupContainer.classList.add('draggable-choice-group');
+        groupContainer.classList.add('draggable');
+        groupContainer.classList.add('choice-group');
         addDragAndDropHandlers(groupContainer);
         groupContainer.draggable = true;
 
@@ -336,7 +381,8 @@ const beginChoiceOrderEditMode = () => {
                 let splitOptionID = optionID.split('-')[0];
                 let optionElement = document.createElement('li');
                 optionElement.id = `${splitOptionID}-choice-option`;
-                optionElement.classList.add('draggable-option');
+                optionElement.classList.add('draggable');
+                optionElement.classList.add('choice-option');
                 optionElement.draggable = true;
                 optionElement.innerText = choiceData[groupID][optionID]['name'];
 
@@ -346,69 +392,30 @@ const beginChoiceOrderEditMode = () => {
 
         groupContainer.appendChild(optionsList);
 
-        choicesContainer.appendChild(groupContainer);
+        editContainer.appendChild(groupContainer);
     }
+
+    choicesContainer.appendChild(editContainer);
+
+    allDraggableElements = document.querySelectorAll('.choice-group, .choice-option');
 };
 
 const endChoiceOrderEditMode = () => {
     inChoiceEditMode = false;
 
-    submitChoicesButton.removeAttribute('hidden');
-    addGroupButton.removeAttribute('hidden');
-    choiceToggleEditButton.value = 'Edit Choices Order';
+    allDraggableElements = null;
 
-    let orderedChoiceData = {};
-    choicesContainer.querySelectorAll('.draggable-choice-group').forEach(group => {
-        orderedChoiceData[group.id] = {};
+    submitChoicesButton.removeEventListener('click', submitChoiceSequence);
+    submitChoicesButton.addEventListener('click', submitChoiceData);
 
-        let groupName = choiceData[group.id]['group-data']['name'];
-        let groupMinPicks = choiceData[group.id]['group-data']['min-picks'];
-        let groupMaxPicks = choiceData[group.id]['group-data']['max-picks'];
-        orderedChoiceData[group.id]['group-data'] = {
-            "name" : groupName,
-            "min-picks" : groupMinPicks,
-            "max-picks" : groupMaxPicks
-        };
+    addGroupButton.classList.remove('inactive');
+    addGroupButton.disabled = false;
 
-        group.querySelectorAll('.draggable-option').forEach(option =>{
-            let optionName = choiceData[group.id][option.id]['name'];
-            let optionPrice = choiceData[group.id][option.id]['price'];
-            orderedChoiceData[group.id][option.id] = {
-                "name" : optionName,
-                "price" : optionPrice
-            };
-        });
-    });
-    
-    choiceData = orderedChoiceData;
+    choiceToggleEditButton.innerText = 'Edit Order';
+    choiceToggleEditButton.classList.remove('cancel');
 
-    while(choicesContainer.firstChild) {
-        choicesContainer.removeChild(choicesContainer.firstChild);
-    }
-
-    // Build the inputs back up based on choiceData.
-    for(var groupID in choiceData){
-        let groupName = choiceData[groupID]["group-data"]["name"];
-        let groupMinPicks = choiceData[groupID]["group-data"]["min-picks"];
-        let groupMaxPicks = choiceData[groupID]["group-data"]["max-picks"];
-
-        let splitGroupID = groupID.split('-')[0];
-        let groupElement = newChoiceGroup(splitGroupID, groupName, groupMinPicks, groupMaxPicks);
-        for(var optionID in choiceData[groupID]){
-            if(optionID !== 'group-data'){
-                let optionName = choiceData[groupID][optionID]["name"];
-                let optionPrice = choiceData[groupID][optionID]["price"];
-
-                let splitOptionID = optionID.split('-')[0];
-                let choiceElement = newChoiceOption(splitOptionID, optionName, optionPrice);
-                groupElement.appendChild(choiceElement);
-            }
-        }
-
-        choicesContainer.appendChild(groupElement);
-    }
-
-    submitChoicesButton.click();
+    choicesContainer.innerHTML = previousState;
+    choiceData = null;
 };
 
 choiceToggleEditButton.addEventListener('click', e => {
@@ -418,5 +425,20 @@ choiceToggleEditButton.addEventListener('click', e => {
         endChoiceOrderEditMode();
     } else {
         beginChoiceOrderEditMode();
+    }
+});
+
+// initial state is to submit the normal data.
+submitChoicesButton.addEventListener('click', submitChoiceData);
+
+const deleteButton = document.querySelector('#delete-item');
+deleteButton.addEventListener('click', (e) => {
+    let result = confirm("Are you sure you want to delete this item?");
+    if(result){
+        const id = {'id' : e.target.closest('button').dataset.id};
+        const url = '/Dashboard/menu/item/delete';
+        postJSON(url, id).then(response => response.text).then(result => {
+            window.location.replace('/Dashboard/menu');
+        });
     }
 });

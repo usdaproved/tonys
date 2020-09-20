@@ -1,8 +1,8 @@
 // (C) Copyright 2020 by Trystan Brock All Rights Reserved.
+import { postJSON } from './utility.js';
+
 "use strict";
 
-const CSRFToken =        document.querySelector('#CSRFToken').value;
-const resultElement =    document.querySelector('#result');
 const toggleEditButton = document.querySelector('#toggle-edit');
 const updateMenuButton = document.querySelector('#update-menu');
 const menuElement =      document.querySelector('#menu');
@@ -15,9 +15,41 @@ let inEditMode = false;
 var draggedElement;
 
 const handleDragStart = (e) => {
-    event.dataTransfer.setData('text/html', null);
+    if(!inEditMode) return;
+    e.dataTransfer.setData('text/html', null);
 
-    draggedElement = e.target;
+    let target = e.target.closest('.menu-item');
+    if(!target) target = e.target.closest('.menu-category');
+
+    draggedElement = target;
+};
+
+const handleDragEnter = (e) => {
+    e.preventDefault();
+    if(!inEditMode) return;
+
+    if(!e.target.closest) return;
+
+    let target = null;
+
+    if(draggedElement.classList.contains('menu-item')){
+        target = e.target.closest('.menu-item');
+        // The dragged element is looking to join another menu item and hasn't found one.
+        if(!target) return;
+    }
+
+    
+    if(!target) target = e.target.closest('.menu-category');
+
+    let currentDraggedOver = Array.from(allDraggableElements).filter((element) => {
+        if(element.classList.contains('dragged-over')) return element;
+    });
+
+    currentDraggedOver.forEach(element => {
+        element.classList.remove('dragged-over');
+    });
+
+    target.classList.add('dragged-over');
 };
 
 const handleDragOver = (e) => {
@@ -26,6 +58,14 @@ const handleDragOver = (e) => {
 
 const handleDrop = (e) => {
     e.preventDefault();
+
+    let currentDraggedOver = Array.from(allDraggableElements).filter((element) => {
+        if(element.classList.contains('dragged-over')) return element;
+    });
+
+    currentDraggedOver.forEach(element => {
+        element.classList.remove('dragged-over');
+    });
     
     let dropTarget = e.target.closest('.' + draggedElement.classList[0]);
 
@@ -35,22 +75,27 @@ const handleDrop = (e) => {
     }
 };
 
+const handleDragEnd = (e) => {
+    e.preventDefault();
+
+    let currentDraggedOver = Array.from(allDraggableElements).filter((element) => {
+        if(element.classList.contains('dragged-over')) return element;
+    });
+
+    currentDraggedOver.forEach(element => {
+        element.classList.remove('dragged-over');
+    });
+}
+
 const addDragAndDropHandlers = (elem) => {
     elem.addEventListener('dragstart', handleDragStart);
+    elem.addEventListener('dragenter', handleDragEnter);
     elem.addEventListener('dragover', handleDragOver);
     elem.addEventListener('drop', handleDrop);
+    elem.addEventListener('dragend', handleDragEnd);
 };
 
 [].forEach.call(categoryElements, addDragAndDropHandlers);
-
-const displayResult = (result) => {
-    if(result === 'success'){
-        resultElement.textContent = "Menu order has been updated.";
-    }
-    if(result === 'fail'){
-        resultElement.textContent = "Menu order has failed to update.";
-    }
-};
 
 const serializeMenu = () => {
     let result = {};
@@ -74,25 +119,30 @@ const serializeMenu = () => {
 
 const beginEditMode = () => {
     inEditMode = true;
-    updateMenuButton.removeAttribute('hidden');
-    toggleEditButton.setAttribute('value', 'Cancel Edit');
+    updateMenuButton.classList.remove('inactive');
+    updateMenuButton.disabled = false;
+    toggleEditButton.innerText = 'Cancel';
+    toggleEditButton.classList.add('cancel');
     allDraggableElements.forEach(e => {
         e.setAttribute('draggable', 'true');
+        e.classList.add('draggable');
     });
 };
 
 const endEditMode = (e) => {
     inEditMode = false;
-    updateMenuButton.setAttribute('hidden', '');
-    toggleEditButton.setAttribute('value', 'Edit menu order');
+    updateMenuButton.classList.add('inactive');
+    updateMenuButton.disabled = true;
+    toggleEditButton.innerText = 'Edit Order';
+    toggleEditButton.classList.remove('cancel');
     // if end edit was called because it was cancelled.
-    if(e && e.target.id === 'toggle-edit'){
+    if(e && e.target.closest('button').id === 'toggle-edit'){
         menuElement.innerHTML = previousState;
         allDraggableElements = document.querySelectorAll('.menu-category, .menu-item');
+        allDraggableElements.forEach(element => element.classList.remove('draggable'));
         categoryElements = document.querySelectorAll('.menu-category');
+        categoryElements.forEach(element => element.classList.remove('draggable'));
         [].forEach.call(categoryElements, addDragAndDropHandlers);
-    } else if(e && e.target.id === 'update-menu'){
-        previousState = menuElement.innerHTML;
     }
 };
 
@@ -109,21 +159,10 @@ toggleEditButton.addEventListener('click', e => {
 updateMenuButton.addEventListener('click', e => {
     e.preventDefault();
 
-    endEditMode(e);
+    const url = '/Dashboard/menu/updateMenuSequence';
+    let json = serializeMenu();
 
-    let serializedMenu = serializeMenu();
-    // We always have to add in that CSRFToken.
-    serializedMenu["CSRFToken"] = CSRFToken;
-
-    const url = window.location.origin + '/Dashboard/menu/updateMenuSequence';
-
-    let data = JSON.stringify(serializedMenu);
-    
-    fetch(url, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: data
-    }).then(response => response.text()).then(result => displayResult(result));
+    postJSON(url, json).then(response => response.text()).then(result => {
+        location.reload();
+    });
 });

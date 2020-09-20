@@ -4,3 +4,161 @@
     -webkit-user-select: none;
     user-select: none;
 }
+
+*, ::after, ::before {
+    box-sizing: border-box;
+}
+
+.scrolling-container{
+    position: sticky;
+    top: 0rem;
+    margin-top: -2rem;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+    background-color: white;
+    border-bottom-style: solid;
+    border-color: #f7fafc;
+    border-bottom-width: 2px;
+    z-index: 1;
+}
+
+.action-bar{
+    position: relative;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    margin-right: 2rem;
+    margin-left: 2rem;
+    max-width: 72rem;
+}
+
+
+
+@media (min-width: 76rem){
+    .action-bar{
+        margin-left: auto;
+        margin-right: auto;
+    }
+}
+
+.link-button-container{
+    display: flex;
+    flex-direction: row;
+    margin-bottom: 1rem;
+}
+
+@media (min-width: 578px){
+    .link-button-container{
+        margin-bottom: 0;
+    }
+}
+
+.link-button{
+    display: inline-flex;
+    text-decoration: none;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    background-color: #5a67d8;
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+    margin-right: 1rem;
+    font-family: sans-serif;
+}
+
+.link-button:hover, .link-button:focus{
+    background-color: #454fa7;
+}
+
+.link-button-text{
+    margin-left: 0.5rem;
+}
+
+.edit-order-button-container{
+    
+}
+
+.edit-order-button{
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    background-color: #5a67d8;
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+    margin-right: 1rem;
+}
+
+.edit-order-button:hover, .edit-order-button:active{
+    background-color: #454fa7;
+}
+
+.edit-order-button.update{
+    background-color: #12682f;
+}
+
+.edit-order-button.update:hover, .edit-order-button.update:active{
+    background-color: #0f5024;
+}
+
+.edit-order-button.update.inactive{
+    background-color: #7d9b87;
+}
+
+.edit-order-button.cancel{
+    background-color: #e53e3e;
+}
+
+.edit-order-button.cancel:hover, .edit-order-button.cancel:active{
+    background-color: #a52a2a;
+}
+
+.menu-category{
+    padding-top: 1rem;
+}
+
+.menu-category.draggable > h3{
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    border-top: 6px solid transparent;
+    background-color: #5a67d8;
+    color: white;
+}
+
+.menu-category.draggable > h3:hover, .menu-category.draggable > h3:focus{
+    background-color: #454fa7;
+}
+
+.menu-category.dragged-over > h3{
+    border-top: 6px solid #454fa7;
+}
+
+.menu-item{
+    margin-bottom: 1rem;
+}
+
+.menu-item.draggable{
+    margin-bottom: 1.5rem;
+    border-top: 3px solid transparent;
+    background-color: rgba(0.05, 0.05, 0.05, 0.05);
+
+    
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+}
+
+.menu-item.draggable:hover, .menu-item.draggable:focus{
+    background-color: rgba(0.1, 0.1, 0.1, 0.1);
+}
+
+.menu-item.dragged-over{
+    border-top: 3px solid #5a67d8;
+}
+
+.menu-item-link{
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+    font-size: 16px;
+}

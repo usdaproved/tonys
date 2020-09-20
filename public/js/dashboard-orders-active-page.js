@@ -194,8 +194,18 @@ const onCashInput = (e) => {
 
     if(cashGiven >= total){
         changeElement.innerText = (cashGiven - total).toFixed(2);
+        let submitPaymentButton = document.querySelector('#submit-cash-payment');
+        if(submitPaymentButton.classList.contains('inactive')){
+            submitPaymentButton.classList.remove('inactive');
+            submitPaymentButton.disabled = false;
+        }
     } else {
         changeElement.innerText = '0.00';
+        let submitPaymentButton = document.querySelector('#submit-cash-payment');
+        if(!submitPaymentButton.classList.contains('inactive')){
+            submitPaymentButton.classList.add('inactive');
+            submitPaymentButton.disabled = true;
+        }
     }
 };
 
@@ -234,18 +244,22 @@ const submitCashPayment = (e) => {
     }
 };
 
+const exitDialogHandler = (e) => {
+    if(e.target.id === 'dialog-container' || e.target.closest('.dialog-exit-button')){
+        e.preventDefault();
+
+        if(document.querySelector('#dialog-container')){
+            endDialogMode();
+        }
+    }
+};
+
 const newDialog = (orderPaymentInfo, orderUUID) => {
     let dialogContainer = document.createElement('div');
     dialogContainer.id = 'dialog-container';
     dialogContainer.dataset.orderUUID = orderUUID;
     dialogContainer.classList.add('dialog-container');
-    dialogContainer.addEventListener('click', (e) => {
-        if(e.target.id === 'dialog-container'){
-            e.preventDefault();
-    
-            endDialogMode();
-        }
-    });
+    dialogContainer.addEventListener('click', exitDialogHandler);
 
     let dialog = document.createElement('div');
     dialog.setAttribute('role', 'dialog');
@@ -253,6 +267,16 @@ const newDialog = (orderPaymentInfo, orderUUID) => {
 
     let dialogInfoContainer = document.createElement('div');
     dialogInfoContainer.classList.add('dialog-info-container');
+
+    let exitButton = document.createElement('button');
+    exitButton.innerHTML = `<svg class="navigation-svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>`;
+    exitButton.classList.add('dialog-exit-button');
+    exitButton.classList.add('svg-button');
+    exitButton.addEventListener('click', exitDialogHandler);
+
+    dialogInfoContainer.appendChild(exitButton);
 
     let cost = orderPaymentInfo.cost;
     let fee = parseInt(cost.fee);
@@ -285,11 +309,29 @@ const newDialog = (orderPaymentInfo, orderUUID) => {
 
     dialogInfoContainer.appendChild(totalCostElement);
 
+    let stripeCheckoutButton = document.createElement('button');
+    stripeCheckoutButton.classList.add('stripe-checkout-button');
+    stripeCheckoutButton.classList.add('update-status-button');
+    stripeCheckoutButton.classList.add('svg-button');
+    if(!stripeReaderConnected){
+        stripeCheckoutButton.classList.add('inactive');
+        stripeCheckoutButton.disabled = true;
+    }
+    stripeCheckoutButton.innerText = 'Credit/Debit';
+    stripeCheckoutButton.addEventListener('click', (e) => {
+        stripeCheckout(stripeOrderSecret, orderUUID);
+    });
+
+    dialogInfoContainer.appendChild(stripeCheckoutButton);
+
+    let cashInputContainer = document.createElement('div');
+    cashInputContainer.classList.add('input-container');
+
     let cashInputLabel = document.createElement('label');
     cashInputLabel.innerText = 'Cash: ';
     cashInputLabel.setAttribute('for', 'cash');
 
-    dialogInfoContainer.appendChild(cashInputLabel);
+    cashInputContainer.appendChild(cashInputLabel);
 
     let cashInput = document.createElement('input');
     cashInput.id = `cash`;
@@ -297,7 +339,9 @@ const newDialog = (orderPaymentInfo, orderUUID) => {
     cashInput.setAttribute('step', '0.01');
     cashInput.addEventListener('input', onCashInput);
 
-    dialogInfoContainer.appendChild(cashInput);
+    cashInputContainer.appendChild(cashInput);
+
+    dialogInfoContainer.appendChild(cashInputContainer);
 
     let changeDueElement = document.createElement('p');
     changeDueElement.innerText = 'Change Due: ';
@@ -310,22 +354,16 @@ const newDialog = (orderPaymentInfo, orderUUID) => {
     dialogInfoContainer.appendChild(changeDueElement);
 
     let submitPaymentButton = document.createElement('button');
-    submitPaymentButton.innerText = 'Submit Payment';
+    submitPaymentButton.id = 'submit-cash-payment';
+    submitPaymentButton.classList.add('update-status-button');
+    submitPaymentButton.classList.add('svg-button');
+    // Inactive until cash input is updated.
+    submitPaymentButton.classList.add('inactive');
+    submitPaymentButton.disabled = true;
+    submitPaymentButton.innerText = 'Submit Cash Payment';
     submitPaymentButton.addEventListener('click', submitCashPayment);
 
     dialogInfoContainer.appendChild(submitPaymentButton);
-
-    let stripeCheckoutButton = document.createElement('button');
-    stripeCheckoutButton.classList.add('stripe-checkout-button')
-    if(!stripeReaderConnected){
-        stripeCheckoutButton.classList.add('inactive');
-    }
-    stripeCheckoutButton.innerText = 'Credit/Debit';
-    stripeCheckoutButton.addEventListener('click', (e) => {
-        stripeCheckout(stripeOrderSecret, orderUUID);
-    });
-
-    dialogInfoContainer.appendChild(stripeCheckoutButton);
 
     dialog.appendChild(dialogInfoContainer);
 

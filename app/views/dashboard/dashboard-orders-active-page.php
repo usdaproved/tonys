@@ -40,17 +40,17 @@
     </div>
 </div>
 <h3 id="order-type-name-delivery" class="text-center order-type-name">
-    DELIVERY:
+    DELIVERY
 </h3>
 <div id="delivery-orders" class="center-container active-order-container">
 </div>
 <h3 id="order-type-name-pickup" class="text-center order-type-name">
-    PICKUP:
+    PICKUP
 </h3>
 <div id="pickup-orders" class="center-container active-order-container">
 </div>
 <h3 id="order-type-name-in-restaurant" class="text-center order-type-name">
-    IN RESTAURANT:
+    IN RESTAURANT
 </h3>
 <div id="in-restaurant-orders" class="center-container active-order-container">
 </div>

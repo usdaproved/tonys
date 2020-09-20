@@ -1,73 +1,140 @@
-.grid-container{
-    display: grid;
-    grid-template-columns: 1fr 2fr 1fr;
-}
-
-.flex-container{
-    grid-column-start: 2;
-    grid-column-end: 3;
-    
+.remember-container{
     display: flex;
-    flex-direction: column;
-}
-
-.flex-item, .hover-disabled, .order_button{
-    padding: 30px;
-    margin: 5px;
-
-    background: #B69179;
-    box-shadow: 0 5px 0px #306569;
+    flex-direction: row;
     
-    color: #2B2B2B;
-    text-align: center;
-    font-family: 'Libre Baskerville', serif;
-    font-size: 40px;
+    align-content: center;
+}
+
+.remember-container > input{
+    margin: 0rem;
+    margin-right: 0.5rem;
+}
+
+.double-button-container{
+    display: flex;
+
+    justify-content: space-around;
+    flex-flow: row wrap;
+    align-items: stretch;
+}
+
+.delete-button-container{
+    margin-top: 1.5rem;
+}
+
+.scrolling-container{
+    position: sticky;
+    top: 0rem;
+    margin-top: -2rem;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+    background-color: white;
+    border-bottom-style: solid;
+    border-color: #f7fafc;
+    border-bottom-width: 2px;
+    z-index: 1;
+}
+
+.action-bar{
+    position: relative;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    margin-right: 2rem;
+    margin-left: 2rem;
+    max-width: 72rem;
+}
+
+
+
+@media (min-width: 76rem){
+    .action-bar{
+        margin-left: auto;
+        margin-right: auto;
+    }
+}
+
+.edit-order-button-container{
     
-
-    user-select: none;
-    -moz-user-select: none;
-    -webkit-user-select: none;
 }
 
-.order_button{
-    color: #E6E6E6;
+.edit-order-button{
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    background-color: #5a67d8;
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+    margin-right: 1rem;
+    font-size: 18px;
 }
 
-/* What the heck am I doing? */
-.flex-item:not(.hover-disabled):hover,
-.order_button:hover{
-    cursor: pointer;
+.edit-order-button:hover, .edit-order-button:active{
+    background-color: #454fa7;
+}
+
+.edit-order-button.update{
+    background-color: #12682f;
+}
+
+.edit-order-button.update:hover, .edit-order-button.update:active{
+    background-color: #0f5024;
+}
+
+.edit-order-button.inactive{
+    background-color: rgba(0.25, 0.25, 0.25, 0.25);
+}
+
+.edit-order-button.cancel, .wide-button.cancel{
+    background-color: #e53e3e;
+}
+
+.edit-order-button.cancel:hover, .edit-order-button.cancel:active,
+.wide-button.cancel:hover, .wide-button.cancel:active{
+    background-color: #a52a2a;
+}
+
+.choice-option{
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+    background-color: rgba(0.1,0.1,0.1,0.1);
+}
+
+.choice-group.draggable > h3{
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    border-top: 6px solid transparent;
+    background-color: #5a67d8;
+    color: white;
+}
+
+.choice-group.draggable > h3:hover, .choice-group.draggable > h3:focus{
+    background-color: #454fa7;
+}
+
+.choice-group.dragged-over > h3{
+    border-top: 6px solid #454fa7;
+}
+
+.choice-option.draggable{
+    margin-bottom: 1.5rem;
+    border-top: 3px solid transparent;
+    background-color: rgba(0.05, 0.05, 0.05, 0.05);
+
     
-    background: #9C7C67;
-    box-shadow: 0 3px 0px #244C4F;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
 }
 
-.quantifier{
-    color: #306569;
+.choice-option.draggable:hover, .choice-option.draggable:focus{
+    background-color: rgba(0.1, 0.1, 0.1, 0.1);
 }
 
-.quantifier:hover{
-    cursor: pointer;
-    
-    color: #244C4F;
-}
-
-/* This is the number field in the order form. */
-.quantity{
-    border: none;
-    background: rgba(0, 0, 0, 0);
-    outline: none;
-
-    width: 60px;
-    
-    font-size: 40px;
-    font-family: 'Libre Baskerville', serif;
-
-    -webkit-appearance: none;
-    -moz-appearance: textfield;
-}
-
-label {
-  display: block;
-  margin: 5px 0;
+.choice-option.dragged-over{
+    border-top: 3px solid #5a67d8;
 }

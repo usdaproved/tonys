@@ -5,6 +5,8 @@ import { postJSON, initSearchUsersComponent } from './utility.js';
 
 const defaultCustomerText = "No customer selected.";
 
+let delivery
+
 const submitButton = document.querySelector('#submit-order-button');
 const customerTextElement = document.querySelector('#customer-name-text');
 let selectedUserUUID = null;

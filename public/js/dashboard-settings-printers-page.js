@@ -17,7 +17,7 @@ addPrinterButton.addEventListener('click', (e) => {
 
 removePrinterButtons.forEach((button) => {
     button.addEventListener('click', (e) => {
-        const container = e.target.closest('.order-container');
+        const container = e.target.closest('.printer');
         const selector = container.id;
 
         const printerName = container.querySelector('.printer-name').innerText;

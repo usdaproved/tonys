@@ -1,0 +1,10 @@
+.day-container{
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+
+}
+
+.day-header{
+    background-color: rgba(0.1,0.1,0.1,0.1);
+    margin-bottom: 0.5rem;
+}

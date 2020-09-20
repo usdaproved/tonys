@@ -182,11 +182,18 @@ class DashboardController extends Controller{
 
         $cartUUID = $this->orderManager->getCartUUID($userUUID);
         $this->orderStorage = $this->orderManager->getOrderByUUID($cartUUID);
-        if($this->orderStorage["order_type"] != IN_RESTAURANT){
-            $this->redirect("/Order/submit");
-        }
+
         if(count($this->orderStorage["line_items"]) === 0){
             $this->redirect("/Order");
+        }
+
+        $getAddress = false;
+        if($this->orderStorage["order_type"] == DELIVERY){
+            $this->orderStorage["delivery_address"] = $this->orderManager->getDeliveryAddress($cartUUID);
+            
+            if(empty($this->orderStorage["delivery_address"])){
+                $getAddress = true;
+            }
         }
 
         $this->user = $this->userManager->getUserInfo($userUUID);
@@ -204,7 +211,7 @@ class DashboardController extends Controller{
 
         $cartUUID = $this->orderManager->getCartUUID($userUUID);
         $this->orderStorage = $this->orderManager->getOrderByUUID($cartUUID);
-        if($cartUUID === NULL || $this->orderStorage["order_type"] != IN_RESTAURANT){
+        if($cartUUID === NULL){
             echo "fail";
             exit;
         }
@@ -230,6 +237,33 @@ class DashboardController extends Controller{
         
         $this->sessionManager->pushOneTimeMessage(USER_SUCCESS, "Order successfully submitted.");
         echo "success";
+    }
+
+    public function orders_submit_setDeliveryAddress_post() : void {
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(EMPLOYEE, $userUUID)){
+            $this->redirect("/");
+            exit;
+        }
+
+        $cartUUID = $this->orderManager->getCartUUID($userUUID);
+        if($cartUUID === NULL){
+            $this->redirect("/Order");
+            exit;
+        }
+
+        if(!$this->sessionManager->validateCSRFToken($_POST["CSRFToken"])){
+            $this->redirect("/Dashboard/orders/submit");
+            exit;
+        }
+
+        // Add an address to nobody so that we can associate it with an order.
+        $addressUUID = $this->userManager->addNullUserAddress($_POST["address_line"], $_POST["city"],
+                                                      $_POST["state"], $_POST["zip_code"]);
+
+        $this->orderManager->setDeliveryAddress($cartUUID, $addressUUID);
+
+        $this->redirect("/Dashboard/orders/submit");
     }
 
     public function menu_get() : void {
@@ -282,9 +316,9 @@ class DashboardController extends Controller{
         }
 
         $itemStatus = $isNewCategory ? "created" : "updated";
-        $this->sessionManager->pushOneTimeMessage(USER_SUCCESS, "categories successfully $itemStatus.");
+        $this->sessionManager->pushOneTimeMessage(USER_SUCCESS, "Category successfully $itemStatus.");
 
-        $this->redirect("/Dashboard/menu");
+        $this->redirect("/Dashboard/menu/categories");
     }
 
     public function menu_item_get() : void {
@@ -360,13 +394,29 @@ class DashboardController extends Controller{
         $this->user = $this->userManager->getUserInfo($userUUID);
 
         $settings = [];
+        $settings["delivery_on"] = $this->orderManager->isDeliveryOn();
+        $settings["pickup_on"] = $this->orderManager->isPickupOn();
+
+        require_once APP_ROOT . "/views/dashboard/dashboard-settings-page.php";
+    }
+
+    public function settings_schedule_get() : void {
+        $this->pageTitle = "Settings - Schedule";
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(ADMIN, $userUUID)){
+            $this->redirect("/");
+        }
+
+        $this->user = $this->userManager->getUserInfo($userUUID);
+
+        $settings = [];
         $settings["delivery_schedule"] = $this->settingsManager->getDeliverySchedule();
         $settings["pickup_schedule"] = $this->settingsManager->getPickupSchedule();
         $settings["delivery_on"] = $this->orderManager->isDeliveryOn();
         $settings["pickup_on"] = $this->orderManager->isPickupOn();
         $week = array_keys(DAY_TO_INT);
 
-        require_once APP_ROOT . "/views/dashboard/dashboard-settings-page.php";
+        require_once APP_ROOT . "/views/dashboard/dashboard-settings-schedule-page.php";
     }
 
     public function settings_printers_get() : void {
@@ -380,7 +430,7 @@ class DashboardController extends Controller{
 
         $printers = $this->settingsManager->getAllPrinters();
 
-        require_once APP_ROOT . "/views/dashboard/dashboard-printers-page.php";
+        require_once APP_ROOT . "/views/dashboard/dashboard-settings-printers-page.php";
     }
 
     public function settings_printers_add_post() : void {
@@ -909,12 +959,100 @@ class DashboardController extends Controller{
 
             $categoryPosition++;
         }
+
+        $this->sessionManager->pushOneTimeMessage(USER_SUCCESS, "Menu order has been successfully updated.");
+    }
+
+    public function menu_categories_delete_post() : void {
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(ADMIN, $userUUID)){
+            echo "fail";
+            exit;
+        }
+
+        $json = file_get_contents("php://input");
+        $postData = json_decode($json, true);
+        
+        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
+            echo "fail";
+            exit;
+        }
+
+        $isEmpty = $this->menuManager->isCategoryEmpty($postData["id"]);
+        if(!$isEmpty){
+            $this->sessionManager->pushOneTimeMessage(USER_ALERT, "Category must be empty in order to delete.");
+            exit;
+        }
+
+        $this->menuManager->removeCategory($postData["id"]);
+        
+        $this->sessionManager->pushOneTimeMessage(USER_SUCCESS, "Category has been succesfully removed.");
+    }
+
+    public function menu_item_delete_post() : void {
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(ADMIN, $userUUID)){
+            echo "fail";
+            exit;
+        }
+
+        $json = file_get_contents("php://input");
+        $postData = json_decode($json, true);
+        
+        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
+            echo "fail";
+            exit;
+        }
+
+        $this->menuManager->removeMenuItem($postData["id"]);
+
+        $this->sessionManager->pushOneTimeMessage(USER_SUCCESS, "Item has been succesfully removed.");
     }
     
-    /**
-     * Updates the all the values and positions of the choice groups and options.
-     */
     public function menu_item_updateChoices_post() : void {
+        $userUUID = $this->getUserUUID();
+        if(!$this->validateAuthority(ADMIN, $userUUID)){
+            echo "fail";
+            exit;
+        }
+
+        $json = file_get_contents("php://input");
+        $postData = json_decode($json, true);
+        
+        if(!$this->sessionManager->validateCSRFToken($postData["CSRFToken"])){
+            echo "fail";
+            exit;
+        }
+
+        $choiceGroups = $postData;
+        unset($choiceGroups["CSRFToken"]);
+
+        foreach($choiceGroups as $groupID => $choiceGroup){
+            $groupID = explode("-", $groupID)[0];
+            $groupName = $choiceGroup["group-data"]["name"];
+            // TODO: Check that picks does not exceed number of choices.
+            $groupMinPicks = $choiceGroup["group-data"]["min-picks"];
+            // TODO: Check that max picks greater than min.
+            $groupMaxPicks = $choiceGroup["group-data"]["max-picks"];
+
+            $this->menuManager->updateChoiceGroup($groupID, $groupName,
+                                                  $groupMinPicks, $groupMaxPicks);
+
+            unset($choiceGroup["group-data"]);
+            
+            foreach($choiceGroup as $choiceID => $choice){
+                $choiceID = explode("-", $choiceID)[0];
+                $choiceName = $choice["name"];
+                $choicePrice = $choice["price"] * 100;
+
+                $this->menuManager->updateChoiceOption($choiceID, $choiceName, $choicePrice);
+            }
+        }
+
+        echo "success";
+    }
+
+    public function menu_item_updateChoicesSequence_post() : void {
         $userUUID = $this->getUserUUID();
         if(!$this->validateAuthority(ADMIN, $userUUID)){
             echo "fail";
@@ -935,33 +1073,18 @@ class DashboardController extends Controller{
         $groupPosition = 1;
         foreach($choiceGroups as $groupID => $choiceGroup){
             $groupID = explode("-", $groupID)[0];
-            $groupName = $choiceGroup["group-data"]["name"];
-            // TODO: Check that picks does not exceed number of choices.
-            $groupMinPicks = $choiceGroup["group-data"]["min-picks"];
-            // TODO: Check that max picks greater than min.
-            $groupMaxPicks = $choiceGroup["group-data"]["max-picks"];
-
-            $this->menuManager->updateChoiceGroup($groupID, $groupName,
-                                                  $groupMinPicks, $groupMaxPicks);
             $this->menuManager->updateChoiceGroupPosition($groupID, $groupPosition);
 
-            unset($choiceGroup["group-data"]);
-            
             $choicePosition = 1;
-            foreach($choiceGroup as $choiceID => $choice){
+            foreach($choiceGroup as $choiceID){
                 $choiceID = explode("-", $choiceID)[0];
-                $choiceName = $choice["name"];
-                $choicePrice = $choice["price"] * 100;
-
-                $this->menuManager->updateChoiceOption($choiceID, $choiceName, $choicePrice);
                 $this->menuManager->updateChoiceOptionPosition($choiceID, $choicePosition);
-                
                 $choicePosition++;
             }
             $groupPosition++;
         }
-
-        echo "success";
+        
+        
     }
 
     public function menu_item_addChoiceGroup_post() : void {
@@ -1198,7 +1321,7 @@ class DashboardController extends Controller{
         echo "success";
     }
 
-    public function settings_updateDeliverySchedule_post() : void {
+    public function settings_sechedule_updateDelivery_post() : void {
         $userUUID = $this->getUserUUID();
         if(!$this->validateAuthority(ADMIN, $userUUID)){
             echo "fail";
@@ -1223,7 +1346,7 @@ class DashboardController extends Controller{
         echo "success";
     }
 
-    public function settings_updatePickupSchedule_post() : void {
+    public function settings_schedule_updatePickup_post() : void {
         $userUUID = $this->getUserUUID();
         if(!$this->validateAuthority(ADMIN, $userUUID)){
             echo "fail";

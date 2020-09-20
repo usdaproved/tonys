@@ -1,0 +1,14 @@
+.user-orders{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    
+}
+
+.user-order{
+    padding: 1rem;
+    margin: 2rem;
+    background-color: rgba(0.1,0.1,0.1,0.1);
+    border-radius: 0.5rem;
+}

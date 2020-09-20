@@ -8,11 +8,23 @@
 	    No customer selected.
 	</div>
     </div>
+    <?php if($this->orderStorage["order_type"] == DELIVERY): ?>
+    <div class="center-container">
+	<?= $this->formatAddressForHTML($this->orderStorage['delivery_address'] ?? NULL); ?>
+    </div>
+    <?php endif; ?>
     <div class="order-info">
 	<?=$this->formatCartForHTML($this->orderStorage)?>
     </div>
+    <?php if($getAddress): ?>
+	<div class="center-container">
+	    <div class="alert">
+		Address required
+	    </div>
+	</div>
+    <?php endif; ?>
     <div class="wide-button-container">
-	<button class="wide-button svg-button" type="submit" id="submit-order-button">
+	<button class="wide-button svg-button <?=$getAddress ? 'inactive' : NULL?>" type="submit" id="submit-order-button" <?=$getAddress ? 'disabled' : NULL?>>
 	    Submit Order
 	</button>
     </div>
@@ -20,6 +32,42 @@
 	<p>Optionally, associate this order with a customer by searching below.</p>
     </div>
 </section>
+
+<?php if($getAddress): ?>
+    <div class="center-container">
+	<div class="shadow text-form-inner-container">
+	    <div class="text-form-header">
+		Enter Address
+	    </div>
+	    <form method="post" action="/Dashboard/orders/submit/setDeliveryAddress">
+		<div class="input-container">
+		    <label for="address_line">Street address</label>
+		    <input type="text" id="address_line" name="address_line" autocomplete="off" required>
+		</div>
+		<div class="input-shared-line">
+		    <div class="input-container">
+			<label for="city">City</label>
+			<input type="text" id="city" name="city" autocomplete="off" required>
+		    </div>
+		    <div class="input-container">
+			<label for="state">State</label>
+			<input type="text" id="state" name="state" minlength="2" maxlength="2" style="width: 2rem;" autocomplete="off" required>
+		    </div>
+		</div>
+		<div class="input-container">
+		    <label for="zip_code">Zip code</label>
+		    <input type="text" id="zip_code" name="zip_code" autocomplete="off" required>
+		</div>
+		<input type="hidden" name="CSRFToken" value="<?= $this->sessionManager->getCSRFToken(); ?>">
+		<div class="wide-button-container">
+		    <button type="submit" class="wide-button svg-button">
+			Submit
+		    </button>
+		</div>
+	    </form>
+	</div>
+    </div>
+<?php endif; ?>
 
 <div class="center-container">
     <div id="search-filters" class="shadow text-form-inner-container">

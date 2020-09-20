@@ -657,7 +657,6 @@ orderTypeChangeButton.addEventListener('click', (e) => {
 const deliveryButton = orderTypeButtonContainer.querySelector('#order-type-delivery-button');
 const pickupButton = orderTypeButtonContainer.querySelector('#order-type-pickup-button');
 const restaurantButton = orderTypeButtonContainer.querySelector('#order-type-restaurant-button');
-const submitLink = document.querySelector('#order-submit-link');
 
 const orderTypeUpdateURL = "/Order/setOrderType";
 
@@ -667,7 +666,6 @@ deliveryButton.addEventListener('click', (e) => {
     let data = {"order_type" : 0};
 
     postJSON(orderTypeUpdateURL, data);
-    submitLink.href = "/Order/submit";
 
     const svg = document.querySelector('#delivery-selected-svg');
     orderTypeSelected(svg);
@@ -679,7 +677,6 @@ pickupButton.addEventListener('click', (e) => {
     let data = {"order_type" : 1};
 
     postJSON(orderTypeUpdateURL, data);
-    submitLink.href = "/Order/submit";
     
     const svg = document.querySelector('#pickup-selected-svg');
     orderTypeSelected(svg);
@@ -693,15 +690,8 @@ if(restaurantButton){
         let data = {"order_type" : 2};
 
         postJSON(orderTypeUpdateURL, data);
-        submitLink.href = "/Dashboard/orders/submit";
         
         const svg = document.querySelector('#restaurant-selected-svg');
         orderTypeSelected(svg);
     });
-
-    // If not set, automatically set the order type to restaurant.
-    // The worker can manually update it if they are actually ordering for themselves.
-    if(!orderTypeButtonContainer.hidden){
-        restaurantButton.click();
-    }
 }

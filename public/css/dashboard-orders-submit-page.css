@@ -28,3 +28,7 @@
     font-weight: 700;
     margin-bottom: 0.5rem;
 }
+
+.wide-button.inactive{
+    background-color: rgba(0.25, 0.25, 0.25, 0.25);
+}

@@ -1,0 +1,17 @@
+.printer-delete-name{
+    display: flex;
+    flex-direction: row;
+}
+.printer-delete-name > p {
+    margin-left: 0.5rem;
+}
+
+.disconnected{
+    color: #e53e3e;
+    font-weight: 700;
+}
+
+.connected{
+    color: #12682f;
+    font-weight: 700;
+}

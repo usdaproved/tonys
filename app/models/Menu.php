@@ -55,14 +55,25 @@ WHERE menu_item_id = :menu_item_id;";
         $this->db->bindValueToStatement(":menu_item_id", $itemID);
         $this->db->executeStatement();
 
-        $result = $this->db->getResultSet();
+        $orderResult = $this->db->getResultSet();
+
+        // Go through the item and remove every option and group.
+        $itemInfo = $this->getItemInfo($itemID);
+
+        foreach($itemInfo['choices'] as $choice){
+            foreach($choice['options'] as $option){
+                $this->removeChoiceOption($option['id']);
+            }
+
+            $this->removeChoiceGroup($choice['id']);
+        }
 
         // This executes if item has already been ordered.
         $sql = "UPDATE menu_items
 SET category_id = NULL
 WHERE id = :id;";
 
-        if(empty($result)){
+        if(empty($orderResult)){
             $sql = "DELETE FROM menu_items WHERE id = :id;";
         }
 
@@ -113,7 +124,7 @@ SET name = :name WHERE id = :id";
     }
 
     public function removeCategory(int $categoryID) : void {
-        $sql = "DELETE FROM menu_catagories WHERE id = :id;";
+        $sql = "DELETE FROM menu_categories WHERE id = :id;";
 
         $this->db->beginStatement($sql);
         $this->db->bindValueToStatement(":id", $categoryID);
@@ -205,6 +216,18 @@ WHERE choice_parent_id = :choice_parent_id;";
     }
 
     public function removeChoiceGroup(int $groupID) : void {
+        $sql = "SELECT * FROM line_item_choices
+WHERE choice_parent_id = :choice_parent_id;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":choice_parent_id", $groupID);
+        $this->db->executeStatement();
+
+        $result = $this->db->getResultSet();
+
+        // This is always safe to call, as it just disconnects it from being loaded in the menu.
+        // No information is lost to the orders.
+
         $sql = "DELETE FROM item_choices
 WHERE choice_parent_id = :choice_parent_id;";
 
@@ -212,14 +235,15 @@ WHERE choice_parent_id = :choice_parent_id;";
         $this->db->bindValueToStatement(":choice_parent_id", $groupID);
         $this->db->executeStatement();
 
-        // In order for this function to be called, there shouldn't be anything
-        // that references this parent ID, so we should be good to remove completely.
-        $sql = "DELETE FROM choices_parents
-WHERE id = :id;";
+        // If none found, it hasn't been ordered
+        // and are safe to delete completely.
+        if(empty($result)){
+            $sql = "DELETE FROM choices_parents WHERE id = :id;";
 
-        $this->db->beginStatement($sql);
-        $this->db->bindValueToStatement(":id", $groupID);
-        $this->db->executeStatement();
+            $this->db->beginStatement($sql);
+            $this->db->bindValueToStatement(":id", $groupID);
+            $this->db->executeStatement();
+        }
     }
 
     public function createChoiceOption(int $groupID, string $name,
@@ -387,6 +411,7 @@ ORDER BY position ASC;";
         foreach($itemChoiceGroups as $choiceGroup){
             $choices[$choiceGroup["id"]] = $this->getChoiceGroupInfo($choiceGroup["id"]);
             $choiceChildren = $this->getAllOptionsByGroupID($choiceGroup["id"]);
+            $choices[$choiceGroup["id"]]["options"] = array();
             foreach($choiceChildren as $choice){
                 $choices[$choiceGroup["id"]]["options"][$choice["id"]] = $choice;
             }
