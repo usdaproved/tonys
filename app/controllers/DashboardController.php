@@ -901,7 +901,7 @@ class DashboardController extends Controller{
                 }
                 echo PHP_EOL;
 
-                echo date("F d, Y g:i A", strtotime($order["date"]));
+                echo date("F d, Y g:i A", strtotime($order["date"])) . PHP_EOL;
 
                 echo PHP_EOL;
             

@@ -109,7 +109,6 @@ class HomeController extends Controller{
         // If there is another session that used this email prior to registering we want
         // to begin the process of bringing over that data to this user.
         // We will require them to verify that email however.
-        $unregisteredUsers = $this->userManager->getAllUnregisteredUserUUIDsWithEmail($_POST["email"]);
         if(!empty($unregisteredUsers)){
             $this->userManager->setVerificationRequired($userUUID);
             
