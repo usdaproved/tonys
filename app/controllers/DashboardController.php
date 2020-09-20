@@ -883,15 +883,27 @@ class DashboardController extends Controller{
                 // TODO(Trystan): Take another look at how we want to format printer.
 
                 echo "TIMESTAMP " . $lastReceived . PHP_EOL;
+
+                echo PHP_EOL;
             
                 // Maybe print some over arching order info.
                 echo "ORDER " . UUID::orderedBytesToArrangedString($order["uuid"]) . PHP_EOL;
                 $customer = $this->userManager->getUserInfo($order["user_uuid"]);
+                echo PHP_EOL;
+                echo PHP_EOL;
+                echo "Order Type: " . ORDER_TYPE_ARRAY[$order["order_type"]];
                 // Note(Trystan): We may want to print the address on this receipt.
-                echo "NAME " . $customer["name_first"] . " " . $customer["name_last"] . PHP_EOL;
+                echo "Name: " . $customer["name_first"] . " " . $customer["name_last"] . PHP_EOL;
+                if($order["order_type"] == DELIVERY){
+                    $address = $this->orderManager->getDeliveryAddress($order["uuid"]);
+                    echo $address["line"] . PHP_EOL;
+                    echo $address["city"] . ", " . $address["state"] . " " . $address["zip_code"] . PHP_EOL;
+                    
+                }
+                
             
                 foreach($order["line_items"] as $lineItem){
-                    echo $lineItem["name"] .  " - " . $lineItem["quantity"]  . PHP_EOL;
+                    echo $lineItem["name"] .  " - " . $lineItem["quantity"]  "       $" . $this->intToCurrency($lineItem["price"]) . PHP_EOL;
                     foreach($lineItem["choices"] as $choice){
                         echo " - " . $choice["name"] . PHP_EOL;
                         foreach($choice["options"] as $option){
@@ -903,7 +915,18 @@ class DashboardController extends Controller{
                     }
                     echo PHP_EOL;
                 }
+
+                $cost = $this->orderManager->getCost($order["uuid"]);
+                echo "Subtotal: $" . $this->intToCurrency($cost["subtotal"]) . PHP_EOL;
+                echo "Tax: $" . $this->intToCurrency($cost["tax"]) . PHP_EOL;
+                if($cost["fee"] != 0){
+                    echo "Fee: $" . $this->intToCurrency($cost["fee"]) . PHP_EOL;
+                }
+                $total = $cost["subtotal"] + $cost["tax"] + $cost["fee"];
+                echo "Total: $" . $this->intToCurrency($total) . PHP_EOL;
+                
                 // Give a little padding between orders.
+                echo PHP_EOL;
                 echo PHP_EOL;
             } else {
                 echo "Still alive" . PHP_EOL;
