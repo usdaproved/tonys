@@ -891,7 +891,7 @@ class DashboardController extends Controller{
                 $customer = $this->userManager->getUserInfo($order["user_uuid"]);
                 echo PHP_EOL;
                 echo PHP_EOL;
-                echo "Order Type: " . ORDER_TYPE_ARRAY[$order["order_type"]];
+                echo "Order Type: " . ORDER_TYPE_ARRAY[$order["order_type"]] . PHP_EOL;
                 // Note(Trystan): We may want to print the address on this receipt.
                 echo "Name: " . $customer["name_first"] . " " . $customer["name_last"] . PHP_EOL;
                 if($order["order_type"] == DELIVERY){
@@ -918,12 +918,12 @@ class DashboardController extends Controller{
 
                 $cost = $this->orderManager->getCost($order["uuid"]);
                 echo "Subtotal: $" . $this->intToCurrency($cost["subtotal"]) . PHP_EOL;
-                echo "Tax: $" . $this->intToCurrency($cost["tax"]) . PHP_EOL;
+                echo "Tax:      $" . $this->intToCurrency($cost["tax"]) . PHP_EOL;
                 if($cost["fee"] != 0){
-                    echo "Fee: $" . $this->intToCurrency($cost["fee"]) . PHP_EOL;
+                    echo "Fee:      $" . $this->intToCurrency($cost["fee"]) . PHP_EOL;
                 }
                 $total = $cost["subtotal"] + $cost["tax"] + $cost["fee"];
-                echo "Total: $" . $this->intToCurrency($total) . PHP_EOL;
+                echo "*Total:    $" . $this->intToCurrency($total) . "*" . PHP_EOL;
                 
                 // Give a little padding between orders.
                 echo PHP_EOL;
