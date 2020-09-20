@@ -460,7 +460,7 @@ ORDER BY o.date ASC;";
     public function getActiveOrdersAfterDate(string $date) : array {
         $sql = "SELECT uuid FROM orders o 
 WHERE status NOT IN (" . CART . ","  . COMPLETE . ")
-AND date > :date 
+AND date > CONVERT_TZ(:date, 'US/Central', @@global.time_zone) 
 ORDER BY o.date ASC;";
 
         $this->db->beginStatement($sql);
@@ -485,7 +485,7 @@ ORDER BY o.date ASC;";
         if($date !== NULL){
             $sql = "SELECT uuid FROM orders o 
 WHERE status NOT IN (" . CART . ","  . COMPLETE . ")
-AND date > :date 
+AND date > CONVERT_TZ(:date, 'US/Central', @@global.time_zone) 
 ORDER BY o.date ASC LIMIT 1;";
 
             $this->db->beginStatement($sql);
