@@ -5,25 +5,25 @@
 class Session{
 
     public function __construct(){
-        // TODO(Trystan): Look more into PHP Sessions.
-        // We at some point want to set up "keep me logged in" type tokens.
-        if (isset($_COOKIE['tonys_session_id'])){
-            session_id($_COOKIE['tonys_session_id']);
+        if (isset($_COOKIE['session_id'])){
+            session_id($_COOKIE['session_id']);
         }
 
-        session_name("tonys_session_id");
+        session_name("session_id");
         session_start([
             "cookie_samesite" => "strict"
         ]);
 
+        // If the session hasn't been seen for 3 hours. Generate a new one.
+        if(isset($_SESSION["last_seen"]) && (time() - $_SESSION["last_seen"] > 10800)){
+            $_SESSION = array();
+            session_regenerate_id(true);
+        }
+            
+        $_SESSION["last_seen"] = time();
+
         if (empty($_SESSION["CSRFToken"])) {
-            if (function_exists("random_bytes")) {
-                $_SESSION["CSRFToken"] = bin2hex(random_bytes(32));
-            } else if (function_exists("mcrypt_create_iv")) {
-                $_SESSION["CSRFToken"] = bin2hex(mcrypt_create_iv(32, MCRYPT_DEV_URANDOM));
-            } else {
-                $_SESSION["CSRFToken"] = bin2hex(openssl_random_pseudo_bytes(32));
-            }
+            $_SESSION["CSRFToken"] = bin2hex(random_bytes(32));
         }
     }
 
