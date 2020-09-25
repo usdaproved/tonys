@@ -757,9 +757,13 @@ WHERE ps.day = :day;";
     }
 
     public function task_updateSubmittedToPreparing() : void {
+        // I had it check if it was older than a minute previously.
+        // But found that it was too long, it could take up to ~2 minutes in worse case time.
+        // If the order is submitted directly after the cron job is ran. Then the job
+        // has to be ran 2 more times in order for the statement to take effect.
+        // This way worse case is always 1 minute.
         $sql = "UPDATE orders SET orders.status = 2 
-WHERE TIMESTAMPDIFF(MINUTE, orders.date, NOW()) > " . MINUTES_UNTIL_PREPARING . " 
-AND orders.status = 1;";
+WHERE orders.status = 1;";
 
         $this->db->beginStatement($sql);
         $this->db->executeStatement();
