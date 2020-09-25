@@ -47,6 +47,9 @@ const COMPLETE   = 5;
 
 const STATUS_ARRAY = ['cart','submitted','preparing','prepared','delivering','complete'];
 
+const MINUTES_UNTIL_PREPARING = 1;
+const MINUTES_UNTIL_PREPARED = 15;
+
 // TODO(Trystan): We may be able to get rid of this whole flow.
 // Take a peek at the javascript which handles order flow without this structure.
 const ORDER_STATUS_FLOW = array(

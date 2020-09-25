@@ -754,7 +754,25 @@ WHERE ps.day = :day;";
 
         if($result == 1) return true;
         return false;
-    }    
+    }
+
+    public function task_updateSubmittedToPreparing() : void {
+        $sql = "UPDATE orders SET orders.status = 2 
+WHERE TIMESTAMPDIFF(MINUTE, orders.date, NOW()) > " . MINUTES_UNTIL_PREPARING . " 
+AND orders.status = 1;";
+
+        $this->db->beginStatement($sql);
+        $this->db->executeStatement();
+    }
+
+    public function task_updatePreparingToPrepared() : void {
+        $sql = "UPDATE orders SET orders.status = 3 
+WHERE TIMESTAMPDIFF(MINUTE, orders.date, NOW()) > " . MINUTES_UNTIL_PREPARED . " 
+AND orders.status = 2;";
+
+        $this->db->beginStatement($sql);
+        $this->db->executeStatement();
+    }
 }
 
 ?>
