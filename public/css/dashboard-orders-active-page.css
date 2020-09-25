@@ -156,6 +156,12 @@
     margin-bottom: 0.5rem;
 }
 
+.order-date{
+    text-align: center;
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+}
+
 .order-name{
     margin-top: 0.5rem;
     text-align: center;

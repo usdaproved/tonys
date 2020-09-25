@@ -394,6 +394,11 @@ const getOrderList = () => {
             orderElement.classList.add(ORDER_TYPE[order.order_type]);
             orderElement.classList.add('text-form-inner-container', 'shadow')
 
+            let dateElement = document.createElement('div');
+            dateElement.classList.add('order-date');
+            dateElement.innerText = order.date;
+            orderElement.prepend(dateElement);
+
             let statusElement = document.createElement('div');
             statusElement.classList.add('order-status');
             statusElement.innerText = STATUS_ARRAY[parseInt(order.status)];

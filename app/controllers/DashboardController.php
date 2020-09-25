@@ -618,6 +618,7 @@ class DashboardController extends Controller{
             }
             $orders[$i]["is_paid"] = $this->orderManager->isPaid($orders[$i]["uuid"]);
             $orders[$i]["uuid"] = UUID::orderedBytesToArrangedString($orders[$i]["uuid"]);
+            $orders[$i]["date"] = date("g:i A", strtotime($orders[$i]["date"]));
         }
 
         echo json_encode($orders);
