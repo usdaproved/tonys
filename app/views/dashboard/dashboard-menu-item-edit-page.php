@@ -119,9 +119,15 @@
 				<path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
 			    </svg>
 			</button>
-			<div class="input-container">
-			    <label for="<?=$choiceID;?>-option-name">Name</label>
-			    <input type="text" id="<?=$choiceID;?>-option-name" class="option-name" name="name" value="<?=$this->escapeForAttributes($choice['name']);?>" style="max-width:8rem;" required>
+			<div class="option-price-container">
+			    <div class="input-container">
+				<label for="<?=$choiceID;?>-option-name">Name</label>
+				<input type="text" id="<?=$choiceID;?>-option-name" class="option-name" name="name" value="<?=$this->escapeForAttributes($choice['name']);?>" style="max-width:8rem;" required>
+			    </div>
+			    <div class="remember-container">
+				<input type="checkbox" class="option-active" id="<?=$choiceID?>-option-active" <?= ($choice['active'] ?? NULL) == 1 ? 'checked' : NULL; ?>>
+				<label for="<?=$choiceID?>-option-active">Active</label>
+			    </div>
 			</div>
 			<div class="option-price-container">
 			    <div class="input-container">

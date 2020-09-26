@@ -287,6 +287,17 @@ WHERE id = :id;";
         $this->db->executeStatement();
     }
 
+    public function setChoiceOptionActiveState(int $choiceID, int $active) : void {
+        $sql = "UPDATE choices_children SET active = :active WHERE id = :id;";
+
+        $this->db->beginStatement($sql);
+
+        $this->db->bindValueToStatement(":id", $choiceID);
+        $this->db->bindValueToStatement(":active", $active);
+        
+        $this->db->executeStatement();
+    }
+
     public function updateChoiceOptionPosition(int $choiceID, int $position) : void {
         $sql = "UPDATE choices_children
 SET position = :position
@@ -386,7 +397,7 @@ WHERE category_id = :category_id AND special_only = 0 ";
     }
 
     public function getAllOptionsByGroupID(int $groupID) : array {
-        $sql = "SELECT id, name, price_modifier, special_price_modifier 
+        $sql = "SELECT id, name, price_modifier, active, special_price_modifier 
 FROM choices_children 
 WHERE parent_id = :parent_id
 ORDER BY position ASC;";

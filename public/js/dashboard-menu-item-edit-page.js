@@ -57,6 +57,9 @@ const newChoiceOption = (optionID, name = "", price = 0) => {
 
     inputContainer.appendChild(removeOptionButton);
 
+    let nameActiveContainer = document.createElement('div');
+    nameActiveContainer.classList.add('option-price-container');
+
     let nameInputContainer = document.createElement('div');
     nameInputContainer.classList.add('input-container');
     
@@ -77,7 +80,31 @@ const newChoiceOption = (optionID, name = "", price = 0) => {
 
     nameInputContainer.appendChild(nameInput);
 
-    inputContainer.appendChild(nameInputContainer);
+    nameActiveContainer.appendChild(nameInputContainer);
+
+    let activeInputContainer = document.createElement('div');
+    activeInputContainer.classList.add('remember-container');
+
+    let activeCheckbox = document.createElement('input');
+    activeCheckbox.type = 'checkbox';
+    activeCheckbox.id = `${optionID}-option-active`;
+    activeCheckbox.classList.add('option-active');
+    activeCheckbox.checked = true;
+
+    activeInputContainer.appendChild(activeCheckbox);
+
+    let activeCheckboxLabel = document.createElement('label');
+    activeCheckboxLabel.setAttribute('for', `${optionID}-option-active`);
+    activeCheckboxLabel.innerText = 'Active';
+
+    activeInputContainer.appendChild(activeCheckboxLabel);
+
+    nameActiveContainer.appendChild(activeInputContainer);
+
+    inputContainer.appendChild(nameActiveContainer);
+
+    let pricesContainer = document.createElement('div');
+    pricesContainer.classList.add('option-price-container');
 
     let priceInputContainer = document.createElement('div');
     priceInputContainer.classList.add('input-container');
@@ -101,7 +128,33 @@ const newChoiceOption = (optionID, name = "", price = 0) => {
 
     priceInputContainer.appendChild(priceInput);
 
-    inputContainer.appendChild(priceInputContainer);
+    pricesContainer.appendChild(priceInputContainer);
+
+    let specialPriceInputContainer = document.createElement('div');
+    specialPriceInputContainer.classList.add('input-container');
+
+    let specialPriceLabel = document.createElement('label');
+    specialPriceLabel.setAttribute('for', `${optionID}-option-special-price`);
+    specialPriceLabel.innerText = 'Special Price';
+
+    specialPriceInputContainer.appendChild(specialPriceLabel);
+
+    let specialPriceInput = document.createElement('input');
+    specialPriceInput.type = 'number';
+    specialPriceInput.id = `${optionID}-option-special-price`;
+    specialPriceInput.classList.add('option-special-price');
+    specialPriceInput.name = 'price';
+    specialPriceInput.setAttribute('step', '0.01');
+    specialPriceInput.setAttribute('min', '0');
+    specialPriceInput.value = price;
+    specialPriceInput.style.width = '4rem';
+    specialPriceInput.required = true;
+
+    specialPriceInputContainer.appendChild(specialPriceInput);
+
+    pricesContainer.appendChild(specialPriceInputContainer);
+
+    inputContainer.appendChild(pricesContainer);
 
     optionContainer.appendChild(inputContainer);
 
@@ -182,10 +235,12 @@ const getChoiceData = () => {
             let optionName = option.querySelector('.option-name').value;
             let optionPrice = option.querySelector('.option-price').value;
             let optionSpecialPrice = option.querySelector('.option-special-price').value;
+            let optionActive = option.querySelector('.option-active').checked ? 1 : 0;
             result[group.id][option.id] = {
                 "name" : optionName,
                 "price" : optionPrice,
-                "special_price" : optionSpecialPrice
+                "special_price" : optionSpecialPrice,
+                "active" : optionActive
             };
         });
     });

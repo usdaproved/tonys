@@ -1085,6 +1085,7 @@ class DashboardController extends Controller{
 
                 $this->menuManager->updateChoiceOption($choiceID, $choiceName, $choicePrice);
                 $this->menuManager->setSpecialOptionPrice($choiceID, $choiceSpecialPrice);
+                $this->menuManager->setChoiceOptionActiveState($choiceID, $choice["active"]);
             }
         }
 

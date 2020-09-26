@@ -362,7 +362,14 @@ class OrderController extends Controller{
             foreach($optionIDs as $optionID){
                 if(array_key_exists($choiceID, $item["choices"])
                    && array_key_exists($optionID, $item["choices"][$choiceID]["options"])){
+
                     $option = $item["choices"][$choiceID]["options"][$optionID];
+
+                    if($option["active"] != 1){
+                        echo json_encode(NULL);
+                        exit;
+                    }
+                    
                     if($isSpecial && !is_null($option["special_price_modifier"])){
                         $totalPrice += $option["special_price_modifier"];
                     } else {

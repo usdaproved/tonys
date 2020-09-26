@@ -243,6 +243,7 @@ const isReadyToSubmit = () => {
 
 const onChoiceSelection = (e) => {
     let targetButton = e.target.closest('button');
+    if(targetButton.classList.contains('inactive')) return;
     let targetInput = targetButton.querySelector('input');
     let maxPicks = itemDataStorage.choices[targetInput.name].max_picks;
     // if already checked, then we are unchecking it and no other work is necessary.
@@ -405,6 +406,9 @@ const newDialog = (itemData) => {
             let optionInputButton = document.createElement('button');
             optionInputButton.classList.add('svg-button');
             optionInputButton.classList.add('item-option-button');
+            if(options[option].active == 0){
+                optionInputButton.classList.add('inactive');
+            }
             
             optionInputButton.addEventListener('click', onChoiceSelection);
             if(parseInt(choices[choice].max_picks) === 1 

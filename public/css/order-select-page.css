@@ -246,6 +246,10 @@
     align-items: center;
 }
 
+.item-option-button.inactive{
+    color: rgba(0.5, 0.5, 0.5, 0.5);
+}
+
 .item-option-name{
     margin-left: 0.5rem;
 }
