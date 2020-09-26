@@ -29,11 +29,16 @@ class OrderController extends Controller{
         $cartUUID = $this->orderManager->getCartUUID($userUUID);
 
         $this->orderStorage = $this->orderManager->getOrderByUUID($cartUUID);
-        $this->menuStorage = $this->menuManager->getEntireMenu();
 
-        //$day = date('l');
-        //$this->menuStorage["daily_special"] = $this->menuManager->getDailySpecial($day);
+        $day = date('w'); // NOTE(Trystan): returns a number, sun = 0 through sat = 6
+        
+        $this->menuStorage = $this->menuManager->getEntireMenu($day);
 
+        // This could return more than one daily special.
+        $specials = $this->menuManager->getDailySpecial($day);
+
+        // NOTE(Trystan): We could streamline this with the technique from above.
+        // However we went with mon = 0. So the index is off.
         $day = DAY_TO_INT[date('D')];
         
         $deliveryOn = $this->orderManager->isDeliveryOn();
@@ -345,7 +350,11 @@ class OrderController extends Controller{
             exit;
         }
 
+        $day = date('w');
+        $isSpecial = (!is_null($item["special_day"]) && $day == $item["special_day"]);
+
         $totalPrice = $item["price"];
+        if($isSpecial) $totalPrice = $item["special_price"];
 
         foreach($userItemData["choices"] as $choiceID => $optionIDs){
             $choiceID = explode("-", $choiceID)[0];
@@ -353,7 +362,12 @@ class OrderController extends Controller{
             foreach($optionIDs as $optionID){
                 if(array_key_exists($choiceID, $item["choices"])
                    && array_key_exists($optionID, $item["choices"][$choiceID]["options"])){
-                    $totalPrice += $item["choices"][$choiceID]["options"][$optionID]["price_modifier"];
+                    $option = $item["choices"][$choiceID]["options"][$optionID];
+                    if($isSpecial && !is_null($option["special_price_modifier"])){
+                        $totalPrice += $option["special_price_modifier"];
+                    } else {
+                        $totalPrice += $option["price_modifier"];
+                    }
                 } else {
                     echo json_encode(NULL);
                     exit;

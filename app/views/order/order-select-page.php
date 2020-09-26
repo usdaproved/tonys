@@ -120,6 +120,39 @@
 <?php $this->printOneTimeMessages(USER_ALERT); ?>
 <?php $this->printOneTimeMessages(USER_SUCCESS); ?>
 
+<div class="item-search-container">
+    <label for="item-search">Search</label>
+    <input type="text" id="item-search">
+</div>
+
+<?php if(!empty($specials)): ?>
+    <h3 class="category-name">Daily Specials</h3>
+    <div class="orders-container">
+	<?php foreach($specials as $special): ?>
+	    <?php $inactive = (($special['active'] != 1) || $this->orderStorage['is_closed']) ? 'inactive' : NULL; ?>
+	    <div class="order-container <?=$inactive?>" id="<?=$special['id']?>-item-container">
+		<?php if(!$inactive): ?>
+		    <a href="/Order?id=<?=$special['id']?>" rel="nofollow" class="item-link">
+		<?php endif; ?>
+		<div class="item-info-container">
+		    <div class="item-name">
+			<?=$this->escapeForHTML($special['name']);?>
+		    </div>
+		    <div class="item-description">
+			<?=$this->escapeForHTML($special['description']);?>
+		    </div>
+		    <div class="item-price">
+			<?='$' . $this->intToCurrency($special['special_price']);?>
+		    </div>
+		</div>
+		<?php if($special['active'] == 1): ?>
+		    </a>
+		<?php endif; ?>
+	    </div>
+	<?php endforeach; ?>
+    </div>
+<?php endif; ?>
+
 <?php foreach($this->menuStorage as $category): ?>
     <h3 class="category-name">
 	<?=$this->escapeForHTML($category['name']);?>

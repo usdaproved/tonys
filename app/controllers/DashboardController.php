@@ -353,22 +353,32 @@ class DashboardController extends Controller{
         $activeState = isset($_POST["active"]) ? 1 : 0;
 
         $isNewItem = ((int)$_POST["id"] === 0);
+        $itemID = NULL;
 
         if($isNewItem){
-            $this->menuManager->createMenuItem($activeState, $_POST["category"],
-                                               $_POST["name"], $_POST["price"] * 100,
-                                               $_POST["description"]);
+            $itemID = $this->menuManager->createMenuItem($activeState, $_POST["category"],
+                                                         $_POST["name"], $_POST["price"] * 100,
+                                                         $_POST["description"]);
         } else {
+            $itemID = $_POST["id"];
             $this->menuManager->updateMenuItem($_POST["id"], $activeState, $_POST["category"],
                                                $_POST["name"], $_POST["price"] * 100,
                                                $_POST["description"]);
         }
 
+        $isSpecialOnly = isset($_POST["special_only"]) ? 1 : 0;
+        $specialDay = $_POST["special_day"];
+        if($specialDay == "null") $specialDay = NULL;
+
+        $this->menuManager->setSpecialPrice($itemID, $_POST["special_price"] * 100);
+        $this->menuManager->setSpecialDay($itemID, $specialDay);
+        $this->menuManager->setSpecialOnly($itemID, $isSpecialOnly);
+
         $encodedName = $this->escapeForHTML($_POST["name"]);
         $itemStatus = $isNewItem ? "created" : "updated";
         $this->sessionManager->pushOneTimeMessage(USER_SUCCESS, "$encodedName successfully $itemStatus.");
 
-        $this->redirect("/Dashboard/menu");
+        $this->redirect("/Dashboard/menu/item?id=" . $itemID);
     }
 
     public function employees_get() : void {
@@ -1071,8 +1081,10 @@ class DashboardController extends Controller{
                 $choiceID = explode("-", $choiceID)[0];
                 $choiceName = $choice["name"];
                 $choicePrice = $choice["price"] * 100;
+                $choiceSpecialPrice = $choice["special_price"] * 100;
 
                 $this->menuManager->updateChoiceOption($choiceID, $choiceName, $choicePrice);
+                $this->menuManager->setSpecialOptionPrice($choiceID, $choiceSpecialPrice);
             }
         }
 

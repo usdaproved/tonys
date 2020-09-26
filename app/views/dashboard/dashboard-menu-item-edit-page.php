@@ -1,6 +1,9 @@
 <?php require APP_ROOT . "/views/includes/header.php" ?>
 <link href="<?=$this->getFile('css', 'components');?>" rel="stylesheet">
 <link href="<?=$this->getFile('css', __FILE__);?>" rel="stylesheet">
+
+<?php $this->printOneTimeMessages(USER_SUCCESS); ?>
+
 <div class="text-form-inner-container shadow">
     <form method="post">
 	<div class="text-form-header">
@@ -12,7 +15,7 @@
 	</div>
 	<div class="input-container">
 	    <label for="category">Category</label>
-	    <select name="category" required>
+	    <select id="category" name="category" required>
 		<?php foreach($this->menuStorage['categories'] as $category): ?>
 		    <option value="<?=$category['id']?>" <?php if($category['id'] === ($this->menuStorage['category_id'] ?? NULL)) echo 'selected';?>><?=$this->escapeForHTML($category['name'])?></option>
 		<?php endforeach; ?>
@@ -32,20 +35,44 @@
 	</div>
 	<input type="hidden" id="menu-item-id" name="id" value="<?=$this->menuStorage['id'] ?? NULL?>">
 	<input type="hidden" id="CSRFToken" name="CSRFToken" value="<?= $this->sessionManager->getCSRFToken(); ?>">
+	<div class="input-container">
+	    <label for="special-price">Special Price</label>
+	    <input type="number" id="special-price" name="special_price" value="<?=$this->intToCurrency($this->menuStorage['special_price'] ?? NULL);?>" step="0.01" min="0" max="99.99">
+	</div>
+	<div class="input-container">
+	    <label for="special-day">Special Day</label>
+	    <select id="special-day" name="special_day">
+		<option value="null" <?php if(is_null($this->menuStorage['special_day'] ?? NULL)) echo 'selected'; ?>>None</option>
+		<?php foreach(PHP_INT_TO_DAY as $intDay => $stringDay): ?>
+		    <option value="<?=$intDay?>" <?php if(!is_null($this->menuStorage['special_day'] ?? NULL) && $this->menuStorage['special_day'] == $intDay) echo 'selected';?>>
+			<?=$stringDay?>
+		    </option>
+		<?php endforeach; ?>
+	    </select>
+	</div>
+	<div class="remember-container">
+	    <input type="checkbox" id="special-only" name="special_only" <?= ($this->menuStorage['special_only'] ?? NULL) == 1 ? 'checked' : NULL; ?>>
+	    <label for="special-only">Special Only</label>
+	</div>
 	<div class="double-button-container">
 	    <div class="wide-button-container">
 		<button type="submit" class="wide-button svg-button">
-		    Submit
+		    <?= (isset($this->menuStorage["id"])) ? "Submit" : "Create"; ?>
 		</button>
 	    </div>
-	    <div class="delete-button-container margin-left-1">
-		<button type="button" class="wide-button svg-button cancel" id="delete-item" data-id="<?=$this->menuStorage['id']?>">
-		    Delete
-		</button>
-	    </div>
+	    <?php if(isset($this->menuStorage["id"])): ?>
+		<div class="delete-button-container margin-left-1">
+		    <button type="button" class="wide-button svg-button cancel" id="delete-item" data-id="<?=$this->menuStorage['id']?>">
+			Delete
+		    </button>
+		</div>
+	    <?php endif; ?>
 	</div>
     </form>
 </div>
+
+
+<?php if(isset($this->menuStorage["id"])): ?>
 <div class="scrolling-container shadow">
     <div class="center-container">
 	<h2>Choices</h2>
@@ -96,9 +123,15 @@
 			    <label for="<?=$choiceID;?>-option-name">Name</label>
 			    <input type="text" id="<?=$choiceID;?>-option-name" class="option-name" name="name" value="<?=$this->escapeForAttributes($choice['name']);?>" style="max-width:8rem;" required>
 			</div>
-			<div class="input-container">
-			    <label for="<?=$choiceID;?>-option-price">Price Modifier</label>
-			    <input type="number" id="<?=$choiceID;?>-option-price" class="option-price" name="price" value="<?=$this->intToCurrency($choice['price_modifier']);?>" step="0.01" min="0" max="99.99" style="width:4rem;" required>
+			<div class="option-price-container">
+			    <div class="input-container">
+				<label for="<?=$choiceID;?>-option-price">Price Modifier</label>
+				<input type="number" id="<?=$choiceID;?>-option-price" class="option-price" name="price" value="<?=$this->intToCurrency($choice['price_modifier']);?>" step="0.01" min="0" max="99.99" style="width:4rem;" required>
+			    </div>
+			    <div class="input-container">
+				<label for="<?=$choiceID;?>-option-special-price">Special Price</label>
+				<input type="number" id="<?=$choiceID;?>-option-special-price" class="option-special-price" name="special_price" value="<?=$this->intToCurrency($choice['special_price_modifier'] ?? NULL);?>" step="0.01" min="0" max="99.99" style="width:4rem;" required>
+			    </div>
 			</div>
 		    </div>
 		</div>
@@ -115,6 +148,7 @@
 	</div>
     <?php endforeach; ?>
 </div>
+<?php endif; ?>
 
 <script src="<?=$this->getFile('js', __FILE__);?>" type="module"></script>
 <?php require APP_ROOT . "/views/includes/footer.php" ?>

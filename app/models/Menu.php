@@ -2,11 +2,18 @@
 
 class Menu extends Model{
 
-    // TODO(Trystan): Make support for deleting menu items, not just setting inactive.
-    // Set the menu items category to null. Then it won't be grabbed by the menu.
+    // here is how we do specials
+    // two fields are added to the menu items.
+    // one is to mark it special only,
+    // second is to mark what day it is if any day at all.
+    // Then for the main menu we grab only items that are not special only items.
+    // then we grab specials seperately. There can be more than one daily special this way.
+    // Then if the special is not an special only item, that means it exists within the regular menu as well.
+    // We then remove it from the regular menu.
+    // Then we display specials up top and carry on as normal with the menu.
 
     public function createMenuItem(int $activeState, int $category,
-                                   string $name, int $price, string $description) : void {
+                                   string $name, int $price, string $description) : int {
         $sql = "INSERT INTO menu_items 
 (active, category_id, name, price, description, position) 
 VALUES (:active, :category_id, :name, :price, :description, :position);";
@@ -23,16 +30,16 @@ VALUES (:active, :category_id, :name, :price, :description, :position);";
         $this->db->bindValueToStatement(":position", $position);
         
         $this->db->executeStatement();
+
+        return $this->db->lastInsertID();
     }
 
     public function updateMenuItem(int $menuItemID, int $activeState, int $category,
                                    string $name, int $price, string $description) : void {
         $sql = "UPDATE menu_items 
 SET active = :active, category_id = :category_id, name = :name, price = :price, 
-description = :description, position = :position
+description = :description
 WHERE id = :id";
-
-        $position = $this->getHighestPositionInCategory($category) + 1;
 
         $this->db->beginStatement($sql);
 
@@ -42,7 +49,6 @@ WHERE id = :id";
         $this->db->bindValueToStatement(":name", $name);
         $this->db->bindValueToStatement(":price", $price);
         $this->db->bindValueToStatement(":description", $description);
-        $this->db->bindValueToStatement(":position", $position);
         
         $this->db->executeStatement();
     }
@@ -324,7 +330,7 @@ WHERE id = :id;";
         }
     }
     
-    public function getEntireMenu() : array {
+    public function getEntireMenu(int $day = NULL) : array {
         $sql = "SELECT * FROM menu_categories ORDER BY position ASC;";
 
         $this->db->beginStatement($sql);
@@ -338,12 +344,20 @@ WHERE id = :id;";
         
         $menu = [];
         foreach($categories as $category){
+            // I know this isn't the most elegant solution.
+            // But sometimes we want to get the full menu and not care about specials.
             $sql = "SELECT * FROM menu_items
-WHERE category_id = :category_id
-ORDER BY position ASC;";
+WHERE category_id = :category_id AND special_only = 0 ";
+            if(!is_null($day)){
+                $sql .= "AND (special_day != :day OR special_day != :day IS NULL) ";
+            }
+            $sql .= "ORDER BY position ASC;";
 
             $this->db->beginStatement($sql);
             $this->db->bindValueToStatement(":category_id", $category["id"]);
+            if(!is_null($day)){
+                $this->db->bindValueToStatement(":day", $day);
+            }
             $this->db->executeStatement();
 
             $menuItems = $this->db->getResultSet();
@@ -372,7 +386,7 @@ ORDER BY position ASC;";
     }
 
     public function getAllOptionsByGroupID(int $groupID) : array {
-        $sql = "SELECT id, name, price_modifier 
+        $sql = "SELECT id, name, price_modifier, special_price_modifier 
 FROM choices_children 
 WHERE parent_id = :parent_id
 ORDER BY position ASC;";
@@ -441,11 +455,56 @@ ORDER BY position ASC;";
         return $list;
     }
 
-    public function getDailySpecial(string $day) : array {
-        $special = array();
+    public function setSpecialOnly(int $menuItemID, int $isSpecialOnly) : void {
+        $sql = "UPDATE menu_items SET special_only = :special_only WHERE id = :id;";
         
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":id", $menuItemID);
+        $this->db->bindValueToStatement(":special_only", $isSpecialOnly);
+        $this->db->executeStatement();
+    }
 
-        return $special;
+    public function setSpecialDay(int $menuItemID, int $day = NULL) : void {
+        $sql = "UPDATE menu_items SET special_day = :special_day WHERE id = :id;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":id", $menuItemID);
+        $this->db->bindValueToStatement(":special_day", $day);
+        $this->db->executeStatement();
+    }
+
+    public function setSpecialPrice(int $menuItemID, int $price = NULL) : void {
+        $sql = "UPDATE menu_items SET special_price = :special_price WHERE id = :id;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":id", $menuItemID);
+        $this->db->bindValueToStatement(":special_price", $price);
+        $this->db->executeStatement();
+    }
+
+    // NOTE(Trystan): Option is = to choice here.
+    public function setSpecialOptionPrice(int $optionID, int $price = NULL) : void{
+        $sql = "UPDATE choices_children 
+SET special_price_modifier = :special_price_modifier
+WHERE id = :id;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":id", $optionID);
+        $this->db->bindValueToStatement(":special_price_modifier", $price);
+        $this->db->executeStatement();
+    }
+
+    public function getDailySpecial(int $day) : array {
+        $sql = "SELECT * FROM menu_items WHERE special_day = :special_day;";
+
+        $this->db->beginStatement($sql);
+        $this->db->bindValueToStatement(":special_day", $day);
+        $this->db->executeStatement();
+        
+        $result = $this->db->getResultSet();
+
+        if(is_bool($result)) return array();
+        return $result;
     }
     
     public function getItemInfo(int $menuItemID) : array {

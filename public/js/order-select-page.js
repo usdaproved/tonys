@@ -50,6 +50,28 @@ const svgDelete = `<svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="
     <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="#a11010"/>
     </svg>`;
 
+const date = new Date();
+const day = date.getDay();
+
+const itemNameElements = document.querySelectorAll('.item-name');
+const categoryNameElements = document.querySelectorAll('.category-name');
+const itemSearchInput = document.querySelector('#item-search');
+itemSearchInput.addEventListener('input', (e) => {
+    let filterText = e.target.value.toUpperCase();
+    if(filterText){
+        categoryNameElements.forEach(element => element.hidden = true);
+    } else {
+        categoryNameElements.forEach(element => element.hidden = false);
+    }
+    
+    itemNameElements.forEach(element => {
+        let container = element.closest('.order-container');
+        container.hidden = false;
+        let text = element.innerText.toUpperCase();
+        if(!text.includes(filterText)) container.hidden = true;
+    });
+});
+
 // If the selection is hidden on page load, then there is no selection.
 let isOrderTypeSelected = !document.querySelector('#order-type-selection').hidden;
 
@@ -404,6 +426,13 @@ const newDialog = (itemData) => {
             let optionInputLabel = document.createElement('span');
             optionInputLabel.classList.add('item-option-name');
             optionInputLabel.innerText = options[option].name;
+            if(itemData.special_day !== null && itemData.special_day == day 
+                && options[option].special_price_modifier !== null){
+                // We override the current price_modifier, so that the other things can use it
+                // like normal.
+                options[option].price_modifier = options[option].special_price_modifier;
+            }
+
             if(parseFloat(options[option].price_modifier) !== 0){
                 optionInputLabel.innerText += ` (+ $${intToCurrency(options[option].price_modifier)})`;
             }
@@ -489,6 +518,9 @@ const newDialog = (itemData) => {
 
     let priceTotal = document.createElement('span');
     priceTotal.classList.add('item-price-total');
+    if(itemData.special_day !== null && itemData.special_day == day){
+        itemData.price = itemData.special_price;
+    }
     priceTotal.innerText = intToCurrency(itemData.price);
     priceTotalContainer.appendChild(priceTotal);
 

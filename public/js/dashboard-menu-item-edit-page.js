@@ -181,9 +181,11 @@ const getChoiceData = () => {
         group.querySelectorAll('.choice-option').forEach(option => {
             let optionName = option.querySelector('.option-name').value;
             let optionPrice = option.querySelector('.option-price').value;
+            let optionSpecialPrice = option.querySelector('.option-special-price').value;
             result[group.id][option.id] = {
                 "name" : optionName,
-                "price" : optionPrice
+                "price" : optionPrice,
+                "special_price" : optionSpecialPrice
             };
         });
     });

@@ -322,3 +322,16 @@
 .item-submit-text{
     font-weight: 700;
 }
+
+.item-search-container{
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+}
+
+.item-search-container > input{
+    margin-left: 0.5rem;
+}
